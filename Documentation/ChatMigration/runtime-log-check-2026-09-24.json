@@ -1,0 +1,17 @@
+[
+  {
+    "mode": "absent",
+    "scrollLogs": 0,
+    "path": "/tmp/chat-animation-diagnostics-sync/logs-absent.txt"
+  },
+  {
+    "mode": "false",
+    "scrollLogs": 0,
+    "path": "/tmp/chat-animation-diagnostics-sync/logs-false.txt"
+  },
+  {
+    "mode": "true",
+    "scrollLogs": 10,
+    "path": "/tmp/chat-animation-diagnostics-sync/logs-true.txt"
+  }
+]

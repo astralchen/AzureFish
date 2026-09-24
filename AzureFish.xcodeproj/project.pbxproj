@@ -6,6 +6,12 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		AF0000000000000000000301 /* QuickLayoutKit in Frameworks */ = {isa = PBXBuildFile; productRef = AF0000000000000000000201 /* QuickLayoutKit */; };
+		AF0000000000000000000302 /* ListKit in Frameworks */ = {isa = PBXBuildFile; productRef = AF0000000000000000000202 /* ListKit */; };
+		AF0000000000000000000303 /* AppLocalization in Frameworks */ = {isa = PBXBuildFile; productRef = AF0000000000000000000203 /* AppLocalization */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		7735C8B830627166005AF164 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -65,6 +71,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AF0000000000000000000301 /* QuickLayoutKit in Frameworks */,
+				AF0000000000000000000302 /* ListKit in Frameworks */,
+				AF0000000000000000000303 /* AppLocalization in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -125,6 +134,9 @@
 			);
 			name = AzureFish;
 			packageProductDependencies = (
+				AF0000000000000000000201 /* QuickLayoutKit */,
+				AF0000000000000000000202 /* ListKit */,
+				AF0000000000000000000203 /* AppLocalization */,
 			);
 			productName = AzureFish;
 			productReference = 7735C8A130627164005AF164 /* AzureFish.app */;
@@ -205,9 +217,16 @@
 			knownRegions = (
 				en,
 				Base,
+				"zh-Hans",
+				ar,
 			);
 			mainGroup = 7735C89830627164005AF164;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				AF0000000000000000000101 /* XCRemoteSwiftPackageReference "QuickLayoutKit" */,
+				AF0000000000000000000102 /* XCRemoteSwiftPackageReference "ListKit" */,
+				AF0000000000000000000103 /* XCRemoteSwiftPackageReference "AppLocalization" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 7735C8A230627164005AF164 /* Products */;
 			projectDirPath = "";
@@ -291,6 +310,10 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = AzureFish/Info.plist;
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Record audio messages and convert speech to text.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Save received photos and videos to your photo library.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Read selected Live Photo originals to preserve motion and sound.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Convert speech into message drafts and transcribe audio messages.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIMainStoryboardFile = "";
@@ -323,6 +346,10 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = AzureFish/Info.plist;
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Record audio messages and convert speech to text.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Save received photos and videos to your photo library.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Read selected Live Photo originals to preserve motion and sound.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Convert speech into message drafts and transcribe audio messages.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIMainStoryboardFile = "";
@@ -351,6 +378,7 @@
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
@@ -398,12 +426,13 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
@@ -414,6 +443,7 @@
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
@@ -455,11 +485,12 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				VALIDATE_PRODUCT = YES;
 			};
@@ -587,6 +618,51 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		AF0000000000000000000101 /* XCRemoteSwiftPackageReference "QuickLayoutKit" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/astralchen/QuickLayoutKit.git";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
+		AF0000000000000000000102 /* XCRemoteSwiftPackageReference "ListKit" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/astralchen/ListKit.git";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
+		AF0000000000000000000103 /* XCRemoteSwiftPackageReference "AppLocalization" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/astralchen/AppLocalization";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		AF0000000000000000000201 /* QuickLayoutKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AF0000000000000000000101 /* XCRemoteSwiftPackageReference "QuickLayoutKit" */;
+			productName = QuickLayoutKit;
+		};
+		AF0000000000000000000202 /* ListKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AF0000000000000000000102 /* XCRemoteSwiftPackageReference "ListKit" */;
+			productName = ListKit;
+		};
+		AF0000000000000000000203 /* AppLocalization */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AF0000000000000000000103 /* XCRemoteSwiftPackageReference "AppLocalization" */;
+			productName = AppLocalization;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 7735C89930627164005AF164 /* Project object */;
 }

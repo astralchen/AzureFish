@@ -1,0 +1,50 @@
+{
+  "originHash": "ad498345767a6320a162ede18d4a3968fcdd859d9f1e9f58d558c1c62b99f5c1",
+  "pins": [
+    {
+      "identity": "applocalization",
+      "kind": "remoteSourceControl",
+      "location": "https://github.com/astralchen/AppLocalization",
+      "state": {
+        "branch": "main",
+        "revision": "a15471628569cb10404f599466b11f1036f9c86b"
+      }
+    },
+    {
+      "identity": "listkit",
+      "kind": "remoteSourceControl",
+      "location": "https://github.com/astralchen/ListKit.git",
+      "state": {
+        "branch": "main",
+        "revision": "005aaa36780a1db0850cee7dbccc826886935905"
+      }
+    },
+    {
+      "identity": "quicklayout",
+      "kind": "remoteSourceControl",
+      "location": "https://github.com/facebookincubator/QuickLayout",
+      "state": {
+        "revision": "62310c0a7f4ec43f3ea6ff89f3824ef6b23b2bb3"
+      }
+    },
+    {
+      "identity": "quicklayoutkit",
+      "kind": "remoteSourceControl",
+      "location": "https://github.com/astralchen/QuickLayoutKit.git",
+      "state": {
+        "branch": "main",
+        "revision": "54d74d9032e85f310f122493256f41bc04790a41"
+      }
+    },
+    {
+      "identity": "swift-syntax",
+      "kind": "remoteSourceControl",
+      "location": "https://github.com/apple/swift-syntax.git",
+      "state": {
+        "revision": "0687f71944021d616d34d922343dcef086855920",
+        "version": "600.0.1"
+      }
+    }
+  ],
+  "version": 3
+}

@@ -1,0 +1,219 @@
+[
+  {
+    "file": "preview-image-01.gif",
+    "original": "6191263485887086df8b38e6c408da88.gif",
+    "kind": "image",
+    "bytes": 414864,
+    "sha256": "fc69d842299fb4a3adabce791b5229767fbc2301283e17f6e9697f4ca7faa9a6"
+  },
+  {
+    "file": "preview-document-01.pdf",
+    "original": "Claude.pdf",
+    "kind": "document",
+    "bytes": 11069548,
+    "sha256": "810f0d12cb64d38f8b89333415a21db4102150666f7d18ecafac0257f3ad45ee"
+  },
+  {
+    "file": "preview-image-02.png",
+    "original": "IMG_0001.PNG",
+    "kind": "image",
+    "bytes": 1943536,
+    "sha256": "9783c8fbca093a472e02fc7a1c22086136406140e1b42bfce6ab1932f4fcd5d7"
+  },
+  {
+    "file": "preview-image-03.jpg",
+    "original": "IMG_0014.JPG",
+    "kind": "image",
+    "bytes": 161795,
+    "sha256": "07900aba4b67433374cac3da627a368ce646ea884ee635a4f513cf07bb22ab20"
+  },
+  {
+    "file": "preview-image-04.jpg",
+    "original": "IMG_0016.JPG",
+    "kind": "image",
+    "bytes": 156161,
+    "sha256": "288d5596dac83dde9c9ec12fd0abbf96e04c414f90f802aebcc0ae89b3e6b471"
+  },
+  {
+    "file": "preview-image-05.png",
+    "original": "IMG_0066.PNG",
+    "kind": "image",
+    "bytes": 3403678,
+    "sha256": "897fe2ea33c9338b9141d7520c8708947ada99982e26d6aa63be125217e405fe"
+  },
+  {
+    "file": "preview-image-06.png",
+    "original": "IMG_0076.PNG",
+    "kind": "image",
+    "bytes": 3383383,
+    "sha256": "57cacfeb93fa336cfa97e30c247416e8bf50b3ed09521fd8ba7d98a562fd0539"
+  },
+  {
+    "file": "preview-image-07.png",
+    "original": "IMG_0077.PNG",
+    "kind": "image",
+    "bytes": 1836749,
+    "sha256": "e40d5914ffb02e0f0260df9a1d323c24e335ac0e0cbfa3d3b72cb3634d273499"
+  },
+  {
+    "file": "preview-video-01.mp4",
+    "original": "moments_54af6fe1b1f44d5abeeba4d5338d9193.mp4",
+    "kind": "video",
+    "bytes": 5556622,
+    "sha256": "20c3ed983b9a9b7f3e7c822261a89feaf302117a6ae0e8aff5486b3655e61ace"
+  },
+  {
+    "file": "preview-video-02.mp4",
+    "original": "moments_878718901673449aab828223e5a3f6ff.mp4",
+    "kind": "video",
+    "bytes": 5495769,
+    "sha256": "0d33d78a1034c926cf451c9c20ef8943dd0951e683cdeebcdd4d234663a61bf1"
+  },
+  {
+    "file": "preview-video-03.mp4",
+    "original": "moments_9facd6c7f50f48c4a413a3de63b02d18.mp4",
+    "kind": "video",
+    "bytes": 3332863,
+    "sha256": "ef64dab6b383b0c04b77643b2d939ef01ffce121c37d59fd0882493aa57fd155"
+  },
+  {
+    "file": "preview-video-04.mp4",
+    "original": "moments_dc1fcfd6b67c4cea8bdec347632af24d.mp4",
+    "kind": "video",
+    "bytes": 5347341,
+    "sha256": "ed7058fde730cc801fdd05b3709a6ae77540de19eed18fb844b3c3ed16f31428"
+  },
+  {
+    "file": "preview-video-05.mp4",
+    "original": "moments_f4304ab244cf49b59a2bb9641e9ab96f.mp4",
+    "kind": "video",
+    "bytes": 28497363,
+    "sha256": "032dcc0c37682d90ec4bfe220dc09ef2337213adcc7fb78e27cc5bc10d2afe93"
+  },
+  {
+    "file": "preview-video-06.mp4",
+    "original": "moments_f8402bbe49d248998339504fa16d624d.mp4",
+    "kind": "video",
+    "bytes": 19329853,
+    "sha256": "bbc61c0356eb9f34e471733cc2b38673c634e4437fdb87877a0a1b9757c49b2e"
+  },
+  {
+    "file": "preview-image-08.png",
+    "original": "pet_01.png",
+    "kind": "image",
+    "bytes": 267927,
+    "sha256": "11e312924395f1a496fa393e94b6b4f9369b4edd54e2bb113ec114c0fa147b2c"
+  },
+  {
+    "file": "preview-image-09.png",
+    "original": "pet_02.png",
+    "kind": "image",
+    "bytes": 273221,
+    "sha256": "bdd411a1c4e6939470a02d62903a9d9d77395c7c9a7607ff7e49d2b7bcddca8b"
+  },
+  {
+    "file": "preview-image-10.png",
+    "original": "pet_03 (1).png",
+    "kind": "image",
+    "bytes": 259602,
+    "sha256": "d900a9e0f81df8dedc202635b37a4bd5c3eae1864dbd53da15244dd9e7aea662"
+  },
+  {
+    "file": "preview-image-11.png",
+    "original": "pet_03.png",
+    "kind": "image",
+    "bytes": 259602,
+    "sha256": "d900a9e0f81df8dedc202635b37a4bd5c3eae1864dbd53da15244dd9e7aea662"
+  },
+  {
+    "file": "preview-image-12.png",
+    "original": "pet_05 (1).png",
+    "kind": "image",
+    "bytes": 294633,
+    "sha256": "45ec8e369aa3f1b3589c8f45dfb96efb7585433c82a067812bf972e6bd58e1ae"
+  },
+  {
+    "file": "preview-image-13.png",
+    "original": "pet_05.png",
+    "kind": "image",
+    "bytes": 294633,
+    "sha256": "45ec8e369aa3f1b3589c8f45dfb96efb7585433c82a067812bf972e6bd58e1ae"
+  },
+  {
+    "file": "preview-image-14.png",
+    "original": "pet_06 (1).png",
+    "kind": "image",
+    "bytes": 269252,
+    "sha256": "2d86c5515c43e0c807cc2b4f35ff5d80cbad0d16ecc5a54f680864203eb303a8"
+  },
+  {
+    "file": "preview-image-15.png",
+    "original": "pet_06.png",
+    "kind": "image",
+    "bytes": 269252,
+    "sha256": "2d86c5515c43e0c807cc2b4f35ff5d80cbad0d16ecc5a54f680864203eb303a8"
+  },
+  {
+    "file": "preview-image-16.png",
+    "original": "pet_13 (1).png",
+    "kind": "image",
+    "bytes": 271943,
+    "sha256": "736f64cede5c15c44a4650779373215085c8bd665f51d515ee78821ac587a4e5"
+  },
+  {
+    "file": "preview-image-17.png",
+    "original": "pet_13.png",
+    "kind": "image",
+    "bytes": 271943,
+    "sha256": "736f64cede5c15c44a4650779373215085c8bd665f51d515ee78821ac587a4e5"
+  },
+  {
+    "file": "preview-image-18.png",
+    "original": "pet_16 (1).png",
+    "kind": "image",
+    "bytes": 264729,
+    "sha256": "d47315a31f090354299925fd5db50cd8505b4ed0f847bc4835415d08191e1791"
+  },
+  {
+    "file": "preview-image-19.png",
+    "original": "pet_16.png",
+    "kind": "image",
+    "bytes": 264729,
+    "sha256": "d47315a31f090354299925fd5db50cd8505b4ed0f847bc4835415d08191e1791"
+  },
+  {
+    "file": "preview-image-20.png",
+    "original": "pet_17.png",
+    "kind": "image",
+    "bytes": 263757,
+    "sha256": "573b6b72890ceeff12fa5e6b5aad66fe4dcef2faf929e43ddc5749ade1525ec5"
+  },
+  {
+    "file": "preview-image-21.heic",
+    "original": "IMG_7294.HEIC",
+    "kind": "image",
+    "bytes": 1345091,
+    "sha256": "d04d4d6c042e2b1713c6f36c4b9a3ab0c248cf14aa1947843c384fdfa362709f"
+  },
+  {
+    "file": "live-photo.jpg",
+    "original": "Original synthetic artwork: Scripts/make-live-photo-fixture.swift",
+    "kind": "live-photo-image",
+    "bytes": 25040,
+    "sha256": "b90c091fcd03c3801f9bce21c160bd5f45e919333d14a5d27198abe7bd08760f"
+  },
+  {
+    "file": "live-photo.mov",
+    "original": "Original synthetic artwork: Scripts/make-live-photo-fixture.swift",
+    "kind": "live-photo-video",
+    "bytes": 134073,
+    "sha256": "eb2aec1e7e7296dcce39186324ddd4553bab2d8d4315608c170a6cda6df6645a"
+  },
+  {
+    "file": "default-message.caf",
+    "original": "Generated with macOS Tingting; transcript and reproduction command in Chat README",
+    "kind": "audio",
+    "bytes": 239896,
+    "sha256": "bf001d015a9489c620ff2d400c546f7cf9441639dc2f59f488188df28fbe0c44"
+  }
+]

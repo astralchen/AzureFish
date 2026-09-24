@@ -1,0 +1,182 @@
+[
+  {
+    "bytes" : 1345091,
+    "file" : "preview-image-21.heic",
+    "height" : 3024,
+    "index" : 0,
+    "orientation" : 6,
+    "sha256" : "d04d4d6c042e2b1713c6f36c4b9a3ab0c248cf14aa1947843c384fdfa362709f",
+    "width" : 4032
+  },
+  {
+    "bytes" : 1345091,
+    "file" : "preview-image-21.heic",
+    "height" : 3024,
+    "index" : 1,
+    "orientation" : 6,
+    "sha256" : "d04d4d6c042e2b1713c6f36c4b9a3ab0c248cf14aa1947843c384fdfa362709f",
+    "width" : 4032
+  },
+  {
+    "bytes" : 1345091,
+    "file" : "preview-image-21.heic",
+    "height" : 3024,
+    "index" : 2,
+    "orientation" : 6,
+    "sha256" : "d04d4d6c042e2b1713c6f36c4b9a3ab0c248cf14aa1947843c384fdfa362709f",
+    "width" : 4032
+  },
+  {
+    "bytes" : 1345091,
+    "file" : "preview-image-21.heic",
+    "height" : 3024,
+    "index" : 3,
+    "orientation" : 6,
+    "sha256" : "d04d4d6c042e2b1713c6f36c4b9a3ab0c248cf14aa1947843c384fdfa362709f",
+    "width" : 4032
+  },
+  {
+    "bytes" : 1345091,
+    "file" : "preview-image-21.heic",
+    "height" : 3024,
+    "index" : 4,
+    "orientation" : 6,
+    "sha256" : "d04d4d6c042e2b1713c6f36c4b9a3ab0c248cf14aa1947843c384fdfa362709f",
+    "width" : 4032
+  },
+  {
+    "bytes" : 1345091,
+    "file" : "preview-image-21.heic",
+    "height" : 3024,
+    "index" : 5,
+    "orientation" : 6,
+    "sha256" : "d04d4d6c042e2b1713c6f36c4b9a3ab0c248cf14aa1947843c384fdfa362709f",
+    "width" : 4032
+  },
+  {
+    "bytes" : 2129471,
+    "file" : "benchmark-large.jpg",
+    "height" : 3024,
+    "index" : 6,
+    "orientation" : 1,
+    "sha256" : "b19e55aed40646c33e1f855de112aab6c820927b4072d407dd51bfd87df649f0",
+    "width" : 4032
+  },
+  {
+    "bytes" : 2129471,
+    "file" : "benchmark-large.jpg",
+    "height" : 3024,
+    "index" : 7,
+    "orientation" : 1,
+    "sha256" : "b19e55aed40646c33e1f855de112aab6c820927b4072d407dd51bfd87df649f0",
+    "width" : 4032
+  },
+  {
+    "bytes" : 2129471,
+    "file" : "benchmark-large.jpg",
+    "height" : 3024,
+    "index" : 8,
+    "orientation" : 1,
+    "sha256" : "b19e55aed40646c33e1f855de112aab6c820927b4072d407dd51bfd87df649f0",
+    "width" : 4032
+  },
+  {
+    "bytes" : 2129471,
+    "file" : "benchmark-large.jpg",
+    "height" : 3024,
+    "index" : 9,
+    "orientation" : 1,
+    "sha256" : "b19e55aed40646c33e1f855de112aab6c820927b4072d407dd51bfd87df649f0",
+    "width" : 4032
+  },
+  {
+    "bytes" : 2129471,
+    "file" : "benchmark-large.jpg",
+    "height" : 3024,
+    "index" : 10,
+    "orientation" : 1,
+    "sha256" : "b19e55aed40646c33e1f855de112aab6c820927b4072d407dd51bfd87df649f0",
+    "width" : 4032
+  },
+  {
+    "bytes" : 2129471,
+    "file" : "benchmark-large.jpg",
+    "height" : 3024,
+    "index" : 11,
+    "orientation" : 1,
+    "sha256" : "b19e55aed40646c33e1f855de112aab6c820927b4072d407dd51bfd87df649f0",
+    "width" : 4032
+  },
+  {
+    "bytes" : 2129471,
+    "file" : "benchmark-rotated.jpg",
+    "height" : 3024,
+    "index" : 12,
+    "orientation" : 6,
+    "sha256" : "7029a5e44fdd3ea8ea1c34946121e182f2d0a0ac964c679be3449b49083a77c6",
+    "width" : 4032
+  },
+  {
+    "bytes" : 13462288,
+    "file" : "benchmark-alpha.png",
+    "height" : 3024,
+    "index" : 13,
+    "orientation" : 1,
+    "sha256" : "5adac16df5f17ad23ce4f410da7bd77e73afa3ae2bf340b7b19577283e6c3dd0",
+    "width" : 4032
+  },
+  {
+    "bytes" : 702012,
+    "file" : "benchmark-panorama.jpg",
+    "height" : 1008,
+    "index" : 14,
+    "orientation" : 1,
+    "sha256" : "5cff79aaa5eb9adaa31b78f0cbf9af3af156a9a1747013f7bef794bdaab9740f",
+    "width" : 4032
+  },
+  {
+    "bytes" : 1943536,
+    "file" : "preview-image-02.png",
+    "height" : 1242,
+    "index" : 15,
+    "orientation" : 1,
+    "sha256" : "9783c8fbca093a472e02fc7a1c22086136406140e1b42bfce6ab1932f4fcd5d7",
+    "width" : 2688
+  },
+  {
+    "bytes" : 2129471,
+    "file" : "benchmark-rotated.jpg",
+    "height" : 3024,
+    "index" : 16,
+    "orientation" : 6,
+    "sha256" : "7029a5e44fdd3ea8ea1c34946121e182f2d0a0ac964c679be3449b49083a77c6",
+    "width" : 4032
+  },
+  {
+    "bytes" : 13462288,
+    "file" : "benchmark-alpha.png",
+    "height" : 3024,
+    "index" : 17,
+    "orientation" : 1,
+    "sha256" : "5adac16df5f17ad23ce4f410da7bd77e73afa3ae2bf340b7b19577283e6c3dd0",
+    "width" : 4032
+  },
+  {
+    "bytes" : 702012,
+    "file" : "benchmark-panorama.jpg",
+    "height" : 1008,
+    "index" : 18,
+    "orientation" : 1,
+    "sha256" : "5cff79aaa5eb9adaa31b78f0cbf9af3af156a9a1747013f7bef794bdaab9740f",
+    "width" : 4032
+  },
+  {
+    "bytes" : 1836749,
+    "file" : "preview-image-07.png",
+    "height" : 2688,
+    "index" : 19,
+    "orientation" : 1,
+    "sha256" : "e40d5914ffb02e0f0260df9a1d323c24e335ac0e0cbfa3d3b72cb3634d273499",
+    "width" : 1242
+  }
+]
