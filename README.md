@@ -24,6 +24,24 @@
 
 `Features/Chat/README.md` 随原模块完整保留，其中历史验证记录描述的是来源工程，不能作为 AzureFish 的测试结论。新工程验证记录见 `CHAT_MIGRATION.md`。
 
+## 数据库开发设计
+
+[聊天数据库设计文档](Documentation/Database/README.md) 包含整体架构、完整字段字典、客户端与服务端同步契约、数据生命周期、迁移及验收计划。方案采用 GRDB／SQLCipher 加密 SQLite，覆盖私聊、群聊、历史漫游和后续社交扩展。
+
+**当前为设计阶段，尚未接入应用。** 本次仅提供 Markdown 文档，不包含数据库实现或迁移脚本，现有聊天仍使用本地模拟数据流程。
+
+## 登录与服务端开发设计
+
+[客户端登录与个人中心设计](Documentation/Authentication/README.md) 说明 URLSession／SwiftProtobuf 接入、Keychain 会话管理、苹果风格页面及验收要求；[独立 AzureFishServer 文档](../AzureFishServer/README.md) 定义 Swift＋Vapor 服务端、账号密码与 Apple 登录、用户资料、头像和协议字段。
+
+**状态：设计阶段，尚未接入应用。** 两个工程分别管理客户端和服务端数据，网络采用 HTTPS＋Protobuf；后续 IM 复用用户与登录会话。本轮只建立文档，服务端尚不能启动，客户端启动路径与现有聊天演示保持当前实现。
+
+## 安全、设备适配与国际化设计
+
+[数据安全与加密](Documentation/Security/README.md) 规定客户端加密库／媒体、Keychain、TLS 和恢复；[多设备 UI／UX](Documentation/Design/README.md) 规定 iPhone、iPad、iOS 27.1 iPhone Duo 的尺寸与状态适配；[四语言国际化](Documentation/Internationalization/README.md) 规划简中、繁中、英文和阿拉伯语。
+
+**状态：设计阶段，尚未接入应用。** 本轮没有改动页面、语言资源、密钥或依赖；现有资源仍为三语言。跨主题实施验收见 [安全／适配／国际化矩阵](Documentation/Security/validation.md)。
+
 ## 远程框架依赖
 
 所有框架通过远程 Swift Package 引用，工程中不复制框架源码，也不依赖相邻工程目录。当前三个直接依赖使用 `main` 分支，以下是本次验证时锁文件记录的具体提交。
