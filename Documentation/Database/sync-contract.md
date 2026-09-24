@@ -4,7 +4,7 @@
 
 ## 1. 通用约定
 
-认证身份和服务环境决定账号作用域，服务端不得信任客户端传入的 sender_id 代替认证。数据库以账号隔离；设备 ID 由登录设备注册流程分配。身份来源和认证消息以 [服务端网络契约](../../../AzureFishServer/Documentation/protobuf-contract.md) 为准。业务 ID 均为不透明字符串，时间为 Unix 毫秒；网络采用 Protobuf 二进制，64 位消息序号和版本号使用 int64。ProtoJSON 诊断文本中的 64 位值才使用十进制字符串；本文可读示例不代表网络使用 JSON。本地 payload JSON 由版本化 codec 显式转换，与网络格式独立。
+认证身份和服务环境决定账号作用域，服务端不得信任客户端传入的 sender_id 代替认证。数据库以账号隔离；首期 device_id 为客户端生成、在 Keychain 保存的安装 UUID，服务端将其绑定到登录会话并返回，不将其作为可信硬件证明或单独鉴权凭据。身份来源和认证消息以 [服务端网络契约](../../AzureFishServer/Documentation/protobuf-contract.md) 为准。业务 ID 均为不透明字符串，时间为 Unix 毫秒；网络采用 Protobuf 二进制，64 位消息序号和版本号使用 int64。ProtoJSON 诊断文本中的 64 位值才使用十进制字符串；本文可读示例不代表网络使用 JSON。本地 payload JSON 由版本化 codec 显式转换，与网络格式独立。
 
 服务端为普通消息透传原始 `message_uuid` 和 `client_message_id`。系统消息由服务端生成 `message_uuid`，客户端幂等 ID 可空。消息 UUID 在整个服务环境唯一；服务端消息 ID 和序号仅要求会话内唯一。
 

@@ -31,7 +31,7 @@
 
 ## 当前工程与设计的区别
 
-整体开发顺序已调整为“账号与用户资料 → 客户端认证接入 → IM”。本目录的“首期”指未来 IM 本地存储首期，并非当前账号服务首期承诺。认证身份来自独立 AzureFishServer；阅读 [客户端认证入口](../Authentication/README.md) 和 [服务端协议权威文档](../../../AzureFishServer/Documentation/protobuf-contract.md)。服务端独立 SQLite 保存全体用户权威资料，本目录 GRDB 库仅保存当前设备、当前账号的数据，二者不共享文件。
+整体开发顺序已调整为“账号与用户资料 → 客户端认证接入 → IM”。本目录的“首期”指未来 IM 本地存储首期，并非当前账号服务首期承诺。认证身份来自独立 AzureFishServer；阅读 [客户端认证入口](../Authentication/README.md) 和 [服务端协议权威文档](../../AzureFishServer/Documentation/protobuf-contract.md)。服务端独立 SQLite 保存全体用户权威资料，本目录 GRDB 库仅保存当前设备、当前账号的数据，二者不共享文件。
 
 当前聊天消息由 `ChatViewModel` 的内存数组管理，发送和历史仍为本地模拟；`Message.id` 是页面模型分配的整数，附件原件由页面临时存储拥有。现有 `ChatDraftStore` 已保存草稿清单及资源副本，但尚无真实账号隔离。本目录描述的是未来持久化架构，不能据此推断相关功能已存在。
 

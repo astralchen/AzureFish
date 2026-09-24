@@ -8,7 +8,7 @@
 
 范围包括客户端持久化、服务端契约和模拟服务端验收要求。服务端部署、消息队列、群消息扩散实现、付费业务、跨设备备份及端到端加密不在首期范围内。服务端历史保留时长由接口返回边界表达，不在客户端硬编码天数。
 
-本文“首期”指未来 IM 持久化阶段。当前先建设独立 [AzureFishServer](../../../AzureFishServer/README.md) 的认证与用户模块；客户端 [SessionCoordinator](../Authentication/client-integration.md) 提供已验证的环境、用户和设备身份。网络使用 HTTPS／WSS 的 Protobuf 二进制，Repository 通过显式映射转换为本地结构与 payload JSON，不能将本地表或 Codable 形状直接暴露为接口。网络消息定义归服务端协议文档，本地表定义仍归本目录。
+本文“首期”指未来 IM 持久化阶段。当前先建设独立 [AzureFishServer](../../AzureFishServer/README.md) 的认证与用户模块；客户端 [SessionCoordinator](../Authentication/client-integration.md) 提供已验证的环境、用户和设备身份。网络使用 HTTPS／WSS 的 Protobuf 二进制，Repository 通过显式映射转换为本地结构与 payload JSON，不能将本地表或 Codable 形状直接暴露为接口。网络消息定义归服务端协议文档，本地表定义仍归本目录。
 
 ## 2. 模块职责
 

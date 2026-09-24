@@ -32,9 +32,9 @@
 
 ## 登录与服务端开发设计
 
-[客户端登录与个人中心设计](Documentation/Authentication/README.md) 说明 URLSession／SwiftProtobuf 接入、Keychain 会话管理、苹果风格页面及验收要求；[独立 AzureFishServer 文档](../AzureFishServer/README.md) 定义 Swift＋Vapor 服务端、账号密码与 Apple 登录、用户资料、头像和协议字段。
+[客户端登录与个人中心设计](Documentation/Authentication/README.md) 说明 URLSession／SwiftProtobuf 接入、Keychain 会话管理、苹果风格页面及验收要求；[独立 AzureFishServer 文档](AzureFishServer/README.md) 说明 Swift＋Vapor 密码账号和资料接口，并标注 Apple、头像及后续账号功能的待办边界。
 
-**状态：设计阶段，尚未接入应用。** 两个工程分别管理客户端和服务端数据，网络采用 HTTPS＋Protobuf；后续 IM 复用用户与登录会话。本轮只建立文档，服务端尚不能启动，客户端启动路径与现有聊天演示保持当前实现。
+**状态：客户端尚未接入；独立服务端已开始首期密码账号实现。** [AzureFishServer](AzureFishServer/README.md) 提供本机虚构数据的注册、密码登录、刷新、退出和个人资料接口，权威协议源与生成类型均归服务端维护；验证证据见[服务端验证记录](AzureFishServer/Documentation/validation.md)。两端不共享数据库，真实业务仍要求 HTTPS＋Protobuf。Apple、头像、账号安全、真实账号部署及 IM 尚未实现，客户端启动路径与现有聊天演示保持当前实现。
 
 ## 安全、设备适配与国际化设计
 
@@ -44,7 +44,7 @@
 
 ## 远程框架依赖
 
-所有框架通过远程 Swift Package 引用，工程中不复制框架源码，也不依赖相邻工程目录。当前三个直接依赖使用 `main` 分支，以下是本次验证时锁文件记录的具体提交。
+共享 UI／本地化框架通过远程 Swift Package 引用，工程中不复制这些框架源码，也不依赖相邻工程目录。当前 App 的三个直接依赖使用 `main` 分支，以下是迁移验证时锁文件记录的具体提交。
 
 | 框架 | 本次解析 revision |
 | --- | --- |
@@ -53,6 +53,12 @@
 | AppLocalization | `a15471628569cb10404f599466b11f1036f9c86b` |
 
 QuickLayout 和 swift-syntax 由依赖图间接引入。`AzureFish.xcworkspace/xcshareddata/swiftpm/Package.resolved` 保存解析结果。
+
+## 客户端本地 SPM
+
+[SharePackage](SharePackage/README.md) 提供 **Swift 6.3／iOS 15+** 的 `AzureFishProtocol`、`AzureFishNetwork` 和 `AzureFishAPI`，分别负责服务端协议快照、通用 HTTP 传输和账号接口适配。借鉴 Nirvana 的分层，框架统一采用 AzureFish 命名；普通构建不依赖 Nirvana、AzureFishServer 或 protoc。
+
+打开 `AzureFishNetworking.xcworkspace`，使用共享 scheme `AzureFishNetworking` 验证本地包。当前尚未链接到 App target，登录状态、Keychain 和页面接入仍待后续实施；设计及本次证据见[网络接入说明](Documentation/Networking/README.md)。
 
 ## 测试
 

@@ -4,7 +4,7 @@
 
 ## 1. 阅读与权威边界
 
-本文定义客户端安全规则；[服务端安全设计](../../../AzureFishServer/Documentation/security.md) 定义服务端字段、文件及密钥保护；[安全与跨设备验收](validation.md) 规定实施验收。[数据库字段](../Database/schema.md) 定义本地业务结构，[认证接入](../Authentication/client-integration.md) 定义会话。发生调整时同步引用方，不能各自维护不同密钥和退出策略。
+本文定义客户端安全规则；[服务端安全设计](../../AzureFishServer/Documentation/security.md) 定义服务端字段、文件及密钥保护；[安全与跨设备验收](validation.md) 规定实施验收。[数据库字段](../Database/schema.md) 定义本地业务结构，[认证接入](../Authentication/client-integration.md) 定义会话。发生调整时同步引用方，不能各自维护不同密钥和退出策略。
 
 目标是降低网络窃听、磁盘／备份泄露、临时文件遗留、跨账号访问与凭据重放风险。加密不代替鉴权、参数校验或资源所有权检查；服务端可以在授权业务中解密。未来 IM 端到端加密另立专项，本方案不保证抵抗已被控制的运行进程、解锁设备上的恶意代码或用户主动截图。
 

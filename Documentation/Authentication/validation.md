@@ -1,6 +1,6 @@
 # 客户端认证验收
 
-> **状态：设计阶段，尚未接入应用。** 本轮只检查文档，所有运行测试待代码阶段。返回 [入口](README.md)。
+> **状态：客户端本地网络包已实现，认证尚未接入 App。** App 认证运行测试仍待接入；独立服务端首期结果见第 6 节，本地 SPM 结果见第 7 节。返回 [入口](README.md)。
 
 ## 1. 单元与组件
 
@@ -40,7 +40,7 @@ XCTest/XCUIAutomation 覆盖欢迎 → 注册 → 我 → 编辑资料 → 退�
 
 ## 3. 与服务端联调
 
-以 [服务端验收](../../../AzureFishServer/Documentation/validation.md) 的请求／响应结果为依据，记录服务版本、协议 revision、客户端版本、设备、系统和服务环境。密码、token、Apple JWT、私钥和真实用户头像不得作为提交到仓库的证据。
+以 [服务端验收](../../AzureFishServer/Documentation/validation.md) 的请求／响应结果为依据，记录服务版本、协议 revision、客户端版本、设备、系统和服务环境。密码、token、Apple JWT、私钥和真实用户头像不得作为提交到仓库的证据。
 
 账号密码可先用本机服务完成；真实 Apple 缺少 entitlement、签名或密钥时标“被环境阻塞”，仍完成不依赖该配置的 mock 和密码验证。App 登录成功仅证明身份流程，不证明 IM、Photos 写入或录音功能通过。
 
@@ -48,7 +48,7 @@ XCTest/XCUIAutomation 覆盖欢迎 → 注册 → 我 → 编辑资料 → 退�
 
 2026-09-24：**文档静态检查通过**。双工程共检查 19 份 Markdown（包含原有数据库设计及根入口），覆盖相对链接、表格和围栏；协议的 21 条路由、31 个消息、98 个消息字段与服务端 12 张表、120 个字段完成结构检查。网络契约只由服务端文档定义，客户端引用方向及账号／环境隔离、头像独立提交、退出与删除状态已交叉核对。
 
-git diff --check 和新文件逐份空白检查通过；现有 workspace 修改保留，本轮没有改动 Swift 或工程配置。7 个 Mermaid 图只检查图源与围栏，**渲染与视觉检查未执行**。完整结果见 [服务端交付记录](../../../AzureFishServer/Documentation/validation.md)。
+当时记录 git diff --check 和新文件逐份空白检查通过；现有 workspace 修改保留，没有改动 Swift 或工程配置。7 个 Mermaid 图只检查图源与围栏，**渲染与视觉检查未执行**。这些属于原有历史记录；本次未找到其引用的原服务端工程，不能用当前从零建立的服务端验证记录证明上述数量或历史结果。
 
 以上数量保留为首次认证文档交付历史，不代表本次加密、Duo 或繁中已通过。新增 SEC／UX／I18N 场景与本轮静态结果见 [补充验证矩阵](../Security/validation.md)。
 
@@ -57,3 +57,15 @@ App 编译、Swift 测试、接口联调、模拟器、真机、真实 Apple 登
 ## 5. 深浅色文档补充边界
 
 本次只补充主题设计与上述验收要求，未实现偏好存取、主题入口或切换代码，也未修改 String Catalog。主题运行验收统一引用 UX-11～UX-16、I18N-09，见 [综合验收矩阵](../Security/validation.md)；历史文档检查不代表主题功能已通过。
+
+## 6. 独立服务端首期实现（2026-09-24）
+
+AzureFishServer 已从零实现本机虚构数据的密码账号和资料接口。服务端 Debug 编译、14 项 Swift Testing 集成测试与真实回环 HTTP 闭环通过，详见[本次服务端验证](../../AzureFishServer/Documentation/validation.md)。此结果不代表客户端接入、真实账号 HTTPS、Apple 或 IM 已通过。
+
+客户端本轮仅同步接口范围、文档链接及设备标识契约，文档检查与 `git diff --check` 通过；客户端编译、单元／组件测试、模拟器 UI、人工视觉与真机验证均不适用，客户端到服务端联调未执行。
+
+## 7. 客户端本地 SPM（2026-09-24）
+
+新增 Swift 6.3 的 AzureFishProtocol、AzureFishNetwork、AzureFishAPI。协议、网络和账号适配测试通过；真实 URLSession 到本机虚构数据服务的完整账号流程通过；iOS 15 模拟器目标编译及 Release HTTP 限制测试通过。具体用例数、跳过项、命令与运行边界见[本地 SPM 验证记录](../Networking/validation.md)。
+
+此结果只证明包级网络和账号接口能力。App target 尚未添加依赖，Keychain、并发刷新协调、账号 generation、加密缓存和认证 UI 尚未实现；本文件第 1～3 节的完整客户端验收不能因此整体标记通过。

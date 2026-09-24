@@ -1,14 +1,14 @@
 # iOS 认证与用户接口接入
 
-> **状态：设计阶段，尚未接入应用。** 返回 [入口](README.md)。网络类型、字段和错误码以 [服务端协议](../../../AzureFishServer/Documentation/protobuf-contract.md) 为准，本文件不维护另一套接口定义。
+> **状态：本地网络和账号 API 已实现，认证尚未接入 App。** 返回 [入口](README.md)。网络类型、字段和错误码以 [服务端协议](../../AzureFishServer/Documentation/protobuf-contract.md) 为准，本文件不维护另一套接口定义。已实现包及使用方式见[本地网络包](../Networking/README.md)；后续 Keychain、会话协调、缓存及 UI 章节仍为设计要求。
 
 ## 1. 模块职责
 
-| 组件 | 未来职责 |
+| 组件 | 职责与实施状态 |
 | --- | --- |
-| APIEnvironment | base URL、environment_id、Debug 本地配置；切换环境先退出当前会话 |
-| ProtobufAPIClient | URLSession、Content-Type／Accept、大小限制、编码／解码、HTTP 错误映射 |
-| AuthService | 注册、密码／Apple 登录、绑定、最近确认、退出及删除流程 |
+| APIEnvironment | 已在 AzureFishAPI 实现 base URL、environment_id、Debug 回环限制；切换环境的退出编排待 App 实现 |
+| HTTPClient／AccountAPI | 已分包实现 URLSession、Content-Type／Accept、大小限制、Protobuf 编解码、HTTP 错误映射及首期账号调用 |
+| AuthService | App 层未来编排密码／Apple 登录、绑定、最近确认、退出及删除流程，复用 AccountAPI |
 | SessionCoordinator | session 单次刷新、Keychain 原子替换、认证状态及账号 generation |
 | CredentialStore | 使用 Keychain 保存安装 ID 和完整认证包，不使用 UserDefaults 保存 token |
 | UserRepository | 当前资料、版本合并、账号作用域缓存及头像获取 |
@@ -18,13 +18,17 @@
 
 ## 2. 协议产物与请求
 
-未来的 Protos 源只在 AzureFishServer 维护。生成 Swift 文件同步到 AzureFish 自己的 Generated/Protocol 源目录，随客户端版本保存协议 revision、schema hash 和生成器／运行库版本记录。第三方 SwiftProtobuf 使用远程 Package；不通过相邻目录的本地 Package 引用让 App 构建隐式依赖服务端工程。
+Protos 源只在 AzureFishServer 的 `Protos/azurefish.proto` 维护，首期已定义密码账号接口；生成清单 `Protos/generation.json` 记录 schema hash 与生成器／运行库版本。客户端已将生成 Swift 文件同步到本地 SPM `SharePackage/AzureFishProtocol/Sources/AzureFishProtocol/Generated`，随客户端保存 `generation.json` 的来源和内容 hash；服务端协议来源文件尚未提交或存在未提交修改时 revision 明确为空。第三方 SwiftProtobuf 使用精确锁定的远程 Package；不将服务端 Package 作为 App 构建依赖，正常构建不运行 protoc。
+
+当前可对接范围为 `/v1/auth/register`、`/v1/auth/login`、`/v1/auth/refresh`、`/v1/auth/logout` 和 `/v1/me`（GET／PATCH）；成功写动作的恢复窗口为 10 分钟。服务端暂仅开放虚构数据回环联调，Apple、头像及敏感账号动作尚未实现；本文件后续章节对这些功能的描述仍是设计要求，不能据此认为相应接口已可调用。
 
 真实业务通过 HTTPS，Debug 回环 HTTP 仅限独立环境中的虚构测试数据；Protobuf 不提供加密。请求体是 Protobuf 二进制，普通 API 的 Content-Type 和 Accept 为 application/protobuf；GET 没有 body。资料响应解码为 UserProfile，业务错误先按 HTTP 状态识别，再尝试解码 ApiError。头像成功是 image/jpeg 或带缓存的 304；其错误仍是 ApiError。代理 HTML 错误、错误 MIME 或截断数据映射成可识别网络错误，不当作密码错误。
 
-普通请求超时默认 15 秒，头像上传资源超时 60 秒；任务支持取消。GET 可对临时网络失败自动重试一次；写请求仅在结果不确定时使用原 operation_id 和相同序列化字节重试一次，不能为每次重试新建 operation_id。用户主动修改内容后重新提交必须使用新 ID。
+当前普通请求不活动超时默认 15 秒，URLSession 资源总时限为 60 秒；未来头像上传资源时限同为 60 秒，当前未实现上传。任务支持取消。GET 可对临时网络失败自动重试一次；写请求仅在超时／连接中断时使用原 operation_id 和相同序列化字节重试一次，不能为每次重试新建 operation_id。用户主动修改内容后重新提交必须使用新 ID。业务 HTTP 错误、证书错误和解码错误不自动重试。
 
 X-Request-ID 每次网络调用不同，operation_id 保持一个业务动作不变。保存密码请求的重试字节只存在内存，不写入磁盘。并发重复点击提交按钮由页面工作状态防止，服务器仍做幂等，不能把 UI 防抖当作唯一约束。
+
+当前 AccountAPI 采用 prepare／execute：prepare 序列化为不可变 AccountOperation，execute 可为受保护操作注入同一 session 的较新 Bearer。包只验证操作绑定的环境、账号、session 和最低刷新代次；App 的全局账号 generation、并发刷新合并与凭据安装仍须由 SessionCoordinator 实现，不能把类型检查当成完整登录状态机。
 
 ## 3. 认证包与刷新
 

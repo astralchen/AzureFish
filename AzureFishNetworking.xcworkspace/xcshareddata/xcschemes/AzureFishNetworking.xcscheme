@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Scheme LastUpgradeVersion="2600" version="1.3">
+   <BuildAction parallelizeBuildables="YES" buildImplicitDependencies="YES">
+      <BuildActionEntries>
+         <BuildActionEntry buildForTesting="YES" buildForRunning="NO" buildForProfiling="NO" buildForArchiving="NO" buildForAnalyzing="YES">
+            <BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="AzureFishProtocolTests" BuildableName="AzureFishProtocolTests.xctest" BlueprintName="AzureFishProtocolTests" ReferencedContainer="container:SharePackage/AzureFishProtocol" />
+         </BuildActionEntry>
+         <BuildActionEntry buildForTesting="YES" buildForRunning="NO" buildForProfiling="NO" buildForArchiving="NO" buildForAnalyzing="YES">
+            <BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="AzureFishNetworkTests" BuildableName="AzureFishNetworkTests.xctest" BlueprintName="AzureFishNetworkTests" ReferencedContainer="container:SharePackage/AzureFishNetwork" />
+         </BuildActionEntry>
+         <BuildActionEntry buildForTesting="YES" buildForRunning="NO" buildForProfiling="NO" buildForArchiving="NO" buildForAnalyzing="YES">
+            <BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="AzureFishAPITests" BuildableName="AzureFishAPITests.xctest" BlueprintName="AzureFishAPITests" ReferencedContainer="container:SharePackage/AzureFishAPI" />
+         </BuildActionEntry>
+      </BuildActionEntries>
+   </BuildAction>
+   <TestAction buildConfiguration="Debug" selectedDebuggerIdentifier="Xcode.DebuggerFoundation.Debugger.LLDB" selectedLauncherIdentifier="Xcode.IDEFoundation.Launcher.LLDB" shouldUseLaunchSchemeArgsEnv="YES">
+      <Testables>
+         <TestableReference skipped="NO"><BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="AzureFishProtocolTests" BuildableName="AzureFishProtocolTests.xctest" BlueprintName="AzureFishProtocolTests" ReferencedContainer="container:SharePackage/AzureFishProtocol" /></TestableReference>
+         <TestableReference skipped="NO"><BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="AzureFishNetworkTests" BuildableName="AzureFishNetworkTests.xctest" BlueprintName="AzureFishNetworkTests" ReferencedContainer="container:SharePackage/AzureFishNetwork" /></TestableReference>
+         <TestableReference skipped="NO"><BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="AzureFishAPITests" BuildableName="AzureFishAPITests.xctest" BlueprintName="AzureFishAPITests" ReferencedContainer="container:SharePackage/AzureFishAPI" /></TestableReference>
+      </Testables>
+   </TestAction>
+</Scheme>

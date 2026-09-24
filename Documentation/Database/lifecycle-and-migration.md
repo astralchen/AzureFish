@@ -6,7 +6,7 @@
 
 打开顺序为：取得已认证账号与环境 → 计算账号目录键 → 检查受保护数据与 Keychain 可用 → 取得原账号密钥 → 创建或打开 SQLCipher 数据库 → 核对 account_store_meta → 执行迁移 → 恢复任务 → 启动观察和同步。元数据与当前账号或环境不符时拒绝打开，不能将目录误认当作空库覆盖。
 
-身份由 [客户端 SessionCoordinator](../Authentication/client-integration.md) 接收并验证 AzureFishServer 的 AuthResponse 后提供。以 environment_id＋稳定 user_id 隔离数据，服务器 device_id 与本机存储 UUID 各司其职，不能以昵称、登录账号名或 Apple 邮箱作为目录身份。访问／刷新凭据只进入 Keychain，不写入业务库；离线读取仍需符合客户端认证恢复规则，不能把磁盘上有旧账号库当作在线鉴权成功。真实账号首次登录不会接管 local-demo 数据。
+身份由 [客户端 SessionCoordinator](../Authentication/client-integration.md) 接收并验证 AzureFishServer 的 AuthResponse 后提供。以 environment_id＋稳定 user_id 隔离数据，服务端会话确认的安装 device_id 与本机存储 UUID 各司其职，不能以昵称、登录账号名或 Apple 邮箱作为目录身份。访问／刷新凭据只进入 Keychain，不写入业务库；离线读取仍需符合客户端认证恢复规则，不能把磁盘上有旧账号库当作在线鉴权成功。真实账号首次登录不会接管 local-demo 数据。
 
 AccountStore 为每次登录会话分配内存 generation。所有网络、文件、数据库观察和后台任务携带 generation；退出登录先使 generation 失效，再取消任务及观察、等待正在提交的事务结束、关闭数据库。用户切换回原账号时仍重新创建 generation。登录失效不会自动删除磁盘上的消息或草稿。
 

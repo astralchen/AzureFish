@@ -1,0 +1,49 @@
+syntax = "proto3";
+package azurefish.v1;
+
+// 所有时间戳均为 Unix 毫秒；operation_id 和 device_id 为客户端生成的 UUID。
+message HealthResponse { string status = 1; string environment_id = 2; }
+message ApiError { string code = 1; string field = 2; string request_id = 3; }
+message RegisterRequest {
+  string operation_id = 1;
+  string device_id = 2;
+  string account_name = 3;
+  string password = 4;
+  string nickname = 5;
+}
+message LoginRequest {
+  string operation_id = 1;
+  string device_id = 2;
+  string account_name = 3;
+  string password = 4;
+}
+message RefreshRequest { string operation_id = 1; string refresh_token = 2; }
+message LogoutRequest { string operation_id = 1; }
+message EmptyResponse {}
+message UserProfile {
+  string user_id = 1;
+  string account_name = 2;
+  string nickname = 3;
+  string bio = 4;
+  int64 profile_version = 5;
+  int64 created_at_ms = 6;
+  int64 updated_at_ms = 7;
+}
+message AuthResponse {
+  string environment_id = 1;
+  string user_id = 2;
+  string device_id = 3;
+  string session_id = 4;
+  string access_token = 5;
+  int64 access_expires_at_ms = 6;
+  string refresh_token = 7;
+  int64 refresh_expires_at_ms = 8;
+  int64 refresh_generation = 9;
+  UserProfile profile = 10;
+}
+message UpdateProfileRequest {
+  string operation_id = 1;
+  int64 expected_profile_version = 2;
+  optional string nickname = 3;
+  optional string bio = 4;
+}
