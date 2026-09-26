@@ -1,0 +1,808 @@
+{
+  "locales": [
+    "zh-Hans",
+    "zh-Hant",
+    "en",
+    "ar"
+  ],
+  "strings": {
+    "welcome": [
+      "欢迎来到\nAzureFish",
+      "歡迎來到\nAzureFish",
+      "Welcome to\nAzureFish",
+      "مرحبًا بك في\nAzureFish"
+    ],
+    "tagline": [
+      "登录账号，开始交流",
+      "登入帳號，開始交流",
+      "Sign in and start a conversation.",
+      "سجّل الدخول وابدأ المحادثة."
+    ],
+    "accountLogin": [
+      "使用账号登录",
+      "使用帳號登入",
+      "Sign in with account",
+      "الدخول بالحساب"
+    ],
+    "appleLogin": [
+      "通过 Apple 登录",
+      "透過 Apple 登入",
+      "Sign in with Apple",
+      "تسجيل الدخول باستخدام Apple"
+    ],
+    "register": [
+      "注册账号",
+      "註冊帳號",
+      "Create account",
+      "إنشاء حساب"
+    ],
+    "noAccount": [
+      "还没有账号？",
+      "還沒有帳號？",
+      "New to AzureFish?",
+      "ليس لديك حساب؟"
+    ],
+    "login": [
+      "账号登录",
+      "帳號登入",
+      "Sign in",
+      "تسجيل الدخول"
+    ],
+    "loginHelp": [
+      "使用你的账号和密码登录。",
+      "使用你的帳號和密碼登入。",
+      "Use your account name and password.",
+      "استخدم اسم حسابك وكلمة المرور."
+    ],
+    "account": [
+      "账号",
+      "帳號",
+      "Account name",
+      "اسم الحساب"
+    ],
+    "password": [
+      "密码",
+      "密碼",
+      "Password",
+      "كلمة المرور"
+    ],
+    "newPassword": [
+      "新密码",
+      "新密碼",
+      "New password",
+      "كلمة المرور الجديدة"
+    ],
+    "confirmPassword": [
+      "确认密码",
+      "確認密碼",
+      "Confirm password",
+      "تأكيد كلمة المرور"
+    ],
+    "enterAccount": [
+      "请输入账号",
+      "請輸入帳號",
+      "Enter account name",
+      "أدخل اسم الحساب"
+    ],
+    "enterPassword": [
+      "请输入密码",
+      "請輸入密碼",
+      "Enter password",
+      "أدخل كلمة المرور"
+    ],
+    "signIn": [
+      "登录",
+      "登入",
+      "Sign in",
+      "دخول"
+    ],
+    "continue": [
+      "继续",
+      "繼續",
+      "Continue",
+      "متابعة"
+    ],
+    "back": [
+      "返回",
+      "返回",
+      "Back",
+      "رجوع"
+    ],
+    "cancel": [
+      "取消",
+      "取消",
+      "Cancel",
+      "إلغاء"
+    ],
+    "done": [
+      "完成",
+      "完成",
+      "Done",
+      "تم"
+    ],
+    "later": [
+      "稍后",
+      "稍後",
+      "Later",
+      "لاحقًا"
+    ],
+    "save": [
+      "保存",
+      "儲存",
+      "Save",
+      "حفظ"
+    ],
+    "retry": [
+      "重试",
+      "重試",
+      "Try again",
+      "إعادة المحاولة"
+    ],
+    "processing": [
+      "正在处理…",
+      "正在處理…",
+      "Working…",
+      "جارٍ التنفيذ…"
+    ],
+    "loading": [
+      "正在加载…",
+      "正在載入…",
+      "Loading…",
+      "جارٍ التحميل…"
+    ],
+    "saving": [
+      "正在保存…",
+      "正在儲存…",
+      "Saving…",
+      "جارٍ الحفظ…"
+    ],
+    "saved": [
+      "资料已保存",
+      "資料已儲存",
+      "Profile saved",
+      "تم حفظ الملف الشخصي"
+    ],
+    "loginError": [
+      "账号或密码不正确，请重试。",
+      "帳號或密碼不正確，請重試。",
+      "The account name or password is incorrect. Try again.",
+      "اسم الحساب أو كلمة المرور غير صحيحة. حاول مجددًا."
+    ],
+    "offline": [
+      "无法连接网络。请检查连接后重试，已填写内容会保留。",
+      "無法連接網路。請檢查連線後重試，已填寫內容會保留。",
+      "You’re offline. Check your connection and try again. Your input is retained.",
+      "لا يوجد اتصال بالشبكة. تحقق من الاتصال وأعد المحاولة. تبقى بياناتك المدخلة محفوظة."
+    ],
+    "timeout": [
+      "请求超时，请重试。已填写内容会保留。",
+      "要求逾時，請重試。已填寫內容會保留。",
+      "The request timed out. Try again; your input is retained.",
+      "انتهت مهلة الطلب. أعد المحاولة؛ لن تفقد ما أدخلته."
+    ],
+    "registerHelp": [
+      "创建账号，设置你的个人资料。",
+      "建立帳號，設定你的個人資料。",
+      "Create an account and set up your profile.",
+      "أنشئ حسابًا وأعدّ ملفك الشخصي."
+    ],
+    "nickname": [
+      "昵称",
+      "暱稱",
+      "Display name",
+      "الاسم الظاهر"
+    ],
+    "enterNickname": [
+      "请输入昵称",
+      "請輸入暱稱",
+      "Enter display name",
+      "أدخل الاسم الظاهر"
+    ],
+    "accountRule": [
+      "3～32 位小写英文字母、数字或下划线。",
+      "3～32 位小寫英文字母、數字或底線。",
+      "3–32 lowercase Latin letters, numbers or underscores.",
+      "من 3 إلى 32 حرفًا لاتينيًا صغيرًا أو رقمًا أو شرطة سفلية."
+    ],
+    "passwordRule": [
+      "至少 12 个字符，且不超过 72 个 UTF-8 字节。中文等字符可能占多个字节。",
+      "至少 12 個字元，且不超過 72 個 UTF-8 位元組。中文等字元可能佔多個位元組。",
+      "At least 12 characters and at most 72 UTF-8 bytes. Some characters use multiple bytes.",
+      "12 حرفًا على الأقل، وبحد أقصى 72 بايت بترميز UTF-8. قد يشغل الحرف عدة بايتات."
+    ],
+    "mismatch": [
+      "两次输入的密码不一致。",
+      "兩次輸入的密碼不一致。",
+      "The passwords don’t match.",
+      "كلمتا المرور غير متطابقتين."
+    ],
+    "taken": [
+      "该账号已被使用，请换一个。",
+      "此帳號已被使用，請換一個。",
+      "That account name is taken. Choose another.",
+      "اسم الحساب مستخدم بالفعل. اختر اسمًا آخر."
+    ],
+    "appleHandoff": [
+      "继续使用 Apple",
+      "繼續使用 Apple",
+      "Continue with Apple",
+      "المتابعة باستخدام Apple"
+    ],
+    "systemHandoff": [
+      "接下来将打开系统授权界面。取消后会返回当前页面。",
+      "接下來將開啟系統授權介面。取消後會返回目前頁面。",
+      "The system authorization screen opens next. Cancelling returns you here.",
+      "ستفتح شاشة تفويض النظام. عند الإلغاء ستعود إلى هذه الصفحة."
+    ],
+    "openApple": [
+      "打开 Apple 授权",
+      "開啟 Apple 授權",
+      "Open Apple authorization",
+      "فتح تفويض Apple"
+    ],
+    "appleCancelled": [
+      "已取消授权，你可以选择其他登录方式。",
+      "已取消授權，你可以選擇其他登入方式。",
+      "Authorization cancelled. You can choose another sign-in method.",
+      "تم إلغاء التفويض. يمكنك اختيار طريقة دخول أخرى."
+    ],
+    "appleFailure": [
+      "Apple 登录暂时无法完成，请重试。",
+      "暫時無法完成 Apple 登入，請重試。",
+      "Apple sign-in couldn’t be completed. Try again.",
+      "تعذّر إكمال الدخول باستخدام Apple. حاول مجددًا."
+    ],
+    "appleConflict": [
+      "此 Apple 登录方式已关联其他账号，无法直接合并。",
+      "此 Apple 登入方式已連結其他帳號，無法直接合併。",
+      "This Apple sign-in is linked to another account. Accounts can’t be merged here.",
+      "طريقة دخول Apple مرتبطة بحساب آخر. لا يمكن دمج الحسابين هنا."
+    ],
+    "switchAccount": [
+      "切换账号",
+      "切換帳號",
+      "Switch account",
+      "تبديل الحساب"
+    ],
+    "completeProfile": [
+      "完善个人资料",
+      "完善個人資料",
+      "Complete your profile",
+      "أكمل ملفك الشخصي"
+    ],
+    "completeHelp": [
+      "设置昵称、头像和简介，也可以稍后完成。",
+      "設定暱稱、頭像和簡介，也可以稍後完成。",
+      "Add your name, photo and bio. You can finish later.",
+      "أضف اسمك وصورتك ونبذة عنك، أو أكمل ذلك لاحقًا."
+    ],
+    "me": [
+      "我",
+      "我",
+      "Me",
+      "أنا"
+    ],
+    "chat": [
+      "聊天",
+      "聊天",
+      "Chat",
+      "المحادثات"
+    ],
+    "demoName": [
+      "小鱼",
+      "小魚",
+      "Little Fish",
+      "سمكة صغيرة"
+    ],
+    "demoBio": [
+      "把日常，慢慢说给你听。",
+      "把日常，慢慢說給你聽。",
+      "Little moments, shared along the way.",
+      "لحظات صغيرة نشاركها معًا."
+    ],
+    "editProfile": [
+      "编辑资料",
+      "編輯資料",
+      "Edit profile",
+      "تعديل الملف"
+    ],
+    "security": [
+      "账号与安全",
+      "帳號與安全",
+      "Account & security",
+      "الحساب والأمان"
+    ],
+    "settings": [
+      "应用设置",
+      "App 設定",
+      "App settings",
+      "إعدادات التطبيق"
+    ],
+    "signOut": [
+      "退出登录",
+      "登出",
+      "Sign out",
+      "تسجيل الخروج"
+    ],
+    "incomplete": [
+      "个人资料尚未完善，随时可以继续。",
+      "個人資料尚未完善，隨時可以繼續。",
+      "Your profile is incomplete. Finish it whenever you’re ready.",
+      "ملفك الشخصي غير مكتمل. يمكنك إكماله في أي وقت."
+    ],
+    "offlineProfile": [
+      "当前为离线资料，暂时无法保存修改。外观和语言仍可设置。",
+      "目前為離線資料，暫時無法儲存修改。仍可設定外觀和語言。",
+      "Showing your offline profile. Changes can’t be saved yet. Appearance and language remain available.",
+      "تُعرض نسخة ملفك دون اتصال. لا يمكن حفظ التغييرات الآن، وتبقى إعدادات المظهر واللغة متاحة."
+    ],
+    "storageUnavailable": [
+      "本机资料暂不可用",
+      "本機資料暫時無法使用",
+      "Local data unavailable",
+      "البيانات المحلية غير متاحة"
+    ],
+    "storageHelp": [
+      "无法安全读取本机资料。请重试或查看恢复说明，原有数据不会被空资料覆盖。",
+      "無法安全讀取本機資料。請重試或查看復原說明，原有資料不會被空白資料覆寫。",
+      "Local data couldn’t be read securely. Retry or review recovery guidance. Existing data will not be replaced with an empty profile.",
+      "تعذّر قراءة البيانات المحلية بأمان. أعد المحاولة أو راجع إرشادات الاستعادة. لن تُستبدل بياناتك بملف فارغ."
+    ],
+    "recovery": [
+      "恢复说明",
+      "復原說明",
+      "Recovery guidance",
+      "إرشادات الاستعادة"
+    ],
+    "recoveryHelp": [
+      "保留当前数据。确认设备已解锁后重试；若仍不可用，请保留原文件并寻求支持。不要覆盖或重建为空数据。",
+      "保留目前資料。確認裝置已解鎖後重試；若仍無法使用，請保留原始檔案並尋求支援。請勿覆寫或重建為空白資料。",
+      "Keep existing data. Unlock the device and retry. If it remains unavailable, preserve the original files and seek support. Do not overwrite them.",
+      "احتفظ ببياناتك. افتح قفل الجهاز وحاول مجددًا. إذا استمرت المشكلة، حافظ على الملفات الأصلية واطلب الدعم دون استبدالها."
+    ],
+    "bio": [
+      "简介",
+      "簡介",
+      "Bio",
+      "نبذة"
+    ],
+    "enterBio": [
+      "介绍一下自己（可选）",
+      "介紹一下自己（選填）",
+      "Tell us about yourself (optional)",
+      "عرّف عن نفسك (اختياري)"
+    ],
+    "nicknameRule": [
+      "最多 64 个字符，不能全为空白。",
+      "最多 64 個字元，不可全部為空白。",
+      "Up to 64 characters; can’t be only spaces.",
+      "حتى 64 حرفًا، ولا يجوز أن يكون الاسم فراغات فقط."
+    ],
+    "bioRule": [
+      "最多 500 个字符。留空可清除简介。",
+      "最多 500 個字元。留白可清除簡介。",
+      "Up to 500 characters. Leave empty to clear your bio.",
+      "حتى 500 حرف. اترك الحقل فارغًا لمسح النبذة."
+    ],
+    "avatar": [
+      "头像",
+      "頭像",
+      "Profile photo",
+      "الصورة الشخصية"
+    ],
+    "changePhoto": [
+      "更换头像",
+      "更換頭像",
+      "Change photo",
+      "تغيير الصورة"
+    ],
+    "photoImmediate": [
+      "头像确认后立即更新；取消文字编辑不会撤销头像修改。",
+      "確認頭像後會立即更新；取消文字編輯不會撤銷頭像變更。",
+      "Photo changes take effect when confirmed. Cancelling text edits won’t undo them.",
+      "تُحدَّث الصورة فور تأكيدها. إلغاء تعديل النص لا يلغي تغيير الصورة."
+    ],
+    "saveError": [
+      "保存失败。修改内容已保留，请重试。",
+      "儲存失敗。修改內容已保留，請重試。",
+      "Couldn’t save. Your edits are retained. Try again.",
+      "تعذّر الحفظ. تبقى تعديلاتك موجودة؛ حاول مجددًا."
+    ],
+    "conflictTitle": [
+      "资料已在其他设备更新",
+      "資料已在其他裝置更新",
+      "Profile updated elsewhere",
+      "تم تحديث الملف على جهاز آخر"
+    ],
+    "conflictHelp": [
+      "你的编辑仍保留。载入最新资料后，可以重新确认并保存。",
+      "你的編輯仍保留。載入最新資料後，可以重新確認並儲存。",
+      "Your edits are retained. Load the latest profile, then review and save again.",
+      "لم تفقد تعديلاتك. حمّل أحدث نسخة ثم راجع التغييرات واحفظها مجددًا."
+    ],
+    "reload": [
+      "载入最新资料",
+      "載入最新資料",
+      "Load latest profile",
+      "تحميل أحدث نسخة"
+    ],
+    "reviewSave": [
+      "重新确认并保存",
+      "重新確認並儲存",
+      "Review and save again",
+      "المراجعة والحفظ مجددًا"
+    ],
+    "choosePhoto": [
+      "选择照片",
+      "選擇照片",
+      "Choose photo",
+      "اختيار صورة"
+    ],
+    "restorePhoto": [
+      "恢复默认头像",
+      "恢復預設頭像",
+      "Use default photo",
+      "استخدام الصورة الافتراضية"
+    ],
+    "photoPreview": [
+      "头像预览",
+      "頭像預覽",
+      "Preview photo",
+      "معاينة الصورة"
+    ],
+    "usePhoto": [
+      "使用此头像",
+      "使用此頭像",
+      "Use this photo",
+      "استخدام هذه الصورة"
+    ],
+    "uploading": [
+      "正在上传头像…",
+      "正在上傳頭像…",
+      "Uploading photo…",
+      "جارٍ رفع الصورة…"
+    ],
+    "uploadFailed": [
+      "头像上传失败，原头像未改变。你可以重试。",
+      "頭像上傳失敗，原頭像未變更。你可以重試。",
+      "Upload failed. Your previous photo is unchanged. Try again.",
+      "فشل الرفع. لم تتغير صورتك السابقة. يمكنك إعادة المحاولة."
+    ],
+    "photoPermission": [
+      "无法访问照片",
+      "無法存取照片",
+      "Photo access unavailable",
+      "الوصول إلى الصور غير متاح"
+    ],
+    "photoPermissionHelp": [
+      "请在系统设置中允许照片访问，然后返回重试。",
+      "請在系統設定中允許取用照片，再返回重試。",
+      "Allow photo access in system settings, then return and try again.",
+      "اسمح بالوصول إلى الصور في إعدادات النظام، ثم عد وحاول مجددًا."
+    ],
+    "openSettings": [
+      "打开系统设置",
+      "開啟系統設定",
+      "Open system settings",
+      "فتح إعدادات النظام"
+    ],
+    "staticPhoto": [
+      "请选择静态照片。",
+      "請選擇靜態照片。",
+      "Please choose a still photo.",
+      "يرجى اختيار صورة ثابتة."
+    ],
+    "restoreHelp": [
+      "恢复默认后，当前头像会被移除。",
+      "恢復預設後，目前的頭像將被移除。",
+      "Your current photo will be removed.",
+      "ستُزال صورتك الحالية."
+    ],
+    "methods": [
+      "登录方式",
+      "登入方式",
+      "Sign-in methods",
+      "طرق تسجيل الدخول"
+    ],
+    "passwordMethod": [
+      "账号密码",
+      "帳號密碼",
+      "Account password",
+      "كلمة مرور الحساب"
+    ],
+    "appleMethod": [
+      "Apple 登录",
+      "Apple 登入",
+      "Apple sign-in",
+      "الدخول باستخدام Apple"
+    ],
+    "bound": [
+      "已绑定",
+      "已連結",
+      "Linked",
+      "مرتبط"
+    ],
+    "unbound": [
+      "未绑定",
+      "未連結",
+      "Not linked",
+      "غير مرتبط"
+    ],
+    "available": [
+      "已设置",
+      "已設定",
+      "Set up",
+      "تم الإعداد"
+    ],
+    "notSet": [
+      "未设置",
+      "未設定",
+      "Not set",
+      "غير مُعدّ"
+    ],
+    "revoked": [
+      "授权已失效",
+      "授權已失效",
+      "Authorization expired",
+      "انتهى التفويض"
+    ],
+    "reauthorize": [
+      "重新授权",
+      "重新授權",
+      "Authorize again",
+      "إعادة التفويض"
+    ],
+    "bindApple": [
+      "绑定 Apple",
+      "連結 Apple",
+      "Link Apple",
+      "ربط Apple"
+    ],
+    "unbindApple": [
+      "解除 Apple 关联",
+      "解除 Apple 連結",
+      "Unlink Apple",
+      "إلغاء ربط Apple"
+    ],
+    "setPassword": [
+      "设置账号密码",
+      "設定帳號密碼",
+      "Set account password",
+      "إعداد كلمة مرور الحساب"
+    ],
+    "changePassword": [
+      "修改密码",
+      "更改密碼",
+      "Change password",
+      "تغيير كلمة المرور"
+    ],
+    "signOutAll": [
+      "退出全部设备",
+      "登出所有裝置",
+      "Sign out all devices",
+      "الخروج من جميع الأجهزة"
+    ],
+    "deleteAccount": [
+      "删除账号",
+      "刪除帳號",
+      "Delete account",
+      "حذف الحساب"
+    ],
+    "reauth": [
+      "确认是你本人",
+      "確認是你本人",
+      "Confirm your identity",
+      "تأكيد هويتك"
+    ],
+    "reauthHelp": [
+      "为保护账号安全，请先确认身份，再继续本次操作。",
+      "為保護帳號安全，請先確認身分，再繼續本次操作。",
+      "Confirm your identity before continuing this action.",
+      "أكد هويتك قبل متابعة هذا الإجراء لحماية حسابك."
+    ],
+    "reauthExpired": [
+      "身份确认已过期，请重新确认。已填写的新密码会暂时保留。",
+      "身分確認已過期，請重新確認。已填寫的新密碼會暫時保留。",
+      "Identity confirmation expired. Confirm again. Your new password is temporarily retained.",
+      "انتهت صلاحية تأكيد الهوية. أكدها مجددًا؛ ستبقى كلمة المرور الجديدة مؤقتًا."
+    ],
+    "confirmIdentity": [
+      "确认身份",
+      "確認身分",
+      "Confirm identity",
+      "تأكيد الهوية"
+    ],
+    "changePasswordHelp": [
+      "修改成功后，所有设备都会退出登录，包括当前设备。",
+      "更改成功後，所有裝置都會登出，包含目前裝置。",
+      "Changing your password signs out every device, including this one.",
+      "سيؤدي تغيير كلمة المرور إلى تسجيل الخروج من جميع الأجهزة، بما فيها هذا الجهاز."
+    ],
+    "passwordChanged": [
+      "密码已修改，请重新登录。",
+      "密碼已更改，請重新登入。",
+      "Password changed. Please sign in again.",
+      "تم تغيير كلمة المرور. يرجى تسجيل الدخول مجددًا."
+    ],
+    "passwordSet": [
+      "账号密码已设置。",
+      "帳號密碼已設定。",
+      "Account password set.",
+      "تم إعداد كلمة مرور الحساب."
+    ],
+    "unbindHelp": [
+      "解除关联前请确认账号密码可用。如果当前使用 Apple 登录，解除后需要用密码重新登录。",
+      "解除連結前請確認帳號密碼可用。若目前使用 Apple 登入，解除後需使用密碼重新登入。",
+      "Make sure your account password works. If you signed in with Apple, unlinking requires you to sign in again with your password.",
+      "تأكد من إمكانية الدخول بكلمة المرور. إذا دخلت باستخدام Apple، فستحتاج إلى الدخول مجددًا بكلمة المرور بعد إلغاء الربط."
+    ],
+    "unbinding": [
+      "正在解除关联…",
+      "正在解除連結…",
+      "Unlinking…",
+      "جارٍ إلغاء الربط…"
+    ],
+    "logoutHelp": [
+      "将退出当前设备，保留本机加密数据。",
+      "將登出目前裝置，保留本機加密資料。",
+      "Sign out on this device. Encrypted local data is retained.",
+      "سيتم تسجيل الخروج من هذا الجهاز مع الاحتفاظ بالبيانات المحلية المشفرة."
+    ],
+    "logoutOffline": [
+      "当前离线，可先退出本机。服务端退出状态待同步。",
+      "目前離線，可先登出本機。伺服器登出狀態待同步。",
+      "You’re offline. You can sign out locally; server sign-out is pending synchronization.",
+      "أنت دون اتصال. يمكنك الخروج محليًا؛ تبقى مزامنة الخروج مع الخادم معلقة."
+    ],
+    "localLogout": [
+      "退出本机",
+      "登出本機",
+      "Sign out locally",
+      "الخروج محليًا"
+    ],
+    "allHelp": [
+      "所有设备都将退出登录，包括当前设备。此操作需要网络连接及身份确认。",
+      "所有裝置都會登出，包含目前裝置。此操作需要網路連線及身分確認。",
+      "All devices will be signed out, including this one. A connection and identity confirmation are required.",
+      "سيتم الخروج من جميع الأجهزة، بما فيها هذا الجهاز. يلزم اتصال وتأكيد الهوية."
+    ],
+    "deleteHelp": [
+      "账号和个人资料将被清除，此操作无法撤销。请确认后继续。",
+      "帳號與個人資料將被清除，此操作無法復原。請確認後繼續。",
+      "Your account and profile will be removed. This cannot be undone. Review before continuing.",
+      "سيُحذف حسابك وملفك الشخصي. لا يمكن التراجع عن هذا الإجراء. راجع قبل المتابعة."
+    ],
+    "deleteFinal": [
+      "确认删除账号？",
+      "確認刪除帳號？",
+      "Delete this account?",
+      "هل تريد حذف الحساب؟"
+    ],
+    "deleteConfirm": [
+      "确认删除",
+      "確認刪除",
+      "Confirm deletion",
+      "تأكيد الحذف"
+    ],
+    "deleteAccepted": [
+      "删除申请已受理",
+      "刪除申請已受理",
+      "Deletion request accepted",
+      "تم قبول طلب الحذف"
+    ],
+    "deleteAcceptedHelp": [
+      "账号已退出。服务器正在处理后续清理。",
+      "帳號已登出。伺服器正在處理後續清理。",
+      "You’ve been signed out. The server is processing the remaining cleanup.",
+      "تم تسجيل خروجك. يعالج الخادم عمليات التنظيف المتبقية."
+    ],
+    "backWelcome": [
+      "返回欢迎页",
+      "返回歡迎頁",
+      "Back to welcome",
+      "العودة إلى الترحيب"
+    ],
+    "operationError": [
+      "操作未完成，请重试或取消。",
+      "操作未完成，請重試或取消。",
+      "The action wasn’t completed. Try again or cancel.",
+      "لم يكتمل الإجراء. حاول مجددًا أو ألغِه."
+    ],
+    "sessionExpired": [
+      "登录已失效",
+      "登入已失效",
+      "Session expired",
+      "انتهت جلسة الدخول"
+    ],
+    "sessionHelp": [
+      "请重新登录以继续。",
+      "請重新登入以繼續。",
+      "Please sign in again to continue.",
+      "يرجى تسجيل الدخول مجددًا للمتابعة."
+    ],
+    "appearance": [
+      "外观",
+      "外觀",
+      "Appearance",
+      "المظهر"
+    ],
+    "language": [
+      "语言",
+      "語言",
+      "Language",
+      "اللغة"
+    ],
+    "system": [
+      "跟随系统",
+      "跟隨系統",
+      "System default",
+      "حسب النظام"
+    ],
+    "light": [
+      "浅色",
+      "淺色",
+      "Light",
+      "فاتح"
+    ],
+    "dark": [
+      "深色",
+      "深色",
+      "Dark",
+      "داكن"
+    ],
+    "appearanceHelp": [
+      "外观设置在所有应用窗口生效，不随退出或切换账号重置。",
+      "外觀設定會套用至所有 App 視窗，不會因登出或切換帳號而重設。",
+      "Applies to all app windows. Signing out or switching accounts won’t reset this setting.",
+      "يسري على جميع نوافذ التطبيق، ولا يُعاد ضبطه عند الخروج أو تبديل الحساب."
+    ],
+    "languageHelp": [
+      "语言设置仅保存在本机。切换后保留当前页面和未提交输入。",
+      "語言設定僅儲存在本機。切換後保留目前頁面及尚未送出的輸入。",
+      "Stored on this device. Switching language preserves your page and unsent input.",
+      "يُحفظ الإعداد على هذا الجهاز. يحافظ تغيير اللغة على صفحتك والمدخلات غير المرسلة."
+    ],
+    "localDemo": [
+      "本地演示",
+      "本機示範",
+      "Local demo",
+      "عرض محلي تجريبي"
+    ],
+    "demoHelp": [
+      "聊天使用本地模拟回复，尚未接入真实 IM。",
+      "聊天使用本機模擬回覆，尚未串接真實 IM。",
+      "Chat uses simulated local replies. Live messaging is not connected.",
+      "تستخدم المحادثة ردودًا محلية محاكية. المراسلة الفعلية غير متصلة."
+    ],
+    "discard": [
+      "放弃修改",
+      "放棄修改",
+      "Discard edits",
+      "تجاهل التعديلات"
+    ],
+    "discardHelp": [
+      "未保存的文字修改将被丢弃，已确认的头像更新不受影响。",
+      "尚未儲存的文字修改將被捨棄，已確認的頭像更新不受影響。",
+      "Unsaved text edits will be discarded. Confirmed photo changes remain.",
+      "ستُلغى تعديلات النص غير المحفوظة. تبقى تغييرات الصورة المؤكدة."
+    ],
+    "keepEditing": [
+      "继续编辑",
+      "繼續編輯",
+      "Keep editing",
+      "متابعة التعديل"
+    ],
+    "showPassword": [
+      "显示密码",
+      "顯示密碼",
+      "Show password",
+      "إظهار كلمة المرور"
+    ],
+    "hidePassword": [
+      "隐藏密码",
+      "隱藏密碼",
+      "Hide password",
+      "إخفاء كلمة المرور"
+    ]
+  }
+}

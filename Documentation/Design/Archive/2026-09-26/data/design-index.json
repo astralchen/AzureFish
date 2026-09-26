@@ -1,0 +1,7588 @@
+{
+  "fileKey": "su1BAcMKAwW11bE2n2n9rN",
+  "url": "https://www.figma.com/design/su1BAcMKAwW11bE2n2n9rN",
+  "capturedAt": "2026-09-26",
+  "nativeFigIncluded": false,
+  "pages": [
+    {
+      "id": "0:1",
+      "name": "00 导览与流程"
+    },
+    {
+      "id": "2:9",
+      "name": "01 基础样式"
+    },
+    {
+      "id": "2:10",
+      "name": "02 组件"
+    },
+    {
+      "id": "2:11",
+      "name": "03 认证"
+    },
+    {
+      "id": "2:12",
+      "name": "04 个人资料"
+    },
+    {
+      "id": "2:13",
+      "name": "05 账号安全"
+    },
+    {
+      "id": "2:14",
+      "name": "06 设置"
+    },
+    {
+      "id": "2:15",
+      "name": "07 适配与验收"
+    }
+  ],
+  "frames": [
+    {
+      "id": "9:3",
+      "key": "welcome",
+      "page": "auth",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "9:29",
+      "key": "welcome",
+      "page": "auth",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "9:55",
+      "key": "welcome",
+      "page": "auth",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "9:81",
+      "key": "welcome",
+      "page": "auth",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "9:107",
+      "key": "welcome",
+      "page": "auth",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "9:133",
+      "key": "welcome",
+      "page": "auth",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "9:159",
+      "key": "welcome",
+      "page": "auth",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "9:185",
+      "key": "welcome",
+      "page": "auth",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "9:213",
+      "key": "login.empty",
+      "page": "auth",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "9:246",
+      "key": "login.empty",
+      "page": "auth",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "9:275",
+      "key": "login.empty",
+      "page": "auth",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "9:304",
+      "key": "login.empty",
+      "page": "auth",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "9:335",
+      "key": "login.empty",
+      "page": "auth",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "9:364",
+      "key": "login.empty",
+      "page": "auth",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "9:393",
+      "key": "login.empty",
+      "page": "auth",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "9:422",
+      "key": "login.empty",
+      "page": "auth",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "12:36",
+      "key": "me",
+      "page": "profile",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "12:94",
+      "key": "me",
+      "page": "profile",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "12:148",
+      "key": "me",
+      "page": "profile",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "12:202",
+      "key": "me",
+      "page": "profile",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "12:272",
+      "key": "me",
+      "page": "profile",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "12:326",
+      "key": "me",
+      "page": "profile",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "12:380",
+      "key": "me",
+      "page": "profile",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "12:434",
+      "key": "me",
+      "page": "profile",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "12:498",
+      "key": "edit",
+      "page": "profile",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "12:529",
+      "key": "edit",
+      "page": "profile",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "12:560",
+      "key": "edit",
+      "page": "profile",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "12:591",
+      "key": "edit",
+      "page": "profile",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "12:624",
+      "key": "edit",
+      "page": "profile",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "12:655",
+      "key": "edit",
+      "page": "profile",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "12:686",
+      "key": "edit",
+      "page": "profile",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "12:717",
+      "key": "edit",
+      "page": "profile",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "13:708",
+      "key": "login.filled",
+      "page": "auth",
+      "locale": "zh-Hans",
+      "theme": "Light"
+    },
+    {
+      "id": "13:737",
+      "key": "login.filled",
+      "page": "auth",
+      "locale": "zh-Hant",
+      "theme": "Light"
+    },
+    {
+      "id": "13:766",
+      "key": "login.filled",
+      "page": "auth",
+      "locale": "en",
+      "theme": "Light"
+    },
+    {
+      "id": "13:795",
+      "key": "login.filled",
+      "page": "auth",
+      "locale": "ar",
+      "theme": "Light"
+    },
+    {
+      "id": "13:826",
+      "key": "login.filled",
+      "page": "auth",
+      "locale": "zh-Hans",
+      "theme": "Dark"
+    },
+    {
+      "id": "13:855",
+      "key": "login.filled",
+      "page": "auth",
+      "locale": "zh-Hant",
+      "theme": "Dark"
+    },
+    {
+      "id": "13:884",
+      "key": "login.filled",
+      "page": "auth",
+      "locale": "en",
+      "theme": "Dark"
+    },
+    {
+      "id": "13:913",
+      "key": "login.filled",
+      "page": "auth",
+      "locale": "ar",
+      "theme": "Dark"
+    },
+    {
+      "id": "13:946",
+      "key": "login.focused",
+      "page": "auth",
+      "locale": "zh-Hans",
+      "theme": "Light"
+    },
+    {
+      "id": "13:975",
+      "key": "login.focused",
+      "page": "auth",
+      "locale": "zh-Hant",
+      "theme": "Light"
+    },
+    {
+      "id": "13:1004",
+      "key": "login.focused",
+      "page": "auth",
+      "locale": "en",
+      "theme": "Light"
+    },
+    {
+      "id": "13:1033",
+      "key": "login.focused",
+      "page": "auth",
+      "locale": "ar",
+      "theme": "Light"
+    },
+    {
+      "id": "13:1064",
+      "key": "login.focused",
+      "page": "auth",
+      "locale": "zh-Hans",
+      "theme": "Dark"
+    },
+    {
+      "id": "13:1093",
+      "key": "login.focused",
+      "page": "auth",
+      "locale": "zh-Hant",
+      "theme": "Dark"
+    },
+    {
+      "id": "13:1122",
+      "key": "login.focused",
+      "page": "auth",
+      "locale": "en",
+      "theme": "Dark"
+    },
+    {
+      "id": "13:1151",
+      "key": "login.focused",
+      "page": "auth",
+      "locale": "ar",
+      "theme": "Dark"
+    },
+    {
+      "id": "13:1184",
+      "key": "login.error",
+      "page": "auth",
+      "locale": "zh-Hans",
+      "theme": "Light"
+    },
+    {
+      "id": "13:1218",
+      "key": "login.error",
+      "page": "auth",
+      "locale": "zh-Hant",
+      "theme": "Light"
+    },
+    {
+      "id": "13:1252",
+      "key": "login.error",
+      "page": "auth",
+      "locale": "en",
+      "theme": "Light"
+    },
+    {
+      "id": "13:1286",
+      "key": "login.error",
+      "page": "auth",
+      "locale": "ar",
+      "theme": "Light"
+    },
+    {
+      "id": "13:1322",
+      "key": "login.error",
+      "page": "auth",
+      "locale": "zh-Hans",
+      "theme": "Dark"
+    },
+    {
+      "id": "13:1356",
+      "key": "login.error",
+      "page": "auth",
+      "locale": "zh-Hant",
+      "theme": "Dark"
+    },
+    {
+      "id": "13:1390",
+      "key": "login.error",
+      "page": "auth",
+      "locale": "en",
+      "theme": "Dark"
+    },
+    {
+      "id": "13:1424",
+      "key": "login.error",
+      "page": "auth",
+      "locale": "ar",
+      "theme": "Dark"
+    },
+    {
+      "id": "13:1462",
+      "key": "login.loading",
+      "page": "auth",
+      "locale": "zh-Hans",
+      "theme": "Light"
+    },
+    {
+      "id": "13:1491",
+      "key": "login.loading",
+      "page": "auth",
+      "locale": "zh-Hant",
+      "theme": "Light"
+    },
+    {
+      "id": "13:1520",
+      "key": "login.loading",
+      "page": "auth",
+      "locale": "en",
+      "theme": "Light"
+    },
+    {
+      "id": "13:1549",
+      "key": "login.loading",
+      "page": "auth",
+      "locale": "ar",
+      "theme": "Light"
+    },
+    {
+      "id": "13:1580",
+      "key": "login.loading",
+      "page": "auth",
+      "locale": "zh-Hans",
+      "theme": "Dark"
+    },
+    {
+      "id": "13:1609",
+      "key": "login.loading",
+      "page": "auth",
+      "locale": "zh-Hant",
+      "theme": "Dark"
+    },
+    {
+      "id": "13:1638",
+      "key": "login.loading",
+      "page": "auth",
+      "locale": "en",
+      "theme": "Dark"
+    },
+    {
+      "id": "13:1667",
+      "key": "login.loading",
+      "page": "auth",
+      "locale": "ar",
+      "theme": "Dark"
+    },
+    {
+      "id": "13:1700",
+      "key": "login.offline",
+      "page": "auth",
+      "locale": "zh-Hans",
+      "theme": "Light"
+    },
+    {
+      "id": "13:1734",
+      "key": "login.offline",
+      "page": "auth",
+      "locale": "zh-Hant",
+      "theme": "Light"
+    },
+    {
+      "id": "13:1768",
+      "key": "login.offline",
+      "page": "auth",
+      "locale": "en",
+      "theme": "Light"
+    },
+    {
+      "id": "13:1802",
+      "key": "login.offline",
+      "page": "auth",
+      "locale": "ar",
+      "theme": "Light"
+    },
+    {
+      "id": "13:1838",
+      "key": "login.offline",
+      "page": "auth",
+      "locale": "zh-Hans",
+      "theme": "Dark"
+    },
+    {
+      "id": "13:1872",
+      "key": "login.offline",
+      "page": "auth",
+      "locale": "zh-Hant",
+      "theme": "Dark"
+    },
+    {
+      "id": "13:1906",
+      "key": "login.offline",
+      "page": "auth",
+      "locale": "en",
+      "theme": "Dark"
+    },
+    {
+      "id": "13:1940",
+      "key": "login.offline",
+      "page": "auth",
+      "locale": "ar",
+      "theme": "Dark"
+    },
+    {
+      "id": "13:1978",
+      "key": "login.timeout",
+      "page": "auth",
+      "locale": "zh-Hans",
+      "theme": "Light"
+    },
+    {
+      "id": "13:2012",
+      "key": "login.timeout",
+      "page": "auth",
+      "locale": "zh-Hant",
+      "theme": "Light"
+    },
+    {
+      "id": "13:2046",
+      "key": "login.timeout",
+      "page": "auth",
+      "locale": "en",
+      "theme": "Light"
+    },
+    {
+      "id": "13:2080",
+      "key": "login.timeout",
+      "page": "auth",
+      "locale": "ar",
+      "theme": "Light"
+    },
+    {
+      "id": "13:2116",
+      "key": "login.timeout",
+      "page": "auth",
+      "locale": "zh-Hans",
+      "theme": "Dark"
+    },
+    {
+      "id": "13:2150",
+      "key": "login.timeout",
+      "page": "auth",
+      "locale": "zh-Hant",
+      "theme": "Dark"
+    },
+    {
+      "id": "13:2184",
+      "key": "login.timeout",
+      "page": "auth",
+      "locale": "en",
+      "theme": "Dark"
+    },
+    {
+      "id": "13:2218",
+      "key": "login.timeout",
+      "page": "auth",
+      "locale": "ar",
+      "theme": "Dark"
+    },
+    {
+      "id": "15:1229",
+      "key": "login.passwordVisible",
+      "page": "auth",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:1261",
+      "key": "login.passwordVisible",
+      "page": "auth",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:1291",
+      "key": "login.passwordVisible",
+      "page": "auth",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:1321",
+      "key": "login.passwordVisible",
+      "page": "auth",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:1355",
+      "key": "login.passwordVisible",
+      "page": "auth",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:1385",
+      "key": "login.passwordVisible",
+      "page": "auth",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:1415",
+      "key": "login.passwordVisible",
+      "page": "auth",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:1445",
+      "key": "login.passwordVisible",
+      "page": "auth",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:1479",
+      "key": "register.empty",
+      "page": "auth",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:1522",
+      "key": "register.empty",
+      "page": "auth",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:1565",
+      "key": "register.empty",
+      "page": "auth",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:1608",
+      "key": "register.empty",
+      "page": "auth",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:1653",
+      "key": "register.empty",
+      "page": "auth",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:1696",
+      "key": "register.empty",
+      "page": "auth",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:1739",
+      "key": "register.empty",
+      "page": "auth",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:1782",
+      "key": "register.empty",
+      "page": "auth",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:1829",
+      "key": "register.mismatch",
+      "page": "auth",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:1868",
+      "key": "register.mismatch",
+      "page": "auth",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:1907",
+      "key": "register.mismatch",
+      "page": "auth",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:1946",
+      "key": "register.mismatch",
+      "page": "auth",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:1987",
+      "key": "register.mismatch",
+      "page": "auth",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:2026",
+      "key": "register.mismatch",
+      "page": "auth",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:2065",
+      "key": "register.mismatch",
+      "page": "auth",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:2104",
+      "key": "register.mismatch",
+      "page": "auth",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:2147",
+      "key": "register.taken",
+      "page": "auth",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:2190",
+      "key": "register.taken",
+      "page": "auth",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:2233",
+      "key": "register.taken",
+      "page": "auth",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:2276",
+      "key": "register.taken",
+      "page": "auth",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:2321",
+      "key": "register.taken",
+      "page": "auth",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:2364",
+      "key": "register.taken",
+      "page": "auth",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:2407",
+      "key": "register.taken",
+      "page": "auth",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:2450",
+      "key": "register.taken",
+      "page": "auth",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:2497",
+      "key": "register.loading",
+      "page": "auth",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:2540",
+      "key": "register.loading",
+      "page": "auth",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:2583",
+      "key": "register.loading",
+      "page": "auth",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:2626",
+      "key": "register.loading",
+      "page": "auth",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:2671",
+      "key": "register.loading",
+      "page": "auth",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:2714",
+      "key": "register.loading",
+      "page": "auth",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:2757",
+      "key": "register.loading",
+      "page": "auth",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:2800",
+      "key": "register.loading",
+      "page": "auth",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:2847",
+      "key": "register.offline",
+      "page": "auth",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:2895",
+      "key": "register.offline",
+      "page": "auth",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:2943",
+      "key": "register.offline",
+      "page": "auth",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:2991",
+      "key": "register.offline",
+      "page": "auth",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:3041",
+      "key": "register.offline",
+      "page": "auth",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:3089",
+      "key": "register.offline",
+      "page": "auth",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:3137",
+      "key": "register.offline",
+      "page": "auth",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:3185",
+      "key": "register.offline",
+      "page": "auth",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:3237",
+      "key": "apple.handoff",
+      "page": "auth",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:3258",
+      "key": "apple.handoff",
+      "page": "auth",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:3279",
+      "key": "apple.handoff",
+      "page": "auth",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:3300",
+      "key": "apple.handoff",
+      "page": "auth",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:3323",
+      "key": "apple.handoff",
+      "page": "auth",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:3344",
+      "key": "apple.handoff",
+      "page": "auth",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:3365",
+      "key": "apple.handoff",
+      "page": "auth",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:3386",
+      "key": "apple.handoff",
+      "page": "auth",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:3411",
+      "key": "apple.cancelled",
+      "page": "auth",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:3442",
+      "key": "apple.cancelled",
+      "page": "auth",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:3473",
+      "key": "apple.cancelled",
+      "page": "auth",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:3504",
+      "key": "apple.cancelled",
+      "page": "auth",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:3535",
+      "key": "apple.cancelled",
+      "page": "auth",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:3566",
+      "key": "apple.cancelled",
+      "page": "auth",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:3597",
+      "key": "apple.cancelled",
+      "page": "auth",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:3628",
+      "key": "apple.cancelled",
+      "page": "auth",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:4135",
+      "key": "apple.failed",
+      "page": "auth",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:4166",
+      "key": "apple.failed",
+      "page": "auth",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:4197",
+      "key": "apple.failed",
+      "page": "auth",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:4228",
+      "key": "apple.failed",
+      "page": "auth",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:4259",
+      "key": "apple.failed",
+      "page": "auth",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:4290",
+      "key": "apple.failed",
+      "page": "auth",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:4321",
+      "key": "apple.failed",
+      "page": "auth",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:4352",
+      "key": "apple.failed",
+      "page": "auth",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:4385",
+      "key": "apple.conflict",
+      "page": "auth",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:4416",
+      "key": "apple.conflict",
+      "page": "auth",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:4447",
+      "key": "apple.conflict",
+      "page": "auth",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:4478",
+      "key": "apple.conflict",
+      "page": "auth",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:4509",
+      "key": "apple.conflict",
+      "page": "auth",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:4540",
+      "key": "apple.conflict",
+      "page": "auth",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:4571",
+      "key": "apple.conflict",
+      "page": "auth",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:4602",
+      "key": "apple.conflict",
+      "page": "auth",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:4635",
+      "key": "complete",
+      "page": "auth",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:4668",
+      "key": "complete",
+      "page": "auth",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:4701",
+      "key": "complete",
+      "page": "auth",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:4734",
+      "key": "complete",
+      "page": "auth",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:4769",
+      "key": "complete",
+      "page": "auth",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:4802",
+      "key": "complete",
+      "page": "auth",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:4835",
+      "key": "complete",
+      "page": "auth",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:4868",
+      "key": "complete",
+      "page": "auth",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:4905",
+      "key": "complete.failed",
+      "page": "auth",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:4943",
+      "key": "complete.failed",
+      "page": "auth",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:4981",
+      "key": "complete.failed",
+      "page": "auth",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:5019",
+      "key": "complete.failed",
+      "page": "auth",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:5059",
+      "key": "complete.failed",
+      "page": "auth",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:5097",
+      "key": "complete.failed",
+      "page": "auth",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:5135",
+      "key": "complete.failed",
+      "page": "auth",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:5173",
+      "key": "complete.failed",
+      "page": "auth",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:5215",
+      "key": "complete.skipped",
+      "page": "auth",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:5253",
+      "key": "complete.skipped",
+      "page": "auth",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:5291",
+      "key": "complete.skipped",
+      "page": "auth",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:5329",
+      "key": "complete.skipped",
+      "page": "auth",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:5369",
+      "key": "complete.skipped",
+      "page": "auth",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:5407",
+      "key": "complete.skipped",
+      "page": "auth",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:5445",
+      "key": "complete.skipped",
+      "page": "auth",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:5483",
+      "key": "complete.skipped",
+      "page": "auth",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:5525",
+      "key": "me.long",
+      "page": "profile",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:5572",
+      "key": "me.long",
+      "page": "profile",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:5619",
+      "key": "me.long",
+      "page": "profile",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:5666",
+      "key": "me.long",
+      "page": "profile",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:5719",
+      "key": "me.long",
+      "page": "profile",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:5766",
+      "key": "me.long",
+      "page": "profile",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:5813",
+      "key": "me.long",
+      "page": "profile",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:5860",
+      "key": "me.long",
+      "page": "profile",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:5915",
+      "key": "me.incomplete",
+      "page": "profile",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:5967",
+      "key": "me.incomplete",
+      "page": "profile",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:6019",
+      "key": "me.incomplete",
+      "page": "profile",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:6071",
+      "key": "me.incomplete",
+      "page": "profile",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:6129",
+      "key": "me.incomplete",
+      "page": "profile",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:6181",
+      "key": "me.incomplete",
+      "page": "profile",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:6233",
+      "key": "me.incomplete",
+      "page": "profile",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:6285",
+      "key": "me.incomplete",
+      "page": "profile",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:6345",
+      "key": "me.offline",
+      "page": "profile",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:6397",
+      "key": "me.offline",
+      "page": "profile",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:6449",
+      "key": "me.offline",
+      "page": "profile",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:6501",
+      "key": "me.offline",
+      "page": "profile",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:6559",
+      "key": "me.offline",
+      "page": "profile",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:6611",
+      "key": "me.offline",
+      "page": "profile",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:6663",
+      "key": "me.offline",
+      "page": "profile",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:6715",
+      "key": "me.offline",
+      "page": "profile",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:6775",
+      "key": "me.loading",
+      "page": "profile",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:6827",
+      "key": "me.loading",
+      "page": "profile",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:6879",
+      "key": "me.loading",
+      "page": "profile",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:6931",
+      "key": "me.loading",
+      "page": "profile",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:6989",
+      "key": "me.loading",
+      "page": "profile",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:7041",
+      "key": "me.loading",
+      "page": "profile",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:7093",
+      "key": "me.loading",
+      "page": "profile",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:7145",
+      "key": "me.loading",
+      "page": "profile",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:7205",
+      "key": "storage",
+      "page": "profile",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:7226",
+      "key": "storage",
+      "page": "profile",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:7247",
+      "key": "storage",
+      "page": "profile",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:7268",
+      "key": "storage",
+      "page": "profile",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:7291",
+      "key": "storage",
+      "page": "profile",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:7312",
+      "key": "storage",
+      "page": "profile",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:7333",
+      "key": "storage",
+      "page": "profile",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:7354",
+      "key": "storage",
+      "page": "profile",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:7379",
+      "key": "recovery",
+      "page": "profile",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:7398",
+      "key": "recovery",
+      "page": "profile",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:7417",
+      "key": "recovery",
+      "page": "profile",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:7436",
+      "key": "recovery",
+      "page": "profile",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:7457",
+      "key": "recovery",
+      "page": "profile",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:7476",
+      "key": "recovery",
+      "page": "profile",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:7495",
+      "key": "recovery",
+      "page": "profile",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:7514",
+      "key": "recovery",
+      "page": "profile",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:7537",
+      "key": "edit.dirty",
+      "page": "profile",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:7568",
+      "key": "edit.dirty",
+      "page": "profile",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:7599",
+      "key": "edit.dirty",
+      "page": "profile",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:7630",
+      "key": "edit.dirty",
+      "page": "profile",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:7663",
+      "key": "edit.dirty",
+      "page": "profile",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:7694",
+      "key": "edit.dirty",
+      "page": "profile",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:7725",
+      "key": "edit.dirty",
+      "page": "profile",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:7756",
+      "key": "edit.dirty",
+      "page": "profile",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:7791",
+      "key": "edit.saving",
+      "page": "profile",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:7827",
+      "key": "edit.saving",
+      "page": "profile",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:7863",
+      "key": "edit.saving",
+      "page": "profile",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:7899",
+      "key": "edit.saving",
+      "page": "profile",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:7937",
+      "key": "edit.saving",
+      "page": "profile",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:7973",
+      "key": "edit.saving",
+      "page": "profile",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:8009",
+      "key": "edit.saving",
+      "page": "profile",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "15:8045",
+      "key": "edit.saving",
+      "page": "profile",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:1949",
+      "key": "edit.error",
+      "page": "profile",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:1987",
+      "key": "edit.error",
+      "page": "profile",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:2023",
+      "key": "edit.error",
+      "page": "profile",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:2059",
+      "key": "edit.error",
+      "page": "profile",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:2099",
+      "key": "edit.error",
+      "page": "profile",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:2135",
+      "key": "edit.error",
+      "page": "profile",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:2171",
+      "key": "edit.error",
+      "page": "profile",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:2207",
+      "key": "edit.error",
+      "page": "profile",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:2247",
+      "key": "edit.conflict",
+      "page": "profile",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:2285",
+      "key": "edit.conflict",
+      "page": "profile",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:2323",
+      "key": "edit.conflict",
+      "page": "profile",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:2361",
+      "key": "edit.conflict",
+      "page": "profile",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:2401",
+      "key": "edit.conflict",
+      "page": "profile",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:2439",
+      "key": "edit.conflict",
+      "page": "profile",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:2477",
+      "key": "edit.conflict",
+      "page": "profile",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:2515",
+      "key": "edit.conflict",
+      "page": "profile",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:2557",
+      "key": "edit.saved",
+      "page": "profile",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:2595",
+      "key": "edit.saved",
+      "page": "profile",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:2631",
+      "key": "edit.saved",
+      "page": "profile",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:2667",
+      "key": "edit.saved",
+      "page": "profile",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:2707",
+      "key": "edit.saved",
+      "page": "profile",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:2743",
+      "key": "edit.saved",
+      "page": "profile",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:2779",
+      "key": "edit.saved",
+      "page": "profile",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:2815",
+      "key": "edit.saved",
+      "page": "profile",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:2855",
+      "key": "edit.reloaded",
+      "page": "profile",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:2882",
+      "key": "edit.reloaded",
+      "page": "profile",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:2909",
+      "key": "edit.reloaded",
+      "page": "profile",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:2936",
+      "key": "edit.reloaded",
+      "page": "profile",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:2965",
+      "key": "edit.reloaded",
+      "page": "profile",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:2992",
+      "key": "edit.reloaded",
+      "page": "profile",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:3019",
+      "key": "edit.reloaded",
+      "page": "profile",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:3046",
+      "key": "edit.reloaded",
+      "page": "profile",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:6603",
+      "key": "edit.discard",
+      "page": "profile",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:6620",
+      "key": "edit.discard",
+      "page": "profile",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:6637",
+      "key": "edit.discard",
+      "page": "profile",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:6654",
+      "key": "edit.discard",
+      "page": "profile",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:6673",
+      "key": "edit.discard",
+      "page": "profile",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:6690",
+      "key": "edit.discard",
+      "page": "profile",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:6707",
+      "key": "edit.discard",
+      "page": "profile",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:6724",
+      "key": "edit.discard",
+      "page": "profile",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:6745",
+      "key": "nickname",
+      "page": "profile",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:6764",
+      "key": "nickname",
+      "page": "profile",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:6783",
+      "key": "nickname",
+      "page": "profile",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:6802",
+      "key": "nickname",
+      "page": "profile",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:6823",
+      "key": "nickname",
+      "page": "profile",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:6842",
+      "key": "nickname",
+      "page": "profile",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:6861",
+      "key": "nickname",
+      "page": "profile",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:6880",
+      "key": "nickname",
+      "page": "profile",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:6903",
+      "key": "bio",
+      "page": "profile",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:6922",
+      "key": "bio",
+      "page": "profile",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:6941",
+      "key": "bio",
+      "page": "profile",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:6960",
+      "key": "bio",
+      "page": "profile",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:6981",
+      "key": "bio",
+      "page": "profile",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:7000",
+      "key": "bio",
+      "page": "profile",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:7019",
+      "key": "bio",
+      "page": "profile",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:7038",
+      "key": "bio",
+      "page": "profile",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:7061",
+      "key": "avatar",
+      "page": "profile",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:7093",
+      "key": "avatar",
+      "page": "profile",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:7125",
+      "key": "avatar",
+      "page": "profile",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:7157",
+      "key": "avatar",
+      "page": "profile",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:7195",
+      "key": "avatar",
+      "page": "profile",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:7227",
+      "key": "avatar",
+      "page": "profile",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:7259",
+      "key": "avatar",
+      "page": "profile",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:7291",
+      "key": "avatar",
+      "page": "profile",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:7331",
+      "key": "avatar.preview",
+      "page": "profile",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:7349",
+      "key": "avatar.preview",
+      "page": "profile",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:7367",
+      "key": "avatar.preview",
+      "page": "profile",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:7385",
+      "key": "avatar.preview",
+      "page": "profile",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:7405",
+      "key": "avatar.preview",
+      "page": "profile",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:7423",
+      "key": "avatar.preview",
+      "page": "profile",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:7441",
+      "key": "avatar.preview",
+      "page": "profile",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:7459",
+      "key": "avatar.preview",
+      "page": "profile",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:7481",
+      "key": "avatar.uploading",
+      "page": "profile",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:7504",
+      "key": "avatar.uploading",
+      "page": "profile",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:7527",
+      "key": "avatar.uploading",
+      "page": "profile",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:7550",
+      "key": "avatar.uploading",
+      "page": "profile",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:7575",
+      "key": "avatar.uploading",
+      "page": "profile",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:7598",
+      "key": "avatar.uploading",
+      "page": "profile",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:7621",
+      "key": "avatar.uploading",
+      "page": "profile",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:7644",
+      "key": "avatar.uploading",
+      "page": "profile",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:7671",
+      "key": "avatar.failed",
+      "page": "profile",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:7694",
+      "key": "avatar.failed",
+      "page": "profile",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:7717",
+      "key": "avatar.failed",
+      "page": "profile",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:7740",
+      "key": "avatar.failed",
+      "page": "profile",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:7765",
+      "key": "avatar.failed",
+      "page": "profile",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:7788",
+      "key": "avatar.failed",
+      "page": "profile",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:7811",
+      "key": "avatar.failed",
+      "page": "profile",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:7834",
+      "key": "avatar.failed",
+      "page": "profile",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:7861",
+      "key": "avatar.format",
+      "page": "profile",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:7884",
+      "key": "avatar.format",
+      "page": "profile",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:7907",
+      "key": "avatar.format",
+      "page": "profile",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:7930",
+      "key": "avatar.format",
+      "page": "profile",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:7955",
+      "key": "avatar.format",
+      "page": "profile",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:7978",
+      "key": "avatar.format",
+      "page": "profile",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:8001",
+      "key": "avatar.format",
+      "page": "profile",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:8024",
+      "key": "avatar.format",
+      "page": "profile",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:8051",
+      "key": "avatar.permission",
+      "page": "profile",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:8072",
+      "key": "avatar.permission",
+      "page": "profile",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:8093",
+      "key": "avatar.permission",
+      "page": "profile",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:8114",
+      "key": "avatar.permission",
+      "page": "profile",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:8137",
+      "key": "avatar.permission",
+      "page": "profile",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:8158",
+      "key": "avatar.permission",
+      "page": "profile",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:8179",
+      "key": "avatar.permission",
+      "page": "profile",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:8200",
+      "key": "avatar.permission",
+      "page": "profile",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:8225",
+      "key": "avatar.restore",
+      "page": "profile",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:8242",
+      "key": "avatar.restore",
+      "page": "profile",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:8259",
+      "key": "avatar.restore",
+      "page": "profile",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:8276",
+      "key": "avatar.restore",
+      "page": "profile",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:8295",
+      "key": "avatar.restore",
+      "page": "profile",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:8312",
+      "key": "avatar.restore",
+      "page": "profile",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:8329",
+      "key": "avatar.restore",
+      "page": "profile",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "16:8346",
+      "key": "avatar.restore",
+      "page": "profile",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:3",
+      "key": "security.password",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:49",
+      "key": "security.password",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:89",
+      "key": "security.password",
+      "page": "security",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:129",
+      "key": "security.password",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:185",
+      "key": "security.password",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:225",
+      "key": "security.password",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:265",
+      "key": "security.password",
+      "page": "security",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:305",
+      "key": "security.password",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:357",
+      "key": "security.apple",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:397",
+      "key": "security.apple",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:437",
+      "key": "security.apple",
+      "page": "security",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:477",
+      "key": "security.apple",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:527",
+      "key": "security.apple",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:567",
+      "key": "security.apple",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:607",
+      "key": "security.apple",
+      "page": "security",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:647",
+      "key": "security.apple",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:699",
+      "key": "security.both",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:739",
+      "key": "security.both",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:779",
+      "key": "security.both",
+      "page": "security",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:819",
+      "key": "security.both",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:869",
+      "key": "security.both",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:909",
+      "key": "security.both",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:949",
+      "key": "security.both",
+      "page": "security",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:989",
+      "key": "security.both",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:1041",
+      "key": "methods.password",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:1069",
+      "key": "methods.password",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:1097",
+      "key": "methods.password",
+      "page": "security",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:1125",
+      "key": "methods.password",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:1159",
+      "key": "methods.password",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:1187",
+      "key": "methods.password",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:1215",
+      "key": "methods.password",
+      "page": "security",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:1243",
+      "key": "methods.password",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:1279",
+      "key": "methods.apple",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:1304",
+      "key": "methods.apple",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:1329",
+      "key": "methods.apple",
+      "page": "security",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:1354",
+      "key": "methods.apple",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:1385",
+      "key": "methods.apple",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:1410",
+      "key": "methods.apple",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:1435",
+      "key": "methods.apple",
+      "page": "security",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:1460",
+      "key": "methods.apple",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:1493",
+      "key": "methods.both",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:1518",
+      "key": "methods.both",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:1543",
+      "key": "methods.both",
+      "page": "security",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:1568",
+      "key": "methods.both",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:1599",
+      "key": "methods.both",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:1624",
+      "key": "methods.both",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:1649",
+      "key": "methods.both",
+      "page": "security",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:1674",
+      "key": "methods.both",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:1707",
+      "key": "methods.binding",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:1732",
+      "key": "methods.binding",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:1757",
+      "key": "methods.binding",
+      "page": "security",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:1782",
+      "key": "methods.binding",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:1813",
+      "key": "methods.binding",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:1838",
+      "key": "methods.binding",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:1863",
+      "key": "methods.binding",
+      "page": "security",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:1888",
+      "key": "methods.binding",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:1921",
+      "key": "methods.revoked",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:1949",
+      "key": "methods.revoked",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:1977",
+      "key": "methods.revoked",
+      "page": "security",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:2005",
+      "key": "methods.revoked",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:2039",
+      "key": "methods.revoked",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:2067",
+      "key": "methods.revoked",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:2095",
+      "key": "methods.revoked",
+      "page": "security",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:2123",
+      "key": "methods.revoked",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:9179",
+      "key": "methods.conflict",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:9212",
+      "key": "methods.conflict",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:9245",
+      "key": "methods.conflict",
+      "page": "security",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:9278",
+      "key": "methods.conflict",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:9317",
+      "key": "methods.conflict",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:9350",
+      "key": "methods.conflict",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:9383",
+      "key": "methods.conflict",
+      "page": "security",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:9416",
+      "key": "methods.conflict",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:9457",
+      "key": "reauth.password",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:9483",
+      "key": "reauth.password",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:9509",
+      "key": "reauth.password",
+      "page": "security",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:9535",
+      "key": "reauth.password",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:9563",
+      "key": "reauth.password",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:9589",
+      "key": "reauth.password",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:9615",
+      "key": "reauth.password",
+      "page": "security",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:9641",
+      "key": "reauth.password",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:9671",
+      "key": "reauth.apple",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:9688",
+      "key": "reauth.apple",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:9705",
+      "key": "reauth.apple",
+      "page": "security",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:9722",
+      "key": "reauth.apple",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:9741",
+      "key": "reauth.apple",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:9758",
+      "key": "reauth.apple",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:9775",
+      "key": "reauth.apple",
+      "page": "security",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:9792",
+      "key": "reauth.apple",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:9813",
+      "key": "reauth.bind",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:9839",
+      "key": "reauth.bind",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:9865",
+      "key": "reauth.bind",
+      "page": "security",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:9891",
+      "key": "reauth.bind",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:9919",
+      "key": "reauth.bind",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:9945",
+      "key": "reauth.bind",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:9971",
+      "key": "reauth.bind",
+      "page": "security",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:9997",
+      "key": "reauth.bind",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:10027",
+      "key": "reauth.delete",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:10053",
+      "key": "reauth.delete",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:10079",
+      "key": "reauth.delete",
+      "page": "security",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:10105",
+      "key": "reauth.delete",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:10133",
+      "key": "reauth.delete",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:10159",
+      "key": "reauth.delete",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:10185",
+      "key": "reauth.delete",
+      "page": "security",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:10211",
+      "key": "reauth.delete",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:10241",
+      "key": "reauth.all",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:10267",
+      "key": "reauth.all",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:10293",
+      "key": "reauth.all",
+      "page": "security",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:10319",
+      "key": "reauth.all",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:10347",
+      "key": "reauth.all",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:10373",
+      "key": "reauth.all",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:10399",
+      "key": "reauth.all",
+      "page": "security",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:10425",
+      "key": "reauth.all",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:10455",
+      "key": "reauth.expired",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:10486",
+      "key": "reauth.expired",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:10517",
+      "key": "reauth.expired",
+      "page": "security",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:10548",
+      "key": "reauth.expired",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:10581",
+      "key": "reauth.expired",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:10612",
+      "key": "reauth.expired",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:10643",
+      "key": "reauth.expired",
+      "page": "security",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:10674",
+      "key": "reauth.expired",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:10709",
+      "key": "setPassword",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:10747",
+      "key": "setPassword",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:10785",
+      "key": "setPassword",
+      "page": "security",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:10823",
+      "key": "setPassword",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:10863",
+      "key": "setPassword",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:10901",
+      "key": "setPassword",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:10939",
+      "key": "setPassword",
+      "page": "security",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "17:10977",
+      "key": "setPassword",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:2421",
+      "key": "changePassword",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:2454",
+      "key": "changePassword",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:2487",
+      "key": "changePassword",
+      "page": "security",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:2520",
+      "key": "changePassword",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:2555",
+      "key": "changePassword",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:2588",
+      "key": "changePassword",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:2621",
+      "key": "changePassword",
+      "page": "security",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:2654",
+      "key": "changePassword",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:2691",
+      "key": "password.error",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:2720",
+      "key": "password.error",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:2749",
+      "key": "password.error",
+      "page": "security",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:2778",
+      "key": "password.error",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:2809",
+      "key": "password.error",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:2838",
+      "key": "password.error",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:2867",
+      "key": "password.error",
+      "page": "security",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:2896",
+      "key": "password.error",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:2929",
+      "key": "password.loading",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:2962",
+      "key": "password.loading",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:2995",
+      "key": "password.loading",
+      "page": "security",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:3028",
+      "key": "password.loading",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:3063",
+      "key": "password.loading",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:3096",
+      "key": "password.loading",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:3129",
+      "key": "password.loading",
+      "page": "security",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:3162",
+      "key": "password.loading",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:3199",
+      "key": "password.changed",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:3224",
+      "key": "password.changed",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:3247",
+      "key": "password.changed",
+      "page": "security",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:3270",
+      "key": "password.changed",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:3297",
+      "key": "password.changed",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:3320",
+      "key": "password.changed",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:3343",
+      "key": "password.changed",
+      "page": "security",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:3366",
+      "key": "password.changed",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:10403",
+      "key": "password.set",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:10426",
+      "key": "password.set",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:10449",
+      "key": "password.set",
+      "page": "security",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:10472",
+      "key": "password.set",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:10497",
+      "key": "password.set",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:10520",
+      "key": "password.set",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:10543",
+      "key": "password.set",
+      "page": "security",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:10566",
+      "key": "password.set",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:10593",
+      "key": "unbind",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:10610",
+      "key": "unbind",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:10627",
+      "key": "unbind",
+      "page": "security",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:10644",
+      "key": "unbind",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:10663",
+      "key": "unbind",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:10680",
+      "key": "unbind",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:10697",
+      "key": "unbind",
+      "page": "security",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:10714",
+      "key": "unbind",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:10735",
+      "key": "reauth.unbind",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:10759",
+      "key": "reauth.unbind",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:10783",
+      "key": "reauth.unbind",
+      "page": "security",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:10807",
+      "key": "reauth.unbind",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:10833",
+      "key": "reauth.unbind",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:10857",
+      "key": "reauth.unbind",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:10881",
+      "key": "reauth.unbind",
+      "page": "security",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:10905",
+      "key": "reauth.unbind",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:10933",
+      "key": "unbind.processing",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:10952",
+      "key": "unbind.processing",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:10971",
+      "key": "unbind.processing",
+      "page": "security",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:10990",
+      "key": "unbind.processing",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:11011",
+      "key": "unbind.processing",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:11030",
+      "key": "unbind.processing",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:11049",
+      "key": "unbind.processing",
+      "page": "security",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:11068",
+      "key": "unbind.processing",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:11091",
+      "key": "logout",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:11108",
+      "key": "logout",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:11125",
+      "key": "logout",
+      "page": "security",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:11142",
+      "key": "logout",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:11161",
+      "key": "logout",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:11178",
+      "key": "logout",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:11195",
+      "key": "logout",
+      "page": "security",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:11212",
+      "key": "logout",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:11233",
+      "key": "logout.offline",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:11250",
+      "key": "logout.offline",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:11267",
+      "key": "logout.offline",
+      "page": "security",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:11284",
+      "key": "logout.offline",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:11303",
+      "key": "logout.offline",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:11320",
+      "key": "logout.offline",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:11337",
+      "key": "logout.offline",
+      "page": "security",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:11354",
+      "key": "logout.offline",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:11375",
+      "key": "logoutAll",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:11394",
+      "key": "logoutAll",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:11413",
+      "key": "logoutAll",
+      "page": "security",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:11432",
+      "key": "logoutAll",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:11453",
+      "key": "logoutAll",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:11472",
+      "key": "logoutAll",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:11491",
+      "key": "logoutAll",
+      "page": "security",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:11510",
+      "key": "logoutAll",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:11533",
+      "key": "logoutAll.confirm",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:11550",
+      "key": "logoutAll.confirm",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:11567",
+      "key": "logoutAll.confirm",
+      "page": "security",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:11584",
+      "key": "logoutAll.confirm",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:11603",
+      "key": "logoutAll.confirm",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:11620",
+      "key": "logoutAll.confirm",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:11637",
+      "key": "logoutAll.confirm",
+      "page": "security",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:11654",
+      "key": "logoutAll.confirm",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:11675",
+      "key": "logoutAll.error",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:11697",
+      "key": "logoutAll.error",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:11719",
+      "key": "logoutAll.error",
+      "page": "security",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:11741",
+      "key": "logoutAll.error",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:11765",
+      "key": "logoutAll.error",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:11787",
+      "key": "logoutAll.error",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:11809",
+      "key": "logoutAll.error",
+      "page": "security",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:11831",
+      "key": "logoutAll.error",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:11857",
+      "key": "delete",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:11876",
+      "key": "delete",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:11895",
+      "key": "delete",
+      "page": "security",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:11914",
+      "key": "delete",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:11935",
+      "key": "delete",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:11954",
+      "key": "delete",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:11973",
+      "key": "delete",
+      "page": "security",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:11992",
+      "key": "delete",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:12015",
+      "key": "delete.confirm",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:12032",
+      "key": "delete.confirm",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:12049",
+      "key": "delete.confirm",
+      "page": "security",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:12066",
+      "key": "delete.confirm",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:12085",
+      "key": "delete.confirm",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:12102",
+      "key": "delete.confirm",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:12119",
+      "key": "delete.confirm",
+      "page": "security",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:12136",
+      "key": "delete.confirm",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:12157",
+      "key": "delete.loading",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:12179",
+      "key": "delete.loading",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:12201",
+      "key": "delete.loading",
+      "page": "security",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:12223",
+      "key": "delete.loading",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:12247",
+      "key": "delete.loading",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:12269",
+      "key": "delete.loading",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:12291",
+      "key": "delete.loading",
+      "page": "security",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "18:12313",
+      "key": "delete.loading",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:4021",
+      "key": "delete.offline",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:4043",
+      "key": "delete.offline",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:4065",
+      "key": "delete.offline",
+      "page": "security",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:4087",
+      "key": "delete.offline",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:4111",
+      "key": "delete.offline",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:4133",
+      "key": "delete.offline",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:4155",
+      "key": "delete.offline",
+      "page": "security",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:4177",
+      "key": "delete.offline",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:4203",
+      "key": "delete.error",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:4225",
+      "key": "delete.error",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:4247",
+      "key": "delete.error",
+      "page": "security",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:4269",
+      "key": "delete.error",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:4293",
+      "key": "delete.error",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:4315",
+      "key": "delete.error",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:4337",
+      "key": "delete.error",
+      "page": "security",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:4359",
+      "key": "delete.error",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:4385",
+      "key": "delete.accepted",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:4404",
+      "key": "delete.accepted",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:4423",
+      "key": "delete.accepted",
+      "page": "security",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:4442",
+      "key": "delete.accepted",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:4463",
+      "key": "delete.accepted",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:4482",
+      "key": "delete.accepted",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:4501",
+      "key": "delete.accepted",
+      "page": "security",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:4520",
+      "key": "delete.accepted",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:4543",
+      "key": "session",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:4562",
+      "key": "session",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:4581",
+      "key": "session",
+      "page": "security",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:4600",
+      "key": "session",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:4621",
+      "key": "session",
+      "page": "security",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:4640",
+      "key": "session",
+      "page": "security",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:4659",
+      "key": "session",
+      "page": "security",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:4678",
+      "key": "session",
+      "page": "security",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:11707",
+      "key": "settings",
+      "page": "settings",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:11732",
+      "key": "settings",
+      "page": "settings",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:11757",
+      "key": "settings",
+      "page": "settings",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:11782",
+      "key": "settings",
+      "page": "settings",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:11813",
+      "key": "settings",
+      "page": "settings",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:11838",
+      "key": "settings",
+      "page": "settings",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:11863",
+      "key": "settings",
+      "page": "settings",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:11888",
+      "key": "settings",
+      "page": "settings",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:11921",
+      "key": "appearance.system",
+      "page": "settings",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:11954",
+      "key": "appearance.system",
+      "page": "settings",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:11987",
+      "key": "appearance.system",
+      "page": "settings",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:12020",
+      "key": "appearance.system",
+      "page": "settings",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:12059",
+      "key": "appearance.system",
+      "page": "settings",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:12092",
+      "key": "appearance.system",
+      "page": "settings",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:12125",
+      "key": "appearance.system",
+      "page": "settings",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:12158",
+      "key": "appearance.system",
+      "page": "settings",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:12199",
+      "key": "appearance.light",
+      "page": "settings",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:12232",
+      "key": "appearance.light",
+      "page": "settings",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:12265",
+      "key": "appearance.light",
+      "page": "settings",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:12298",
+      "key": "appearance.light",
+      "page": "settings",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:12339",
+      "key": "appearance.dark",
+      "page": "settings",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:12372",
+      "key": "appearance.dark",
+      "page": "settings",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:12405",
+      "key": "appearance.dark",
+      "page": "settings",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:12438",
+      "key": "appearance.dark",
+      "page": "settings",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:12479",
+      "key": "language.system",
+      "page": "settings",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:12526",
+      "key": "language.system",
+      "page": "settings",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:12573",
+      "key": "language.system",
+      "page": "settings",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:12620",
+      "key": "language.system",
+      "page": "settings",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:12677",
+      "key": "language.system",
+      "page": "settings",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:12724",
+      "key": "language.system",
+      "page": "settings",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:12771",
+      "key": "language.system",
+      "page": "settings",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:12818",
+      "key": "language.system",
+      "page": "settings",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:12877",
+      "key": "language.zh-Hans",
+      "page": "settings",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:12924",
+      "key": "language.zh-Hans",
+      "page": "settings",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:12973",
+      "key": "language.zh-Hant",
+      "page": "settings",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:13020",
+      "key": "language.zh-Hant",
+      "page": "settings",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:13069",
+      "key": "language.en",
+      "page": "settings",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:13116",
+      "key": "language.en",
+      "page": "settings",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:13165",
+      "key": "language.ar",
+      "page": "settings",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:13222",
+      "key": "language.ar",
+      "page": "settings",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:13281",
+      "key": "demo",
+      "page": "settings",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:13300",
+      "key": "demo",
+      "page": "settings",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:13319",
+      "key": "demo",
+      "page": "settings",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:13338",
+      "key": "demo",
+      "page": "settings",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:13359",
+      "key": "demo",
+      "page": "settings",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:13378",
+      "key": "demo",
+      "page": "settings",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:13397",
+      "key": "demo",
+      "page": "settings",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "19:13416",
+      "key": "demo",
+      "page": "settings",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "34:5225",
+      "key": "welcome.appearance",
+      "page": "auth",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "34:5283",
+      "key": "welcome.appearance",
+      "page": "auth",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "34:5341",
+      "key": "welcome.appearance",
+      "page": "auth",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "34:5399",
+      "key": "welcome.appearance",
+      "page": "auth",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "34:5457",
+      "key": "welcome.appearance",
+      "page": "auth",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "34:5515",
+      "key": "welcome.appearance",
+      "page": "auth",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "34:5573",
+      "key": "welcome.appearance",
+      "page": "auth",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "34:5631",
+      "key": "welcome.appearance",
+      "page": "auth",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "34:5689",
+      "key": "welcome.language",
+      "page": "auth",
+      "locale": "zh-Hans",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "34:5769",
+      "key": "welcome.language",
+      "page": "auth",
+      "locale": "zh-Hant",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "34:5849",
+      "key": "welcome.language",
+      "page": "auth",
+      "locale": "en",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "34:5929",
+      "key": "welcome.language",
+      "page": "auth",
+      "locale": "ar",
+      "theme": "Light",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "34:6009",
+      "key": "welcome.language",
+      "page": "auth",
+      "locale": "zh-Hans",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "34:6089",
+      "key": "welcome.language",
+      "page": "auth",
+      "locale": "zh-Hant",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "34:6169",
+      "key": "welcome.language",
+      "page": "auth",
+      "locale": "en",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "34:6249",
+      "key": "welcome.language",
+      "page": "auth",
+      "locale": "ar",
+      "theme": "Dark",
+      "width": 390,
+      "height": 844
+    }
+  ],
+  "prototypeScenes": [
+    {
+      "id": "24:2",
+      "key": "welcome"
+    },
+    {
+      "id": "24:28",
+      "key": "login.empty"
+    },
+    {
+      "id": "24:61",
+      "key": "login.filled"
+    },
+    {
+      "id": "24:90",
+      "key": "login.focused"
+    },
+    {
+      "id": "24:119",
+      "key": "login.error"
+    },
+    {
+      "id": "24:155",
+      "key": "login.loading"
+    },
+    {
+      "id": "24:184",
+      "key": "login.offline"
+    },
+    {
+      "id": "24:218",
+      "key": "login.timeout"
+    },
+    {
+      "id": "24:252",
+      "key": "login.passwordVisible"
+    },
+    {
+      "id": "24:284",
+      "key": "register.empty"
+    },
+    {
+      "id": "24:327",
+      "key": "register.mismatch"
+    },
+    {
+      "id": "24:366",
+      "key": "register.taken"
+    },
+    {
+      "id": "24:409",
+      "key": "register.loading"
+    },
+    {
+      "id": "24:452",
+      "key": "register.offline"
+    },
+    {
+      "id": "24:500",
+      "key": "apple.handoff"
+    },
+    {
+      "id": "24:521",
+      "key": "apple.cancelled"
+    },
+    {
+      "id": "24:552",
+      "key": "apple.failed"
+    },
+    {
+      "id": "24:583",
+      "key": "apple.conflict"
+    },
+    {
+      "id": "24:614",
+      "key": "complete"
+    },
+    {
+      "id": "24:649",
+      "key": "complete.failed"
+    },
+    {
+      "id": "24:687",
+      "key": "complete.skipped"
+    },
+    {
+      "id": "24:725",
+      "key": "me"
+    },
+    {
+      "id": "24:778",
+      "key": "me.long"
+    },
+    {
+      "id": "24:825",
+      "key": "me.incomplete"
+    },
+    {
+      "id": "24:877",
+      "key": "me.offline"
+    },
+    {
+      "id": "24:929",
+      "key": "me.loading"
+    },
+    {
+      "id": "24:981",
+      "key": "storage"
+    },
+    {
+      "id": "24:1002",
+      "key": "recovery"
+    },
+    {
+      "id": "24:1021",
+      "key": "edit"
+    },
+    {
+      "id": "24:1052",
+      "key": "edit.dirty"
+    },
+    {
+      "id": "24:1083",
+      "key": "edit.saving"
+    },
+    {
+      "id": "24:1121",
+      "key": "edit.error"
+    },
+    {
+      "id": "24:1157",
+      "key": "edit.conflict"
+    },
+    {
+      "id": "24:1195",
+      "key": "edit.saved"
+    },
+    {
+      "id": "24:1233",
+      "key": "edit.reloaded"
+    },
+    {
+      "id": "24:1260",
+      "key": "edit.discard"
+    },
+    {
+      "id": "25:793",
+      "key": "nickname"
+    },
+    {
+      "id": "25:812",
+      "key": "bio"
+    },
+    {
+      "id": "25:831",
+      "key": "avatar"
+    },
+    {
+      "id": "25:863",
+      "key": "avatar.preview"
+    },
+    {
+      "id": "25:881",
+      "key": "avatar.uploading"
+    },
+    {
+      "id": "25:904",
+      "key": "avatar.failed"
+    },
+    {
+      "id": "25:927",
+      "key": "avatar.format"
+    },
+    {
+      "id": "25:950",
+      "key": "avatar.permission"
+    },
+    {
+      "id": "25:971",
+      "key": "avatar.restore"
+    },
+    {
+      "id": "25:988",
+      "key": "security.password"
+    },
+    {
+      "id": "25:1030",
+      "key": "security.apple"
+    },
+    {
+      "id": "25:1070",
+      "key": "security.both"
+    },
+    {
+      "id": "25:1110",
+      "key": "methods.password"
+    },
+    {
+      "id": "25:1138",
+      "key": "methods.apple"
+    },
+    {
+      "id": "25:1163",
+      "key": "methods.both"
+    },
+    {
+      "id": "25:1188",
+      "key": "methods.binding"
+    },
+    {
+      "id": "25:1213",
+      "key": "methods.revoked"
+    },
+    {
+      "id": "25:1241",
+      "key": "methods.conflict"
+    },
+    {
+      "id": "25:1274",
+      "key": "reauth.password"
+    },
+    {
+      "id": "25:1300",
+      "key": "reauth.apple"
+    },
+    {
+      "id": "25:1317",
+      "key": "reauth.bind"
+    },
+    {
+      "id": "25:1343",
+      "key": "reauth.delete"
+    },
+    {
+      "id": "25:1369",
+      "key": "reauth.all"
+    },
+    {
+      "id": "25:1395",
+      "key": "reauth.expired"
+    },
+    {
+      "id": "25:1426",
+      "key": "setPassword"
+    },
+    {
+      "id": "25:1464",
+      "key": "changePassword"
+    },
+    {
+      "id": "25:1497",
+      "key": "password.error"
+    },
+    {
+      "id": "25:1526",
+      "key": "password.loading"
+    },
+    {
+      "id": "25:1559",
+      "key": "password.changed"
+    },
+    {
+      "id": "25:1582",
+      "key": "password.set"
+    },
+    {
+      "id": "25:1605",
+      "key": "unbind"
+    },
+    {
+      "id": "25:1622",
+      "key": "reauth.unbind"
+    },
+    {
+      "id": "25:1646",
+      "key": "unbind.processing"
+    },
+    {
+      "id": "25:1665",
+      "key": "logout"
+    },
+    {
+      "id": "25:1682",
+      "key": "logout.offline"
+    },
+    {
+      "id": "25:1699",
+      "key": "logoutAll"
+    },
+    {
+      "id": "25:1718",
+      "key": "logoutAll.confirm"
+    },
+    {
+      "id": "25:1735",
+      "key": "logoutAll.error"
+    },
+    {
+      "id": "25:1757",
+      "key": "delete"
+    },
+    {
+      "id": "25:1776",
+      "key": "delete.confirm"
+    },
+    {
+      "id": "25:1793",
+      "key": "delete.loading"
+    },
+    {
+      "id": "25:1815",
+      "key": "delete.offline"
+    },
+    {
+      "id": "25:1837",
+      "key": "delete.error"
+    },
+    {
+      "id": "25:1859",
+      "key": "delete.accepted"
+    },
+    {
+      "id": "25:1878",
+      "key": "session"
+    },
+    {
+      "id": "25:1897",
+      "key": "settings"
+    },
+    {
+      "id": "25:1922",
+      "key": "appearance.system"
+    },
+    {
+      "id": "25:1957",
+      "key": "appearance.light"
+    },
+    {
+      "id": "25:1990",
+      "key": "appearance.dark"
+    },
+    {
+      "id": "25:2023",
+      "key": "language.system"
+    },
+    {
+      "id": "25:2070",
+      "key": "language.zh-Hans"
+    },
+    {
+      "id": "25:2117",
+      "key": "language.zh-Hant"
+    },
+    {
+      "id": "25:2164",
+      "key": "language.en"
+    },
+    {
+      "id": "25:2211",
+      "key": "language.ar"
+    },
+    {
+      "id": "25:2264",
+      "key": "demo"
+    },
+    {
+      "id": "36:1717",
+      "key": "welcome.appearance"
+    },
+    {
+      "id": "36:1739",
+      "key": "welcome.language"
+    },
+    {
+      "id": "36:1763",
+      "key": "welcome.result.1.Light"
+    },
+    {
+      "id": "36:1781",
+      "key": "welcome.result.2.Light"
+    },
+    {
+      "id": "36:1799",
+      "key": "welcome.result.3.Light"
+    },
+    {
+      "id": "36:1817",
+      "key": "welcome.result.0.Dark"
+    }
+  ],
+  "flowNotes": [
+    {
+      "id": "welcome",
+      "page": "auth",
+      "title": "欢迎来到\nAzureFish",
+      "entry": "logout、logout.offline、logoutAll.confirm、delete.accepted",
+      "actions": "进入同组后续状态",
+      "back": "终态：按页面主操作继续",
+      "recovery": "失败保留当前输入与导航；重试当前操作。系统取消返回发起页面。"
+    },
+    {
+      "id": "login.empty",
+      "page": "auth",
+      "title": "账号登录",
+      "entry": "password.changed、session",
+      "actions": "登录 → login.filled",
+      "back": "welcome",
+      "recovery": "失败保留当前输入与导航；重试当前操作。系统取消返回发起页面。"
+    },
+    {
+      "id": "login.filled",
+      "page": "auth",
+      "title": "账号登录",
+      "entry": "login.empty",
+      "actions": "登录 → me",
+      "back": "welcome",
+      "recovery": "失败保留当前输入与导航；重试当前操作。系统取消返回发起页面。"
+    },
+    {
+      "id": "login.focused",
+      "page": "auth",
+      "title": "账号登录",
+      "entry": "当前流程响应／状态注入",
+      "actions": "登录 → me",
+      "back": "welcome",
+      "recovery": "失败保留当前输入与导航；重试当前操作。系统取消返回发起页面。"
+    },
+    {
+      "id": "login.error",
+      "page": "auth",
+      "title": "账号登录",
+      "entry": "当前流程响应／状态注入",
+      "actions": "登录 → me",
+      "back": "welcome",
+      "recovery": "账号或密码不正确，请重试。"
+    },
+    {
+      "id": "login.loading",
+      "page": "auth",
+      "title": "账号登录",
+      "entry": "当前流程响应／状态注入",
+      "actions": "正在处理… → me",
+      "back": "welcome",
+      "recovery": "失败保留当前输入与导航；重试当前操作。系统取消返回发起页面。"
+    },
+    {
+      "id": "login.offline",
+      "page": "auth",
+      "title": "账号登录",
+      "entry": "当前流程响应／状态注入",
+      "actions": "登录 → me",
+      "back": "welcome",
+      "recovery": "无法连接网络。请检查连接后重试，已填写内容会保留。"
+    },
+    {
+      "id": "login.timeout",
+      "page": "auth",
+      "title": "账号登录",
+      "entry": "当前流程响应／状态注入",
+      "actions": "登录 → me",
+      "back": "welcome",
+      "recovery": "请求超时，请重试。已填写内容会保留。"
+    },
+    {
+      "id": "login.passwordVisible",
+      "page": "auth",
+      "title": "账号登录",
+      "entry": "当前流程响应／状态注入",
+      "actions": "登录 → me",
+      "back": "welcome",
+      "recovery": "显示密码"
+    },
+    {
+      "id": "register.empty",
+      "page": "auth",
+      "title": "注册账号",
+      "entry": "当前流程响应／状态注入",
+      "actions": "注册账号 → register.mismatch",
+      "back": "welcome",
+      "recovery": "失败保留当前输入与导航；重试当前操作。系统取消返回发起页面。"
+    },
+    {
+      "id": "register.mismatch",
+      "page": "auth",
+      "title": "注册账号",
+      "entry": "register.empty",
+      "actions": "注册账号 → me",
+      "back": "welcome",
+      "recovery": "失败保留当前输入与导航；重试当前操作。系统取消返回发起页面。"
+    },
+    {
+      "id": "register.taken",
+      "page": "auth",
+      "title": "注册账号",
+      "entry": "当前流程响应／状态注入",
+      "actions": "注册账号 → me",
+      "back": "welcome",
+      "recovery": "失败保留当前输入与导航；重试当前操作。系统取消返回发起页面。"
+    },
+    {
+      "id": "register.loading",
+      "page": "auth",
+      "title": "注册账号",
+      "entry": "当前流程响应／状态注入",
+      "actions": "正在处理… → me",
+      "back": "welcome",
+      "recovery": "失败保留当前输入与导航；重试当前操作。系统取消返回发起页面。"
+    },
+    {
+      "id": "register.offline",
+      "page": "auth",
+      "title": "注册账号",
+      "entry": "当前流程响应／状态注入",
+      "actions": "注册账号 → me",
+      "back": "welcome",
+      "recovery": "无法连接网络。请检查连接后重试，已填写内容会保留。"
+    },
+    {
+      "id": "apple.handoff",
+      "page": "auth",
+      "title": "继续使用 Apple",
+      "entry": "methods.revoked",
+      "actions": "打开 Apple 授权 → complete；取消 → apple.cancelled",
+      "back": "welcome",
+      "recovery": "系统接管：不绘制授权弹窗；原型按钮只跳转演示结果。Apple 能力尚未接入。"
+    },
+    {
+      "id": "apple.cancelled",
+      "page": "auth",
+      "title": "欢迎来到\nAzureFish",
+      "entry": "apple.handoff",
+      "actions": "进入同组后续状态",
+      "back": "终态：按页面主操作继续",
+      "recovery": "已取消授权，你可以选择其他登录方式。"
+    },
+    {
+      "id": "apple.failed",
+      "page": "auth",
+      "title": "欢迎来到\nAzureFish",
+      "entry": "当前流程响应／状态注入",
+      "actions": "进入同组后续状态",
+      "back": "终态：按页面主操作继续",
+      "recovery": "Apple 登录暂时无法完成，请重试。"
+    },
+    {
+      "id": "apple.conflict",
+      "page": "auth",
+      "title": "欢迎来到\nAzureFish",
+      "entry": "当前流程响应／状态注入",
+      "actions": "进入同组后续状态",
+      "back": "终态：按页面主操作继续",
+      "recovery": "此 Apple 登录方式已关联其他账号，无法直接合并。"
+    },
+    {
+      "id": "complete",
+      "page": "auth",
+      "title": "完善个人资料",
+      "entry": "apple.handoff",
+      "actions": "完成 → me；稍后 → me.incomplete",
+      "back": "welcome",
+      "recovery": "失败保留当前输入与导航；重试当前操作。系统取消返回发起页面。"
+    },
+    {
+      "id": "complete.failed",
+      "page": "auth",
+      "title": "完善个人资料",
+      "entry": "当前流程响应／状态注入",
+      "actions": "完成 → me；稍后 → me.incomplete",
+      "back": "welcome",
+      "recovery": "保存失败。修改内容已保留，请重试。"
+    },
+    {
+      "id": "complete.skipped",
+      "page": "auth",
+      "title": "完善个人资料",
+      "entry": "当前流程响应／状态注入",
+      "actions": "完成 → me；稍后 → me.incomplete",
+      "back": "welcome",
+      "recovery": "个人资料尚未完善，随时可以继续。"
+    },
+    {
+      "id": "me",
+      "page": "profile",
+      "title": "我",
+      "entry": "login.filled、login.focused、login.error、login.loading",
+      "actions": "退出登录 → logout；编辑资料 → edit；账号与安全 → security.password；应用设置 → settings",
+      "back": "终态：按页面主操作继续",
+      "recovery": "失败保留当前输入与导航；重试当前操作。系统取消返回发起页面。"
+    },
+    {
+      "id": "me.long",
+      "page": "profile",
+      "title": "我",
+      "entry": "当前流程响应／状态注入",
+      "actions": "退出登录 → logout；编辑资料 → edit；账号与安全 → security.password；应用设置 → settings",
+      "back": "终态：按页面主操作继续",
+      "recovery": "失败保留当前输入与导航；重试当前操作。系统取消返回发起页面。"
+    },
+    {
+      "id": "me.incomplete",
+      "page": "profile",
+      "title": "我",
+      "entry": "complete、complete.failed、complete.skipped",
+      "actions": "退出登录 → logout；编辑资料 → edit；账号与安全 → security.password；应用设置 → settings",
+      "back": "终态：按页面主操作继续",
+      "recovery": "个人资料尚未完善，随时可以继续。"
+    },
+    {
+      "id": "me.offline",
+      "page": "profile",
+      "title": "我",
+      "entry": "logout.offline",
+      "actions": "退出登录 → logout；编辑资料 → edit；账号与安全 → security.password；应用设置 → settings",
+      "back": "终态：按页面主操作继续",
+      "recovery": "当前为离线资料，暂时无法保存修改。外观和语言仍可设置。"
+    },
+    {
+      "id": "me.loading",
+      "page": "profile",
+      "title": "我",
+      "entry": "当前流程响应／状态注入",
+      "actions": "退出登录 → logout；编辑资料 → edit；账号与安全 → security.password；应用设置 → settings",
+      "back": "终态：按页面主操作继续",
+      "recovery": "正在加载…"
+    },
+    {
+      "id": "storage",
+      "page": "profile",
+      "title": "本机资料暂不可用",
+      "entry": "recovery",
+      "actions": "重试 → me；恢复说明 → recovery",
+      "back": "me",
+      "recovery": "失败保留当前输入与导航；重试当前操作。系统取消返回发起页面。"
+    },
+    {
+      "id": "recovery",
+      "page": "profile",
+      "title": "恢复说明",
+      "entry": "storage",
+      "actions": "重试 → storage",
+      "back": "storage",
+      "recovery": "失败保留当前输入与导航；重试当前操作。系统取消返回发起页面。"
+    },
+    {
+      "id": "edit",
+      "page": "profile",
+      "title": "编辑资料",
+      "entry": "me、me.long、me.incomplete、me.offline",
+      "actions": "保存 → edit.saved",
+      "back": "me",
+      "recovery": "失败保留当前输入与导航；重试当前操作。系统取消返回发起页面。"
+    },
+    {
+      "id": "edit.dirty",
+      "page": "profile",
+      "title": "编辑资料",
+      "entry": "edit.discard",
+      "actions": "保存 → edit.saved",
+      "back": "edit.discard",
+      "recovery": "失败保留当前输入与导航；重试当前操作。系统取消返回发起页面。"
+    },
+    {
+      "id": "edit.saving",
+      "page": "profile",
+      "title": "编辑资料",
+      "entry": "当前流程响应／状态注入",
+      "actions": "正在保存… → edit.saved",
+      "back": "me",
+      "recovery": "正在保存…"
+    },
+    {
+      "id": "edit.error",
+      "page": "profile",
+      "title": "编辑资料",
+      "entry": "当前流程响应／状态注入",
+      "actions": "保存 → edit.saved",
+      "back": "me",
+      "recovery": "保存失败。修改内容已保留，请重试。"
+    },
+    {
+      "id": "edit.conflict",
+      "page": "profile",
+      "title": "编辑资料",
+      "entry": "当前流程响应／状态注入",
+      "actions": "载入最新资料 → edit.reloaded；取消 → me",
+      "back": "me",
+      "recovery": "你的编辑仍保留。载入最新资料后，可以重新确认并保存。"
+    },
+    {
+      "id": "edit.saved",
+      "page": "profile",
+      "title": "编辑资料",
+      "entry": "edit、edit.dirty、edit.saving、edit.error",
+      "actions": "保存 → edit.saved",
+      "back": "me",
+      "recovery": "资料已保存"
+    },
+    {
+      "id": "edit.reloaded",
+      "page": "profile",
+      "title": "资料已在其他设备更新",
+      "entry": "edit.conflict",
+      "actions": "重新确认并保存 → edit.saved；取消 → edit",
+      "back": "edit",
+      "recovery": "失败保留当前输入与导航；重试当前操作。系统取消返回发起页面。"
+    },
+    {
+      "id": "edit.discard",
+      "page": "profile",
+      "title": "放弃修改",
+      "entry": "当前流程响应／状态注入",
+      "actions": "放弃修改 → me；继续编辑 → edit.dirty",
+      "back": "edit.dirty",
+      "recovery": "失败保留当前输入与导航；重试当前操作。系统取消返回发起页面。"
+    },
+    {
+      "id": "nickname",
+      "page": "profile",
+      "title": "昵称",
+      "entry": "当前流程响应／状态注入",
+      "actions": "保存 → edit.saved",
+      "back": "edit",
+      "recovery": "失败保留当前输入与导航；重试当前操作。系统取消返回发起页面。"
+    },
+    {
+      "id": "bio",
+      "page": "profile",
+      "title": "简介",
+      "entry": "当前流程响应／状态注入",
+      "actions": "保存 → edit.saved",
+      "back": "edit",
+      "recovery": "失败保留当前输入与导航；重试当前操作。系统取消返回发起页面。"
+    },
+    {
+      "id": "avatar",
+      "page": "profile",
+      "title": "头像",
+      "entry": "avatar.permission、avatar.restore",
+      "actions": "选择照片 → avatar.preview；恢复默认头像 → avatar.restore",
+      "back": "edit",
+      "recovery": "选择照片由系统选择器接管；取消返回原页面。"
+    },
+    {
+      "id": "avatar.preview",
+      "page": "profile",
+      "title": "头像预览",
+      "entry": "avatar",
+      "actions": "使用此头像 → avatar.uploading；取消 → edit",
+      "back": "avatar",
+      "recovery": "失败保留当前输入与导航；重试当前操作。系统取消返回发起页面。"
+    },
+    {
+      "id": "avatar.uploading",
+      "page": "profile",
+      "title": "头像预览",
+      "entry": "avatar.preview",
+      "actions": "正在上传头像… → edit；取消 → edit",
+      "back": "avatar",
+      "recovery": "正在上传头像…"
+    },
+    {
+      "id": "avatar.failed",
+      "page": "profile",
+      "title": "头像预览",
+      "entry": "当前流程响应／状态注入",
+      "actions": "重试 → edit；取消 → edit",
+      "back": "avatar",
+      "recovery": "头像上传失败，原头像未改变。你可以重试。"
+    },
+    {
+      "id": "avatar.format",
+      "page": "profile",
+      "title": "头像预览",
+      "entry": "当前流程响应／状态注入",
+      "actions": "使用此头像 → edit；取消 → edit",
+      "back": "avatar",
+      "recovery": "请选择静态照片。"
+    },
+    {
+      "id": "avatar.permission",
+      "page": "profile",
+      "title": "无法访问照片",
+      "entry": "当前流程响应／状态注入",
+      "actions": "打开系统设置 → avatar；取消 → edit",
+      "back": "avatar",
+      "recovery": "原型不打开系统设置；生产使用平台设置跳转。"
+    },
+    {
+      "id": "avatar.restore",
+      "page": "profile",
+      "title": "恢复默认头像",
+      "entry": "avatar",
+      "actions": "恢复默认头像 → edit；取消 → avatar",
+      "back": "avatar",
+      "recovery": "失败保留当前输入与导航；重试当前操作。系统取消返回发起页面。"
+    },
+    {
+      "id": "security.password",
+      "page": "security",
+      "title": "账号与安全",
+      "entry": "me、me.long、me.incomplete、me.offline",
+      "actions": "登录方式 → methods.password；修改密码 → reauth.password；退出全部设备 → logoutAll；删除账号 → delete",
+      "back": "me",
+      "recovery": "失败保留当前输入与导航；重试当前操作。系统取消返回发起页面。"
+    },
+    {
+      "id": "security.apple",
+      "page": "security",
+      "title": "账号与安全",
+      "entry": "reauth.apple",
+      "actions": "登录方式 → methods.apple；设置账号密码 → reauth.apple；退出全部设备 → logoutAll；删除账号 → delete",
+      "back": "me",
+      "recovery": "失败保留当前输入与导航；重试当前操作。系统取消返回发起页面。"
+    },
+    {
+      "id": "security.both",
+      "page": "security",
+      "title": "账号与安全",
+      "entry": "methods.conflict、password.set",
+      "actions": "登录方式 → methods.both；修改密码 → reauth.password；退出全部设备 → logoutAll；删除账号 → delete",
+      "back": "me",
+      "recovery": "失败保留当前输入与导航；重试当前操作。系统取消返回发起页面。"
+    },
+    {
+      "id": "methods.password",
+      "page": "security",
+      "title": "登录方式",
+      "entry": "security.password、unbind.processing",
+      "actions": "绑定 Apple → reauth.bind；账号密码 → changePassword；Apple 登录 → reauth.bind",
+      "back": "security.password",
+      "recovery": "失败保留当前输入与导航；重试当前操作。系统取消返回发起页面。"
+    },
+    {
+      "id": "methods.apple",
+      "page": "security",
+      "title": "登录方式",
+      "entry": "security.apple",
+      "actions": "账号密码 → reauth.apple；Apple 登录 → unbind",
+      "back": "security.apple",
+      "recovery": "失败保留当前输入与导航；重试当前操作。系统取消返回发起页面。"
+    },
+    {
+      "id": "methods.both",
+      "page": "security",
+      "title": "登录方式",
+      "entry": "security.both、unbind",
+      "actions": "账号密码 → changePassword；Apple 登录 → unbind",
+      "back": "security.both",
+      "recovery": "失败保留当前输入与导航；重试当前操作。系统取消返回发起页面。"
+    },
+    {
+      "id": "methods.binding",
+      "page": "security",
+      "title": "登录方式",
+      "entry": "reauth.bind",
+      "actions": "账号密码 → changePassword；Apple 登录 → unbind",
+      "back": "security.both",
+      "recovery": "失败保留当前输入与导航；重试当前操作。系统取消返回发起页面。"
+    },
+    {
+      "id": "methods.revoked",
+      "page": "security",
+      "title": "登录方式",
+      "entry": "当前流程响应／状态注入",
+      "actions": "重新授权 → apple.handoff；账号密码 → changePassword；Apple 登录 → apple.handoff",
+      "back": "security.both",
+      "recovery": "失败保留当前输入与导航；重试当前操作。系统取消返回发起页面。"
+    },
+    {
+      "id": "methods.conflict",
+      "page": "security",
+      "title": "登录方式",
+      "entry": "当前流程响应／状态注入",
+      "actions": "取消 → security.both；账号密码 → changePassword；Apple 登录 → unbind",
+      "back": "security.both",
+      "recovery": "此 Apple 登录方式已关联其他账号，无法直接合并。"
+    },
+    {
+      "id": "reauth.password",
+      "page": "security",
+      "title": "确认是你本人",
+      "entry": "security.password、security.both",
+      "actions": "确认身份 → changePassword；取消 → security.password",
+      "back": "security.password",
+      "recovery": "失败保留当前输入与导航；重试当前操作。系统取消返回发起页面。"
+    },
+    {
+      "id": "reauth.apple",
+      "page": "security",
+      "title": "确认是你本人",
+      "entry": "security.apple、methods.apple",
+      "actions": "打开 Apple 授权 → setPassword；取消 → security.apple",
+      "back": "security.apple",
+      "recovery": "失败保留当前输入与导航；重试当前操作。系统取消返回发起页面。"
+    },
+    {
+      "id": "reauth.bind",
+      "page": "security",
+      "title": "确认是你本人",
+      "entry": "methods.password",
+      "actions": "确认身份 → methods.binding；取消 → security.password",
+      "back": "security.password",
+      "recovery": "失败保留当前输入与导航；重试当前操作。系统取消返回发起页面。"
+    },
+    {
+      "id": "reauth.delete",
+      "page": "security",
+      "title": "确认是你本人",
+      "entry": "delete、delete.offline、delete.error",
+      "actions": "确认身份 → delete.confirm；取消 → delete",
+      "back": "security.password",
+      "recovery": "失败保留当前输入与导航；重试当前操作。系统取消返回发起页面。"
+    },
+    {
+      "id": "reauth.all",
+      "page": "security",
+      "title": "确认是你本人",
+      "entry": "logoutAll、logoutAll.error",
+      "actions": "确认身份 → logoutAll.confirm；取消 → logoutAll",
+      "back": "security.password",
+      "recovery": "失败保留当前输入与导航；重试当前操作。系统取消返回发起页面。"
+    },
+    {
+      "id": "reauth.expired",
+      "page": "security",
+      "title": "确认是你本人",
+      "entry": "当前流程响应／状态注入",
+      "actions": "确认身份 → changePassword；取消 → security.password",
+      "back": "security.password",
+      "recovery": "身份确认已过期，请重新确认。已填写的新密码会暂时保留。"
+    },
+    {
+      "id": "setPassword",
+      "page": "security",
+      "title": "设置账号密码",
+      "entry": "reauth.apple",
+      "actions": "保存 → password.set",
+      "back": "security.apple",
+      "recovery": "失败保留当前输入与导航；重试当前操作。系统取消返回发起页面。"
+    },
+    {
+      "id": "changePassword",
+      "page": "security",
+      "title": "修改密码",
+      "entry": "methods.password、methods.both、methods.binding、methods.revoked",
+      "actions": "保存 → password.changed",
+      "back": "security.password",
+      "recovery": "失败保留当前输入与导航；重试当前操作。系统取消返回发起页面。"
+    },
+    {
+      "id": "password.error",
+      "page": "security",
+      "title": "修改密码",
+      "entry": "当前流程响应／状态注入",
+      "actions": "保存 → password.changed",
+      "back": "security.password",
+      "recovery": "失败保留当前输入与导航；重试当前操作。系统取消返回发起页面。"
+    },
+    {
+      "id": "password.loading",
+      "page": "security",
+      "title": "修改密码",
+      "entry": "当前流程响应／状态注入",
+      "actions": "正在处理… → password.changed",
+      "back": "security.password",
+      "recovery": "失败保留当前输入与导航；重试当前操作。系统取消返回发起页面。"
+    },
+    {
+      "id": "password.changed",
+      "page": "security",
+      "title": "修改密码",
+      "entry": "changePassword、password.error、password.loading",
+      "actions": "登录 → login.empty",
+      "back": "终态：按页面主操作继续",
+      "recovery": "密码已修改，请重新登录。"
+    },
+    {
+      "id": "password.set",
+      "page": "security",
+      "title": "设置账号密码",
+      "entry": "setPassword",
+      "actions": "完成 → security.both",
+      "back": "终态：按页面主操作继续",
+      "recovery": "账号密码已设置。"
+    },
+    {
+      "id": "unbind",
+      "page": "security",
+      "title": "解除 Apple 关联",
+      "entry": "methods.apple、methods.both、methods.binding、methods.conflict",
+      "actions": "继续 → reauth.unbind；取消 → methods.both",
+      "back": "methods.both",
+      "recovery": "失败保留当前输入与导航；重试当前操作。系统取消返回发起页面。"
+    },
+    {
+      "id": "reauth.unbind",
+      "page": "security",
+      "title": "确认是你本人",
+      "entry": "unbind",
+      "actions": "确认身份 → unbind.processing",
+      "back": "unbind",
+      "recovery": "失败保留当前输入与导航；重试当前操作。系统取消返回发起页面。"
+    },
+    {
+      "id": "unbind.processing",
+      "page": "security",
+      "title": "解除 Apple 关联",
+      "entry": "reauth.unbind",
+      "actions": "正在处理… → methods.password",
+      "back": "methods.both",
+      "recovery": "正在解除关联…"
+    },
+    {
+      "id": "logout",
+      "page": "security",
+      "title": "退出登录",
+      "entry": "me、me.long、me.incomplete、me.offline",
+      "actions": "退出登录 → welcome；取消 → me",
+      "back": "me",
+      "recovery": "失败保留当前输入与导航；重试当前操作。系统取消返回发起页面。"
+    },
+    {
+      "id": "logout.offline",
+      "page": "security",
+      "title": "退出登录",
+      "entry": "当前流程响应／状态注入",
+      "actions": "退出本机 → welcome；取消 → me.offline",
+      "back": "me.offline",
+      "recovery": "失败保留当前输入与导航；重试当前操作。系统取消返回发起页面。"
+    },
+    {
+      "id": "logoutAll",
+      "page": "security",
+      "title": "退出全部设备",
+      "entry": "security.password、security.apple、security.both、reauth.all",
+      "actions": "继续 → reauth.all",
+      "back": "security.password",
+      "recovery": "失败保留当前输入与导航；重试当前操作。系统取消返回发起页面。"
+    },
+    {
+      "id": "logoutAll.confirm",
+      "page": "security",
+      "title": "退出全部设备",
+      "entry": "reauth.all",
+      "actions": "退出全部设备 → welcome；取消 → security.password",
+      "back": "security.password",
+      "recovery": "失败保留当前输入与导航；重试当前操作。系统取消返回发起页面。"
+    },
+    {
+      "id": "logoutAll.error",
+      "page": "security",
+      "title": "退出全部设备",
+      "entry": "当前流程响应／状态注入",
+      "actions": "重试 → reauth.all；取消 → security.password",
+      "back": "security.password",
+      "recovery": "操作未完成，请重试或取消。"
+    },
+    {
+      "id": "delete",
+      "page": "security",
+      "title": "删除账号",
+      "entry": "security.password、security.apple、security.both、reauth.delete",
+      "actions": "继续 → reauth.delete",
+      "back": "security.password",
+      "recovery": "失败保留当前输入与导航；重试当前操作。系统取消返回发起页面。"
+    },
+    {
+      "id": "delete.confirm",
+      "page": "security",
+      "title": "确认删除账号？",
+      "entry": "reauth.delete",
+      "actions": "确认删除 → delete.loading；取消 → security.password",
+      "back": "delete",
+      "recovery": "失败保留当前输入与导航；重试当前操作。系统取消返回发起页面。"
+    },
+    {
+      "id": "delete.loading",
+      "page": "security",
+      "title": "删除账号",
+      "entry": "delete.confirm",
+      "actions": "正在处理… → delete.accepted；取消 → security.password",
+      "back": "security.password",
+      "recovery": "正在处理…"
+    },
+    {
+      "id": "delete.offline",
+      "page": "security",
+      "title": "删除账号",
+      "entry": "当前流程响应／状态注入",
+      "actions": "重试 → reauth.delete；取消 → security.password",
+      "back": "security.password",
+      "recovery": "无法连接网络。请检查连接后重试，已填写内容会保留。"
+    },
+    {
+      "id": "delete.error",
+      "page": "security",
+      "title": "删除账号",
+      "entry": "当前流程响应／状态注入",
+      "actions": "重试 → reauth.delete；取消 → security.password",
+      "back": "security.password",
+      "recovery": "操作未完成，请重试或取消。"
+    },
+    {
+      "id": "delete.accepted",
+      "page": "security",
+      "title": "删除申请已受理",
+      "entry": "delete.loading",
+      "actions": "返回欢迎页 → welcome",
+      "back": "终态：按页面主操作继续",
+      "recovery": "失败保留当前输入与导航；重试当前操作。系统取消返回发起页面。"
+    },
+    {
+      "id": "session",
+      "page": "security",
+      "title": "登录已失效",
+      "entry": "当前流程响应／状态注入",
+      "actions": "登录 → login.empty",
+      "back": "终态：按页面主操作继续",
+      "recovery": "失败保留当前输入与导航；重试当前操作。系统取消返回发起页面。"
+    },
+    {
+      "id": "settings",
+      "page": "settings",
+      "title": "应用设置",
+      "entry": "me、me.long、me.incomplete、me.offline",
+      "actions": "外观 → appearance.system；语言 → language.system",
+      "back": "me",
+      "recovery": "失败保留当前输入与导航；重试当前操作。系统取消返回发起页面。"
+    },
+    {
+      "id": "appearance.system",
+      "page": "settings",
+      "title": "外观",
+      "entry": "settings、appearance.system、appearance.light、appearance.dark",
+      "actions": "跟随系统 → appearance.system；浅色 → appearance.light；深色 → appearance.dark",
+      "back": "settings",
+      "recovery": "失败保留当前输入与导航；重试当前操作。系统取消返回发起页面。"
+    },
+    {
+      "id": "appearance.light",
+      "page": "settings",
+      "title": "外观",
+      "entry": "appearance.system、appearance.light、appearance.dark",
+      "actions": "跟随系统 → appearance.system；浅色 → appearance.light；深色 → appearance.dark",
+      "back": "settings",
+      "recovery": "失败保留当前输入与导航；重试当前操作。系统取消返回发起页面。"
+    },
+    {
+      "id": "appearance.dark",
+      "page": "settings",
+      "title": "外观",
+      "entry": "appearance.system、appearance.light、appearance.dark",
+      "actions": "跟随系统 → appearance.system；浅色 → appearance.light；深色 → appearance.dark",
+      "back": "settings",
+      "recovery": "失败保留当前输入与导航；重试当前操作。系统取消返回发起页面。"
+    },
+    {
+      "id": "language.system",
+      "page": "settings",
+      "title": "语言",
+      "entry": "settings、language.system、language.zh-Hans、language.zh-Hant",
+      "actions": "跟随系统 → language.system；简体中文 → language.zh-Hans；繁體中文 → language.zh-Hant；English → language.en；العربية → language.ar",
+      "back": "settings",
+      "recovery": "失败保留当前输入与导航；重试当前操作。系统取消返回发起页面。"
+    },
+    {
+      "id": "language.zh-Hans",
+      "page": "settings",
+      "title": "语言",
+      "entry": "language.system、language.zh-Hans、language.zh-Hant、language.en",
+      "actions": "跟随系统 → language.system；简体中文 → language.zh-Hans；繁體中文 → language.zh-Hant；English → language.en；العربية → language.ar",
+      "back": "settings",
+      "recovery": "失败保留当前输入与导航；重试当前操作。系统取消返回发起页面。"
+    },
+    {
+      "id": "language.zh-Hant",
+      "page": "settings",
+      "title": "语言",
+      "entry": "language.system、language.zh-Hans、language.zh-Hant、language.en",
+      "actions": "跟随系统 → language.system；简体中文 → language.zh-Hans；繁體中文 → language.zh-Hant；English → language.en；العربية → language.ar",
+      "back": "settings",
+      "recovery": "失败保留当前输入与导航；重试当前操作。系统取消返回发起页面。"
+    },
+    {
+      "id": "language.en",
+      "page": "settings",
+      "title": "语言",
+      "entry": "language.system、language.zh-Hans、language.zh-Hant、language.en",
+      "actions": "跟随系统 → language.system；简体中文 → language.zh-Hans；繁體中文 → language.zh-Hant；English → language.en；العربية → language.ar",
+      "back": "settings",
+      "recovery": "失败保留当前输入与导航；重试当前操作。系统取消返回发起页面。"
+    },
+    {
+      "id": "language.ar",
+      "page": "settings",
+      "title": "语言",
+      "entry": "language.system、language.zh-Hans、language.zh-Hant、language.en",
+      "actions": "跟随系统 → language.system；简体中文 → language.zh-Hans；繁體中文 → language.zh-Hant；English → language.en；العربية → language.ar",
+      "back": "settings",
+      "recovery": "失败保留当前输入与导航；重试当前操作。系统取消返回发起页面。"
+    },
+    {
+      "id": "demo",
+      "page": "settings",
+      "title": "本地演示",
+      "entry": "当前流程响应／状态注入",
+      "actions": "返回 → me",
+      "back": "me",
+      "recovery": "失败保留当前输入与导航；重试当前操作。系统取消返回发起页面。"
+    },
+    {
+      "id": "welcome.appearance",
+      "page": "auth",
+      "title": "外观",
+      "entry": "当前流程响应／状态注入",
+      "actions": "完成 → welcome",
+      "back": "welcome",
+      "recovery": "锚定外观按钮；选择立即生效并关闭。勾选用户偏好，取消保留欢迎页。"
+    },
+    {
+      "id": "welcome.language",
+      "page": "auth",
+      "title": "语言",
+      "entry": "当前流程响应／状态注入",
+      "actions": "完成 → welcome",
+      "back": "welcome",
+      "recovery": "锚定语言按钮；选择立即生效并关闭。用户内容不翻译；系统界面语言遵循平台。"
+    }
+  ],
+  "knownLimitations": [
+    "Only page overview renders and 28 individual screen exports are included; remaining individual renders were blocked by the Figma MCP Education plan quota.",
+    "This index is not a native Figma document or a complete editable scene-graph export.",
+    "Original .fig export requires an authenticated Figma browser session; the available browser is signed out."
+  ]
+}
