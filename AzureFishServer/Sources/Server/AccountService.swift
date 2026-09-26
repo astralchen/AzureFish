@@ -20,7 +20,7 @@ final class AccountService: Sendable {
     var now: Int64 { Int64(clock().timeIntervalSince1970 * 1000) }
 
     func register(_ req: Request) async throws -> Response {
-        let (input, bytes) = try requestMessage(Azurefish_V1_RegisterRequest.self, from: req)
+        let (input, bytes) = try requestMessage(RegisterRequest.self, from: req)
         let operation = try Validation.uuid(input.operationID, field: "operation_id")
         let device = try Validation.uuid(input.deviceID, field: "device_id").uuidString.lowercased()
         let account = try Validation.account(input.accountName)
@@ -51,7 +51,7 @@ final class AccountService: Sendable {
     }
 
     func login(_ req: Request) async throws -> Response {
-        let (input, bytes) = try requestMessage(Azurefish_V1_LoginRequest.self, from: req)
+        let (input, bytes) = try requestMessage(LoginRequest.self, from: req)
         let operation = try Validation.uuid(input.operationID, field: "operation_id")
         let device = try Validation.uuid(input.deviceID, field: "device_id").uuidString.lowercased()
         let account = try Validation.account(input.accountName)
@@ -77,7 +77,7 @@ final class AccountService: Sendable {
     }
 
     func refresh(_ req: Request) async throws -> Response {
-        let (input, bytes) = try requestMessage(Azurefish_V1_RefreshRequest.self, from: req)
+        let (input, bytes) = try requestMessage(RefreshRequest.self, from: req)
         let operation = try Validation.uuid(input.operationID, field: "operation_id")
         guard input.refreshToken.utf8.count == 43 else { throw APIError(.unauthorized, "UNAUTHENTICATED") }
         let digest = crypto.digest(Data(input.refreshToken.utf8), purpose: "refresh")
@@ -112,7 +112,7 @@ final class AccountService: Sendable {
     }
 
     func logout(_ req: Request) async throws -> Response {
-        let (input, bytes) = try requestMessage(Azurefish_V1_LogoutRequest.self, from: req)
+        let (input, bytes) = try requestMessage(LogoutRequest.self, from: req)
         let operation = try Validation.uuid(input.operationID, field: "operation_id")
         let result = try await gate.run {
             try await req.db.transaction { db -> Data in
@@ -122,7 +122,7 @@ final class AccountService: Sendable {
                 guard !session.revoked else { throw APIError(.unauthorized, "UNAUTHENTICATED") }
                 session.revoked = true
                 try await session.update(on: db)
-                let data = try Azurefish_V1_EmptyResponse().serializedData()
+                let data = try EmptyResponse().serializedData()
                 try await self.record(operation, scope: scope, bytes: bytes, result: data, session: session, db: db)
                 return data
             }
@@ -140,7 +140,7 @@ final class AccountService: Sendable {
     }
 
     func update(_ req: Request) async throws -> Response {
-        let (input, bytes) = try requestMessage(Azurefish_V1_UpdateProfileRequest.self, from: req)
+        let (input, bytes) = try requestMessage(UpdateProfileRequest.self, from: req)
         let operation = try Validation.uuid(input.operationID, field: "operation_id")
         guard input.expectedProfileVersion > 0 else { throw APIError(.badRequest, "VALIDATION_FAILED", field: "expected_profile_version") }
         guard input.hasNickname || input.hasBio else { throw APIError(.badRequest, "VALIDATION_FAILED", field: "profile") }
@@ -185,12 +185,12 @@ final class AccountService: Sendable {
         return session
     }
 
-    private func issue(_ session: SessionRecord, user: UserRecord) throws -> Azurefish_V1_AuthResponse {
+    private func issue(_ session: SessionRecord, user: UserRecord) throws -> AuthResponse {
         let access = Cryptography.randomToken(), refresh = Cryptography.randomToken()
         session.accessDigest = crypto.digest(Data(access.utf8), purpose: "access")
         session.refreshDigest = crypto.digest(Data(refresh.utf8), purpose: "refresh")
         session.accessExpiry = min(now + accessLifetime, session.refreshExpiry)
-        var result = Azurefish_V1_AuthResponse()
+        var result = AuthResponse()
         result.environmentID = crypto.environment; result.userID = session.userID.uuidString.lowercased()
         result.sessionID = try session.requireID().uuidString.lowercased(); result.deviceID = session.deviceID
         result.accessToken = access; result.refreshToken = refresh
@@ -205,9 +205,9 @@ final class AccountService: Sendable {
     private func encrypt(_ payload: UserPayload, id: UUID) throws -> String {
         try crypto.seal(JSONEncoder().encode(payload), context: "user:" + id.uuidString)
     }
-    private func profile(_ user: UserRecord) throws -> Azurefish_V1_UserProfile {
+    private func profile(_ user: UserRecord) throws -> UserProfile {
         let payload = try payload(user)
-        var profile = Azurefish_V1_UserProfile()
+        var profile = UserProfile()
         profile.userID = try user.requireID().uuidString.lowercased(); profile.accountName = payload.accountName
         profile.nickname = payload.nickname; profile.bio = payload.bio; profile.profileVersion = user.version
         profile.createdAtMs = payload.createdAt; profile.updatedAtMs = payload.updatedAt

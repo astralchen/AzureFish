@@ -20,14 +20,18 @@ fileprivate nonisolated struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobu
   typealias Version = _2
 }
 
-/// 所有时间戳均为 Unix 毫秒；operation_id 和 device_id 为客户端生成的 UUID。
-public nonisolated struct Azurefish_V1_HealthResponse: Sendable {
+/// 服务健康检查返回的状态与环境信息。
+///
+/// 由无需身份凭据的 GET /health 返回；健康检查通过不代表账号已经认证。
+public nonisolated struct HealthResponse: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
+  /// 服务状态，当前就绪响应为 "ok"；读取未设置的字段会得到空字符串。
   public var status: String = String()
 
+  /// 服务环境标识，当前虚构数据环境为 "local-development"；客户端应与请求环境匹配。
   public var environmentID: String = String()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
@@ -35,15 +39,21 @@ public nonisolated struct Azurefish_V1_HealthResponse: Sendable {
   public init() {}
 }
 
-public nonisolated struct Azurefish_V1_ApiError: Sendable {
+/// 失败请求对应的稳定业务错误信息。
+///
+/// 与非成功 HTTP 状态一起返回；客户端按 code 和 field 本地化文案，不向用户直接展示协议标识。
+public nonisolated struct ApiError: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
+  /// 稳定业务错误码，例如 VALIDATION_FAILED、UNAUTHENTICATED；有效错误响应必须为非空值，未知码按通用失败处理。
   public var code: String = String()
 
+  /// 错误关联的协议字段名；服务端未指定某个字段时为空字符串，不代表字段值本身为空。
   public var field: String = String()
 
+  /// 服务端生成的请求标识，与响应 X-Request-ID 一致；用于诊断，不作为业务操作去重 ID。
   public var requestID: String = String()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
@@ -51,19 +61,28 @@ public nonisolated struct Azurefish_V1_ApiError: Sendable {
   public init() {}
 }
 
-public nonisolated struct Azurefish_V1_RegisterRequest: Sendable {
+/// 创建账号并建立新会话所需的注册输入。
+///
+/// 发送至 POST /v1/auth/register，成功返回 HTTP 201 和 AuthResponse。
+/// 账号名、密码和昵称的业务规则由服务端校验；Protobuf 编码本身不验证这些约束。
+public nonisolated struct RegisterRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
+  /// 本次动作的全局唯一 UUID（36 字符）；仅同一动作的原字节重试可复用。
   public var operationID: String = String()
 
+  /// 客户端生成的安装 UUID（36 字符）；绑定会话，不作为可信硬件证明。
   public var deviceID: String = String()
 
+  /// 首尾空白移除并转小写后须为 3～32 个 ASCII 字符 [a-z0-9_]，全局唯一。
   public var accountName: String = String()
 
+  /// 原始密码，不 trim 或规范化；至少 12 个 Swift Character、至多 72 个 UTF-8 字节，禁止 NUL。
   public var password: String = String()
 
+  /// 昵称，最多 64 个 Swift Character，不能全空白；保留原值，拒绝除换行外的控制字符。
   public var nickname: String = String()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
@@ -71,17 +90,25 @@ public nonisolated struct Azurefish_V1_RegisterRequest: Sendable {
   public init() {}
 }
 
-public nonisolated struct Azurefish_V1_LoginRequest: Sendable {
+/// 通过账号密码建立新会话所需的登录输入。
+///
+/// 发送至 POST /v1/auth/login，成功返回 AuthResponse；登录不会撤销其他已有会话。
+/// 编码本身不验证密码是否正确，也不表示客户端已经安装登录状态。
+public nonisolated struct LoginRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
+  /// 本次登录动作的全局唯一 UUID（36 字符）；重试保持 ID 和请求字节不变。
   public var operationID: String = String()
 
+  /// 客户端安装 UUID（36 字符），作为本次会话的设备标识。
   public var deviceID: String = String()
 
+  /// 与注册相同的规范化规则：去除首尾空白、转小写，3～32 个 ASCII 字符 [a-z0-9_]。
   public var accountName: String = String()
 
+  /// 原始密码；至少 12 个 Swift Character、至多 72 个 UTF-8 字节，禁止 NUL，不规范化。
   public var password: String = String()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
@@ -89,13 +116,19 @@ public nonisolated struct Azurefish_V1_LoginRequest: Sendable {
   public init() {}
 }
 
-public nonisolated struct Azurefish_V1_RefreshRequest: Sendable {
+/// 轮换同一会话的访问与刷新凭据所需的输入。
+///
+/// 发送至 POST /v1/auth/refresh，成功返回下一代 AuthResponse，保持会话绝对截止不变。
+/// 同一会话应合并并发刷新；已消费的 refresh 换操作 ID 重放会撤销整个会话。
+public nonisolated struct RefreshRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
+  /// 本次刷新动作的全局唯一 UUID，须为 36 字符；响应丢失时使用同一 ID 和原字节恢复结果，不创建第二个刷新动作。
   public var operationID: String = String()
 
+  /// 待刷新的不透明凭据，原样放入正文，不使用 Bearer 替代；禁止写入日志或展示在页面上。
   public var refreshToken: String = String()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
@@ -103,11 +136,16 @@ public nonisolated struct Azurefish_V1_RefreshRequest: Sendable {
   public init() {}
 }
 
-public nonisolated struct Azurefish_V1_LogoutRequest: Sendable {
+/// 撤销 Bearer 指定的当前会话所需的输入。
+///
+/// 发送至 POST /v1/auth/logout，成功返回 EmptyResponse；仅退出当前会话，不退出全部设备。
+/// 收到成功响应后，客户端仍需自行清理会话凭据与内存状态。
+public nonisolated struct LogoutRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
+  /// 本次退出动作的全局唯一 UUID，须为 36 字符；响应丢失时在有效恢复窗口内按原 ID 与字节重试。
   public var operationID: String = String()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
@@ -115,7 +153,10 @@ public nonisolated struct Azurefish_V1_LogoutRequest: Sendable {
   public init() {}
 }
 
-public nonisolated struct Azurefish_V1_EmptyResponse: Sendable {
+/// 不携带业务字段的成功确认消息。
+///
+/// 正文可编码为零字节，响应仍使用 application/protobuf；接收方不能仅凭空正文判断业务成功。
+public nonisolated struct EmptyResponse: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -125,23 +166,34 @@ public nonisolated struct Azurefish_V1_EmptyResponse: Sendable {
   public init() {}
 }
 
-public nonisolated struct Azurefish_V1_UserProfile: Sendable {
+/// 用户的服务端权威资料快照。
+///
+/// 由 GET／PATCH /v1/me 或认证响应返回；持久化、界面更新和并发结果合并由客户端负责。
+/// 未设置的标量读取为 Protobuf 默认值，客户端仍须校验成功响应的必要字段。
+public nonisolated struct UserProfile: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
+  /// 资料所属用户的小写 UUID，作为稳定账号身份；不能用昵称或账号名代替。
   public var userID: String = String()
 
+  /// 服务端规范化后的唯一账号名，当前资料更新接口不允许修改。
   public var accountName: String = String()
 
+  /// 服务端保存的昵称文本；成功资料响应要求非空，不随客户端显示语言转换。
   public var nickname: String = String()
 
+  /// 用户简介，空字符串表示未设置或已清空；响应不区分这两种状态。
   public var bio: String = String()
 
+  /// 资料版本，从 1 开始，每次成功更新递增；用于编辑冲突检测，不以更新时间替代。
   public var profileVersion: Int64 = 0
 
+  /// 账号创建时间，单位为 Unix 毫秒；默认 0 不表示一个已验证的有效创建时间。
   public var createdAtMs: Int64 = 0
 
+  /// 资料最后更新时间，单位为 Unix 毫秒；客户端按所需显示时区格式化，不改变协议值。
   public var updatedAtMs: Int64 = 0
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
@@ -149,31 +201,45 @@ public nonisolated struct Azurefish_V1_UserProfile: Sendable {
   public init() {}
 }
 
-public nonisolated struct Azurefish_V1_AuthResponse: Sendable {
+/// 一次成功注册、登录或刷新产生的会话凭据与同账号资料。
+///
+/// 客户端须校验环境、用户、设备及刷新上下文；成对凭据的持久化和旧代响应隔离由应用层负责。
+/// 令牌不得写入日志，返回此消息不代表 Keychain、登录状态或真实 IM 已接入。
+public nonisolated struct AuthResponse: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
+  /// 会话所属服务环境，客户端须与发起请求的环境标识一致。
   public var environmentID: String = String()
 
+  /// 会话所属用户的小写 UUID，须与 profile.user_id 一致。
   public var userID: String = String()
 
+  /// 会话绑定的安装 UUID，小写形式；不是可信硬件证明，不能独立用于认证。
   public var deviceID: String = String()
 
+  /// 当前会话的小写 UUID；刷新保持不变，重新登录创建新会话。
   public var sessionID: String = String()
 
+  /// 当前代次的随机不透明访问凭据，通过 Authorization: Bearer 原样发送，不在客户端解析内部身份。
   public var accessToken: String = String()
 
+  /// 访问凭据到期时间，单位为 Unix 毫秒；最长 15 分钟且不超过会话绝对截止，刷新后旧访问凭据失效。
   public var accessExpiresAtMs: Int64 = 0
 
+  /// 当前代次的随机不透明刷新凭据，每次成功刷新替换；应与同一响应中的访问凭据一起更新。
   public var refreshToken: String = String()
 
+  /// 会话绝对截止，单位为 Unix 毫秒；从建立起 30 天，刷新不延期，不是剩余有效秒数。
   public var refreshExpiresAtMs: Int64 = 0
 
+  /// 刷新代次，从 1 开始，成功刷新加 1；默认 0 无效，客户端不得用旧代结果覆盖新凭据。
   public var refreshGeneration: Int64 = 0
 
-  public var profile: Azurefish_V1_UserProfile {
-    get {_profile ?? Azurefish_V1_UserProfile()}
+  /// 认证用户的权威资料，成功响应必须包含此字段；Swift 读取默认实例不能证明字段存在，应检查 hasProfile。
+  public var profile: UserProfile {
+    get {_profile ?? UserProfile()}
     set {_profile = newValue}
   }
   /// Returns true if `profile` has been explicitly set.
@@ -185,18 +251,27 @@ public nonisolated struct Azurefish_V1_AuthResponse: Sendable {
 
   public init() {}
 
-  fileprivate var _profile: Azurefish_V1_UserProfile? = nil
+  fileprivate var _profile: UserProfile? = nil
 }
 
-public nonisolated struct Azurefish_V1_UpdateProfileRequest: Sendable {
+/// 基于已读取资料版本提交的部分更新输入。
+///
+/// 发送至 PATCH /v1/me，并携带当前会话 Bearer；至少指定一个 optional 字段。
+/// 版本冲突返回 HTTP 409，客户端保留编辑内容并读取最新资料，不自动覆盖冲突。
+public nonisolated struct UpdateProfileRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
+  /// 本次编辑动作的全局唯一 UUID，须为 36 字符；同一会话刷新后可用较新 Bearer 重试原 ID 与请求字节。
   public var operationID: String = String()
 
+  /// 编辑依据的资料版本，必须为正数且等于当前服务端版本；成功更新后返回递增的版本。
   public var expectedProfileVersion: Int64 = 0
 
+  /// 未传时保留原昵称；Swift 使用 hasNickname 区分未传和空字符串。
+  ///
+  /// 传入时最多 64 个 Swift Character，不能全空白，拒绝除换行外的控制字符；显式空昵称无效。
   public var nickname: String {
     get {_nickname ?? String()}
     set {_nickname = newValue}
@@ -206,6 +281,9 @@ public nonisolated struct Azurefish_V1_UpdateProfileRequest: Sendable {
   /// Clears the value of `nickname`. Subsequent reads from it will return its default value.
   public mutating func clearNickname() {self._nickname = nil}
 
+  /// 未传时保留原简介，显式空字符串表示清空；Swift 使用 hasBio 判断是否提交此字段。
+  ///
+  /// 传入时最多 500 个 Swift Character，保留原始文本，拒绝除换行外的控制字符。
   public var bio: String {
     get {_bio ?? String()}
     set {_bio = newValue}
@@ -227,7 +305,7 @@ public nonisolated struct Azurefish_V1_UpdateProfileRequest: Sendable {
 
 fileprivate nonisolated let _protobuf_package = "azurefish.v1"
 
-nonisolated extension Azurefish_V1_HealthResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+nonisolated extension HealthResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".HealthResponse"
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}status\0\u{3}environment_id\0")
 
@@ -254,7 +332,7 @@ nonisolated extension Azurefish_V1_HealthResponse: SwiftProtobuf.Message, SwiftP
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: Azurefish_V1_HealthResponse, rhs: Azurefish_V1_HealthResponse) -> Bool {
+  public static func ==(lhs: HealthResponse, rhs: HealthResponse) -> Bool {
     if lhs.status != rhs.status {return false}
     if lhs.environmentID != rhs.environmentID {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
@@ -262,7 +340,7 @@ nonisolated extension Azurefish_V1_HealthResponse: SwiftProtobuf.Message, SwiftP
   }
 }
 
-nonisolated extension Azurefish_V1_ApiError: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+nonisolated extension ApiError: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".ApiError"
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}code\0\u{1}field\0\u{3}request_id\0")
 
@@ -293,7 +371,7 @@ nonisolated extension Azurefish_V1_ApiError: SwiftProtobuf.Message, SwiftProtobu
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: Azurefish_V1_ApiError, rhs: Azurefish_V1_ApiError) -> Bool {
+  public static func ==(lhs: ApiError, rhs: ApiError) -> Bool {
     if lhs.code != rhs.code {return false}
     if lhs.field != rhs.field {return false}
     if lhs.requestID != rhs.requestID {return false}
@@ -302,7 +380,7 @@ nonisolated extension Azurefish_V1_ApiError: SwiftProtobuf.Message, SwiftProtobu
   }
 }
 
-nonisolated extension Azurefish_V1_RegisterRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+nonisolated extension RegisterRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".RegisterRequest"
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}operation_id\0\u{3}device_id\0\u{3}account_name\0\u{1}password\0\u{1}nickname\0")
 
@@ -341,7 +419,7 @@ nonisolated extension Azurefish_V1_RegisterRequest: SwiftProtobuf.Message, Swift
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: Azurefish_V1_RegisterRequest, rhs: Azurefish_V1_RegisterRequest) -> Bool {
+  public static func ==(lhs: RegisterRequest, rhs: RegisterRequest) -> Bool {
     if lhs.operationID != rhs.operationID {return false}
     if lhs.deviceID != rhs.deviceID {return false}
     if lhs.accountName != rhs.accountName {return false}
@@ -352,7 +430,7 @@ nonisolated extension Azurefish_V1_RegisterRequest: SwiftProtobuf.Message, Swift
   }
 }
 
-nonisolated extension Azurefish_V1_LoginRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+nonisolated extension LoginRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".LoginRequest"
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}operation_id\0\u{3}device_id\0\u{3}account_name\0\u{1}password\0")
 
@@ -387,7 +465,7 @@ nonisolated extension Azurefish_V1_LoginRequest: SwiftProtobuf.Message, SwiftPro
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: Azurefish_V1_LoginRequest, rhs: Azurefish_V1_LoginRequest) -> Bool {
+  public static func ==(lhs: LoginRequest, rhs: LoginRequest) -> Bool {
     if lhs.operationID != rhs.operationID {return false}
     if lhs.deviceID != rhs.deviceID {return false}
     if lhs.accountName != rhs.accountName {return false}
@@ -397,7 +475,7 @@ nonisolated extension Azurefish_V1_LoginRequest: SwiftProtobuf.Message, SwiftPro
   }
 }
 
-nonisolated extension Azurefish_V1_RefreshRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+nonisolated extension RefreshRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".RefreshRequest"
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}operation_id\0\u{3}refresh_token\0")
 
@@ -424,7 +502,7 @@ nonisolated extension Azurefish_V1_RefreshRequest: SwiftProtobuf.Message, SwiftP
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: Azurefish_V1_RefreshRequest, rhs: Azurefish_V1_RefreshRequest) -> Bool {
+  public static func ==(lhs: RefreshRequest, rhs: RefreshRequest) -> Bool {
     if lhs.operationID != rhs.operationID {return false}
     if lhs.refreshToken != rhs.refreshToken {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
@@ -432,7 +510,7 @@ nonisolated extension Azurefish_V1_RefreshRequest: SwiftProtobuf.Message, SwiftP
   }
 }
 
-nonisolated extension Azurefish_V1_LogoutRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+nonisolated extension LogoutRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".LogoutRequest"
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}operation_id\0")
 
@@ -455,14 +533,14 @@ nonisolated extension Azurefish_V1_LogoutRequest: SwiftProtobuf.Message, SwiftPr
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: Azurefish_V1_LogoutRequest, rhs: Azurefish_V1_LogoutRequest) -> Bool {
+  public static func ==(lhs: LogoutRequest, rhs: LogoutRequest) -> Bool {
     if lhs.operationID != rhs.operationID {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
 }
 
-nonisolated extension Azurefish_V1_EmptyResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+nonisolated extension EmptyResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".EmptyResponse"
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
 
@@ -475,13 +553,13 @@ nonisolated extension Azurefish_V1_EmptyResponse: SwiftProtobuf.Message, SwiftPr
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: Azurefish_V1_EmptyResponse, rhs: Azurefish_V1_EmptyResponse) -> Bool {
+  public static func ==(lhs: EmptyResponse, rhs: EmptyResponse) -> Bool {
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
 }
 
-nonisolated extension Azurefish_V1_UserProfile: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+nonisolated extension UserProfile: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".UserProfile"
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}user_id\0\u{3}account_name\0\u{1}nickname\0\u{1}bio\0\u{3}profile_version\0\u{3}created_at_ms\0\u{3}updated_at_ms\0")
 
@@ -528,7 +606,7 @@ nonisolated extension Azurefish_V1_UserProfile: SwiftProtobuf.Message, SwiftProt
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: Azurefish_V1_UserProfile, rhs: Azurefish_V1_UserProfile) -> Bool {
+  public static func ==(lhs: UserProfile, rhs: UserProfile) -> Bool {
     if lhs.userID != rhs.userID {return false}
     if lhs.accountName != rhs.accountName {return false}
     if lhs.nickname != rhs.nickname {return false}
@@ -541,7 +619,7 @@ nonisolated extension Azurefish_V1_UserProfile: SwiftProtobuf.Message, SwiftProt
   }
 }
 
-nonisolated extension Azurefish_V1_AuthResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+nonisolated extension AuthResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".AuthResponse"
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}environment_id\0\u{3}user_id\0\u{3}device_id\0\u{3}session_id\0\u{3}access_token\0\u{3}access_expires_at_ms\0\u{3}refresh_token\0\u{3}refresh_expires_at_ms\0\u{3}refresh_generation\0\u{1}profile\0")
 
@@ -604,7 +682,7 @@ nonisolated extension Azurefish_V1_AuthResponse: SwiftProtobuf.Message, SwiftPro
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: Azurefish_V1_AuthResponse, rhs: Azurefish_V1_AuthResponse) -> Bool {
+  public static func ==(lhs: AuthResponse, rhs: AuthResponse) -> Bool {
     if lhs.environmentID != rhs.environmentID {return false}
     if lhs.userID != rhs.userID {return false}
     if lhs.deviceID != rhs.deviceID {return false}
@@ -620,7 +698,7 @@ nonisolated extension Azurefish_V1_AuthResponse: SwiftProtobuf.Message, SwiftPro
   }
 }
 
-nonisolated extension Azurefish_V1_UpdateProfileRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+nonisolated extension UpdateProfileRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".UpdateProfileRequest"
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}operation_id\0\u{3}expected_profile_version\0\u{1}nickname\0\u{1}bio\0")
 
@@ -659,7 +737,7 @@ nonisolated extension Azurefish_V1_UpdateProfileRequest: SwiftProtobuf.Message, 
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: Azurefish_V1_UpdateProfileRequest, rhs: Azurefish_V1_UpdateProfileRequest) -> Bool {
+  public static func ==(lhs: UpdateProfileRequest, rhs: UpdateProfileRequest) -> Bool {
     if lhs.operationID != rhs.operationID {return false}
     if lhs.expectedProfileVersion != rhs.expectedProfileVersion {return false}
     if lhs._nickname != rhs._nickname {return false}

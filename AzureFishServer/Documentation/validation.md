@@ -39,3 +39,9 @@
 使用本目录中新编译的 `.build/debug/AzureFishServer`、独立临时数据库及随机密钥启动回环服务。`Scripts/smoke-test.py` 真实 HTTP 闭环通过；另行显式运行 AzureFishAPI 的 `LiveAccountAPITests`，1 项真正 URLSession 账号闭环通过。联调结束后服务已停止，临时数据库和密钥已清理。
 
 客户端协议包 2 项、网络包 8 项、账号 API 模拟测试 9 项也已重新通过，协议同步 `--check` 通过。命令、日志及边界见[客户端迁移复核](../../Documentation/Networking/validation.md#服务端目录迁移复核2026-09-24)。这些结果属于 macOS 本机虚构账号验证，App UI、iOS 运行、真实账号 HTTPS 与 Apple 登录仍未执行；本次没有重新生成协议。
+
+## proto 注释与 Swift 名称调整（2026-09-26）
+
+权威 proto 补充中文消息／字段注释，设置空 `swift_prefix`；重新生成 Swift 并更新服务端调用后，`swift test --package-path AzureFishServer -j 4` 编译及 14 项集成测试通过。生成工具为 SwiftProtobuf 1.38.1 和其自带 protoc 35.1。
+
+protoc 描述符除 Swift 命名选项外与原协议完全一致，消息／字段编号／类型及 optional presence 未改变；生成代码除类型重命名和注释外无其他变化。客户端插件产物与本目录生成文件一致，客户端包测试及 App 编译通过，详情见[本次插件验证](../../Documentation/Networking/validation.md#proto-插件生成与-swift-短名称2026-09-26)。本次未重新执行真实 HTTP 或真实账号联调。

@@ -10,6 +10,9 @@
 		AF0000000000000000000301 /* QuickLayoutKit in Frameworks */ = {isa = PBXBuildFile; productRef = AF0000000000000000000201 /* QuickLayoutKit */; };
 		AF0000000000000000000302 /* ListKit in Frameworks */ = {isa = PBXBuildFile; productRef = AF0000000000000000000202 /* ListKit */; };
 		AF0000000000000000000303 /* AppLocalization in Frameworks */ = {isa = PBXBuildFile; productRef = AF0000000000000000000203 /* AppLocalization */; };
+		AF0000000000000000000304 /* AzureFishProtocol in Frameworks */ = {isa = PBXBuildFile; productRef = AF0000000000000000000204 /* AzureFishProtocol */; };
+		AF0000000000000000000305 /* AzureFishNetwork in Frameworks */ = {isa = PBXBuildFile; productRef = AF0000000000000000000205 /* AzureFishNetwork */; };
+		AF0000000000000000000306 /* AzureFishAPI in Frameworks */ = {isa = PBXBuildFile; productRef = AF0000000000000000000206 /* AzureFishAPI */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -74,6 +77,9 @@
 				AF0000000000000000000301 /* QuickLayoutKit in Frameworks */,
 				AF0000000000000000000302 /* ListKit in Frameworks */,
 				AF0000000000000000000303 /* AppLocalization in Frameworks */,
+				AF0000000000000000000306 /* AzureFishAPI in Frameworks */,
+				AF0000000000000000000305 /* AzureFishNetwork in Frameworks */,
+				AF0000000000000000000304 /* AzureFishProtocol in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -137,6 +143,9 @@
 				AF0000000000000000000201 /* QuickLayoutKit */,
 				AF0000000000000000000202 /* ListKit */,
 				AF0000000000000000000203 /* AppLocalization */,
+				AF0000000000000000000206 /* AzureFishAPI */,
+				AF0000000000000000000205 /* AzureFishNetwork */,
+				AF0000000000000000000204 /* AzureFishProtocol */,
 			);
 			productName = AzureFish;
 			productReference = 7735C8A130627164005AF164 /* AzureFish.app */;
@@ -226,6 +235,9 @@
 				AF0000000000000000000101 /* XCRemoteSwiftPackageReference "QuickLayoutKit" */,
 				AF0000000000000000000102 /* XCRemoteSwiftPackageReference "ListKit" */,
 				AF0000000000000000000103 /* XCRemoteSwiftPackageReference "AppLocalization" */,
+				AF0000000000000000000106 /* XCLocalSwiftPackageReference "SharePackage/AzureFishAPI" */,
+				AF0000000000000000000105 /* XCLocalSwiftPackageReference "SharePackage/AzureFishNetwork" */,
+				AF0000000000000000000104 /* XCLocalSwiftPackageReference "SharePackage/AzureFishProtocol" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 7735C8A230627164005AF164 /* Products */;
@@ -619,6 +631,21 @@
 		};
 /* End XCConfigurationList section */
 
+/* Begin XCLocalSwiftPackageReference section */
+		AF0000000000000000000104 /* XCLocalSwiftPackageReference "SharePackage/AzureFishProtocol" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = SharePackage/AzureFishProtocol;
+		};
+		AF0000000000000000000105 /* XCLocalSwiftPackageReference "SharePackage/AzureFishNetwork" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = SharePackage/AzureFishNetwork;
+		};
+		AF0000000000000000000106 /* XCLocalSwiftPackageReference "SharePackage/AzureFishAPI" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = SharePackage/AzureFishAPI;
+		};
+/* End XCLocalSwiftPackageReference section */
+
 /* Begin XCRemoteSwiftPackageReference section */
 		AF0000000000000000000101 /* XCRemoteSwiftPackageReference "QuickLayoutKit" */ = {
 			isa = XCRemoteSwiftPackageReference;
@@ -661,6 +688,21 @@
 			isa = XCSwiftPackageProductDependency;
 			package = AF0000000000000000000103 /* XCRemoteSwiftPackageReference "AppLocalization" */;
 			productName = AppLocalization;
+		};
+		AF0000000000000000000204 /* AzureFishProtocol */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AF0000000000000000000104 /* XCLocalSwiftPackageReference "SharePackage/AzureFishProtocol" */;
+			productName = AzureFishProtocol;
+		};
+		AF0000000000000000000205 /* AzureFishNetwork */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AF0000000000000000000105 /* XCLocalSwiftPackageReference "SharePackage/AzureFishNetwork" */;
+			productName = AzureFishNetwork;
+		};
+		AF0000000000000000000206 /* AzureFishAPI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AF0000000000000000000106 /* XCLocalSwiftPackageReference "SharePackage/AzureFishAPI" */;
+			productName = AzureFishAPI;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

@@ -85,7 +85,7 @@ public func configure(_ app: Application, configuration: ServerConfiguration) as
     app.middleware = .init()
     app.middleware.use(APIMiddleware(limiter: service.limiter))
     app.get("health") { _ in
-        var result = Azurefish_V1_HealthResponse()
+        var result = HealthResponse()
         result.status = "ok"; result.environmentID = configuration.environmentID
         return try protobufResponse(result)
     }

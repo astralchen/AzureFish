@@ -2,6 +2,8 @@
 
 本文件解释实现行为，消息、字段类型和编号的唯一来源是 [azurefish.proto](../Protos/azurefish.proto)。包名 `azurefish.v1`；生成清单记录 schema SHA-256 与生成器版本。删字段时保留原编号为 `reserved`，不重新分配已发布编号。
 
+proto 中维护中文消息与字段注释，并设置 `option swift_prefix = "";`，生成的 Swift 类型直接使用 `RegisterRequest`、`AuthResponse` 等消息原名；该选项只影响 Swift 标识符，网络消息名仍为 `azurefish.v1.*`。客户端同步此文件后由官方 SwiftProtobufPlugin 在构建时生成类型，不独立修改契约。
+
 ## 传输与通用规则
 
 - 当前只有虚构数据回环 HTTP。真实账号、Apple、真机与部署必须先实现 HTTPS，不关闭证书校验；未来 IM 使用 WSS。

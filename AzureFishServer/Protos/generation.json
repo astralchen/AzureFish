@@ -1,6 +1,6 @@
 {
-  "schema_sha256": "d06df269ea46eb6c10e987fc195fab5b253a23a002e28f536448ef86677d4eb5",
+  "schema_sha256": "c9e89f3baff42a1db3246155062c8681f9ccfb08dab78858285fee91395059d6",
   "swift_protobuf_version": "1.38.1",
   "swift_protobuf_revision": "55d7a1cc5666b85c13464aea1c4b4a90feccb4c8",
-  "protoc_version": "libprotoc 29.3"
+  "protoc_version": "libprotoc 35.1"
 }

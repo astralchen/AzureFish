@@ -19,7 +19,7 @@ AzureFish 是 iOS 客户端；仓库根目录下的 `AzureFishServer/` 是独立
 | [网络协议字典](../../AzureFishServer/Documentation/protobuf-contract.md) | 路由、消息语义与错误；字段编号以其引用的服务端 .proto 为准 |
 | [现有本地数据库设计](../Database/README.md) | 每账号数据隔离、媒体所有权、后续 IM 本地存储 |
 
-服务端位于本仓库的 `AzureFishServer/`，保持独立 Swift Package；客户端编译不依赖服务端目录。客户端不另写一份 .proto，服务器协议为唯一权威来源。
+服务端位于本仓库的 `AzureFishServer/`，保持独立 Swift Package；客户端编译不依赖服务端目录。客户端同步带注释的 proto 副本供构建插件生成 Swift，服务器协议仍为唯一权威来源。
 
 ## 既定范围
 
@@ -37,4 +37,4 @@ AzureFish 是 iOS 客户端；仓库根目录下的 `AzureFishServer/` 是独立
 
 独立 AzureFishServer 首期实现服务底座、注册、密码登录、刷新、当前会话退出和资料读写；仅限回环 HTTP＋虚构数据。服务端使用 Fluent SQLite 和字段加密，不代表客户端 SQLCipher 或真实账号安全门槛已经通过。权威字段编号见[服务端协议源](../../AzureFishServer/Protos/azurefish.proto)，运行与测试结果见[服务端验证记录](../../AzureFishServer/Documentation/validation.md)。
 
-客户端已提供三个独立本地 SPM 和账号调用适配，但尚未连接 App target 或页面。Apple、头像、密码设置／修改、退出全部设备、删除账号、客户端会话／UI 接入和 IM 仍待实施。后续依照既定顺序推进，在开放真实账号前完成安全文档中的验收门槛。
+客户端已提供三个独立本地 SPM 和账号调用适配，已链接到 App target，账号流程与页面尚未接入。Apple、头像、密码设置／修改、退出全部设备、删除账号、客户端会话／UI 接入和 IM 仍待实施。后续依照既定顺序推进，在开放真实账号前完成安全文档中的验收门槛。

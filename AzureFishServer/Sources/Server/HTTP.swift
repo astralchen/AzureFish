@@ -53,7 +53,7 @@ struct APIMiddleware: AsyncMiddleware {
                 // 不输出底层异常，数据库／解码异常可能包含绑定参数或请求正文。
                 request.logger.error("Request failed", metadata: ["request_id": .string(requestID), "code": "INTERNAL_ERROR"])
             }
-            var message = Azurefish_V1_ApiError()
+            var message = ApiError()
             message.code = mapped.code; message.field = mapped.field; message.requestID = requestID
             response = try protobufResponse(message, status: mapped.status)
             if mapped.status == .tooManyRequests { response.headers.replaceOrAdd(name: "Retry-After", value: "60") }

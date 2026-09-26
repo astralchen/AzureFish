@@ -68,4 +68,12 @@ AzureFishServer 已从零实现本机虚构数据的密码账号和资料接口�
 
 新增 Swift 6.3 的 AzureFishProtocol、AzureFishNetwork、AzureFishAPI。协议、网络和账号适配测试通过；真实 URLSession 到本机虚构数据服务的完整账号流程通过；iOS 15 模拟器目标编译及 Release HTTP 限制测试通过。具体用例数、跳过项、命令与运行边界见[本地 SPM 验证记录](../Networking/validation.md)。
 
-此结果只证明包级网络和账号接口能力。App target 尚未添加依赖，Keychain、并发刷新协调、账号 generation、加密缓存和认证 UI 尚未实现；本文件第 1～3 节的完整客户端验收不能因此整体标记通过。
+此结果只证明包级网络和账号接口能力。当时 App target 尚未添加依赖，Keychain、并发刷新协调、账号 generation、加密缓存和认证 UI 尚未实现；本文件第 1～3 节的完整客户端验收不能因此整体标记通过。
+
+## 8. App 工程依赖接入（2026-09-26）
+
+三个本地包已链接到 AzureFish App target，完整 App 的 iOS 15 最低目标、arm64／x86_64 模拟器编译与链接通过，三个模块的 import 和公开类型检查通过。具体命令与证据见[网络包验证记录](../Networking/validation.md)。本次未执行运行测试；Keychain、认证协调器和登录页面仍待实现。
+
+## 9. 协议插件与短类型名（2026-09-26）
+
+客户端改为同步带注释的 proto，由 SwiftProtobufPlugin 生成无包名前缀的 Swift 类型；服务端仍是契约唯一来源。协议 3 项、网络 8 项、账号 API 模拟测试 9 项和服务端 14 项通过，完整 App 模拟器编译通过。契约描述符、两端生成结果与命令详见[插件验证记录](../Networking/validation.md)。本次未重新执行真实 HTTP、认证 UI 或真机运行。

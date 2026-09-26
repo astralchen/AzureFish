@@ -14,7 +14,7 @@ AzureFish 是基于 Swift 6/UIKit 的应用，最低支持 iOS 15。完整聊天
 
 ## 工程边界与设计文档
 
-AzureFish 负责客户端界面、交互、网络调用与本地数据；仓库根目录 `AzureFishServer/` 是独立 Swift 服务端，负责用户身份、权威资料及后续 IM。两端数据库不共享文件。网络采用 HTTP＋Apple SwiftProtobuf，未来实时 IM 使用 WebSocket；传输安全遵循下文。服务端是网络契约的唯一来源，客户端不另行维护一套 `.proto`；生成的客户端类型应纳入本工程，确保无需服务端目录也能独立构建。
+AzureFish 负责客户端界面、交互、网络调用与本地数据；仓库根目录 `AzureFishServer/` 是独立 Swift 服务端，负责用户身份、权威资料及后续 IM。两端数据库不共享文件。网络采用 HTTP＋Apple SwiftProtobuf，未来实时 IM 使用 WebSocket；传输安全遵循下文。服务端是网络契约的唯一来源，客户端仅同步其 `.proto` 副本及注释，不独立维护契约；AzureFishProtocol 通过官方 SwiftProtobufPlugin 在构建时生成 Swift 类型，不提交客户端生成代码，确保无需服务端目录也能独立构建。
 
 - [数据库设计](Documentation/Database/README.md)：本地业务结构、同步、生命周期与迁移。
 - [认证接入](Documentation/Authentication/README.md)：客户端职责、服务端文档及权威网络契约入口。

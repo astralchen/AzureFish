@@ -41,7 +41,7 @@ python3 Scripts/smoke-test.py
 sh Scripts/generate-protocol.sh
 ```
 
-生成脚本支持 `PROTOC=/绝对路径/protoc`，使用锁定依赖中的 `protoc-gen-swift`。生成的 Swift 文件和 `Protos/generation.json` 纳入版本管理；普通构建无需 protoc。后续 iOS 接入复制生成产物和版本清单，不能复制／另行维护协议源。`Package.resolved` 锁定依赖，升级需重新生成、审查和测试。
+生成脚本支持 `PROTOC=/绝对路径/protoc`，使用锁定依赖中的 `protoc-gen-swift`。生成的 Swift 文件和 `Protos/generation.json` 纳入版本管理；普通构建无需 protoc。iOS 协议包通过根目录同步脚本复制带注释的 proto 和来源清单，再由官方 SwiftProtobufPlugin 自动生成 Swift；客户端副本不得独立修改，契约仍以本目录为唯一来源。`Package.resolved` 锁定依赖，升级需重新生成、审查和测试。
 
 ## 架构与后续顺序
 

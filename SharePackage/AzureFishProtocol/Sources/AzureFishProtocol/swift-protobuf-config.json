@@ -1,0 +1,8 @@
+{
+  "invocations": [
+    {
+      "protoFiles": ["azurefish.proto"],
+      "visibility": "Public"
+    }
+  ]
+}

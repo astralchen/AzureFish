@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""从唯一权威服务端同步已生成的 Swift 类型；不复制 .proto，也不修改服务端。"""
+"""从唯一权威服务端同步 proto 副本及来源清单；Swift 由客户端构建插件生成。"""
 import argparse
 import hashlib
 import json
@@ -41,11 +41,8 @@ def main():
     server = args.server.resolve()
     manifest = json.loads((server / 'Protos/generation.json').read_text())
     schema = (server / 'Protos/azurefish.proto').read_bytes()
-    generated = (server / 'Sources/Server/Protocol/azurefish.pb.swift').read_bytes()
     if digest(schema) != manifest['schema_sha256']:
         raise SystemExit('服务端 schema hash 不匹配，请先重新生成协议。')
-    if b'// DO NOT EDIT.' not in generated or b'// Source: azurefish.proto' not in generated:
-        raise SystemExit('缺少预期的 SwiftProtobuf 生成标记。')
     pins = json.loads((server / 'Package.resolved').read_text())['pins']
     pin = next(p for p in pins if p['identity'] == 'swift-protobuf')['state']
     if pin['version'] != manifest['swift_protobuf_version'] or pin['revision'] != manifest['swift_protobuf_revision']:
@@ -54,10 +51,20 @@ def main():
         versions = re.findall(r'exact:\s*"([^"]+)"', (target / 'Package.swift').read_text())
         if versions != [manifest['swift_protobuf_version']]:
             raise SystemExit('先审查并更新本地包的 SwiftProtobuf 精确版本，再同步生成产物。')
-    manifest['server_revision'] = committed_server_revision(server)
-    manifest['generated_swift_sha256'] = digest(generated)
+    manifest = {
+        'schema_sha256': digest(schema),
+        'swift_protobuf_version': manifest['swift_protobuf_version'],
+        'swift_protobuf_revision': manifest['swift_protobuf_revision'],
+        'server_revision': committed_server_revision(server),
+        'generation': 'SwiftProtobufPlugin',
+    }
+    config = json.loads((package / 'Sources/AzureFishProtocol/swift-protobuf-config.json').read_text())
+    if config != {'invocations': [{'protoFiles': ['azurefish.proto'], 'visibility': 'Public'}]}:
+        raise SystemExit('客户端插件配置应生成 azurefish.proto 的公开类型，且不覆盖工具路径。')
+    if list((package / 'Sources').rglob('*.pb.swift')):
+        raise SystemExit('请移除客户端 Sources 中的生成 Swift 文件，避免与插件产物重复编译。')
     outputs = {
-        package / 'Sources/AzureFishProtocol/Generated/azurefish.pb.swift': generated,
+        package / 'Sources/AzureFishProtocol/azurefish.proto': schema,
         package / 'generation.json': (json.dumps(manifest, indent=2) + '\n').encode(),
     }
     for path, data in outputs.items():
@@ -69,7 +76,7 @@ def main():
             temporary = path.with_suffix(path.suffix + '.tmp')
             temporary.write_bytes(data)
             temporary.replace(path)
-    print('协议快照检查通过' if args.check else '已同步协议 Swift 文件及来源清单')
+    print('协议源副本检查通过' if args.check else '已同步 proto 副本及来源清单')
 
 
 if __name__ == '__main__':

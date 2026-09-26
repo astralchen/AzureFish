@@ -34,7 +34,7 @@
 
 [客户端登录与个人中心设计](Documentation/Authentication/README.md) 说明 URLSession／SwiftProtobuf 接入、Keychain 会话管理、苹果风格页面及验收要求；[独立 AzureFishServer 文档](AzureFishServer/README.md) 说明 Swift＋Vapor 密码账号和资料接口，并标注 Apple、头像及后续账号功能的待办边界。
 
-**状态：客户端尚未接入；独立服务端已开始首期密码账号实现。** [AzureFishServer](AzureFishServer/README.md) 提供本机虚构数据的注册、密码登录、刷新、退出和个人资料接口，权威协议源与生成类型均归服务端维护；验证证据见[服务端验证记录](AzureFishServer/Documentation/validation.md)。两端不共享数据库，真实业务仍要求 HTTPS＋Protobuf。Apple、头像、账号安全、真实账号部署及 IM 尚未实现，客户端启动路径与现有聊天演示保持当前实现。
+**状态：客户端已链接网络／账号基础包，认证流程尚未接入；独立服务端已实现首期密码账号接口。** [AzureFishServer](AzureFishServer/README.md) 提供本机虚构数据的注册、密码登录、刷新、退出和个人资料接口，权威协议源与生成类型均归服务端维护；验证证据见[服务端验证记录](AzureFishServer/Documentation/validation.md)。两端不共享数据库，真实业务仍要求 HTTPS＋Protobuf。Apple、头像、账号安全、真实账号部署及 IM 尚未实现，客户端启动路径与现有聊天演示保持当前实现。
 
 ## 安全、设备适配与国际化设计
 
@@ -44,7 +44,7 @@
 
 ## 远程框架依赖
 
-共享 UI／本地化框架通过远程 Swift Package 引用，工程中不复制这些框架源码，也不依赖相邻工程目录。当前 App 的三个直接依赖使用 `main` 分支，以下是迁移验证时锁文件记录的具体提交。
+共享 UI／本地化框架通过远程 Swift Package 引用，工程中不复制这些框架源码，也不依赖相邻工程目录。当前 App 的三个远程直接依赖使用 `main` 分支，以下是迁移验证时锁文件记录的具体提交。
 
 | 框架 | 本次解析 revision |
 | --- | --- |
@@ -52,13 +52,13 @@
 | ListKit | `005aaa36780a1db0850cee7dbccc826886935905` |
 | AppLocalization | `a15471628569cb10404f599466b11f1036f9c86b` |
 
-QuickLayout 和 swift-syntax 由依赖图间接引入。`AzureFish.xcworkspace/xcshareddata/swiftpm/Package.resolved` 保存解析结果。
+QuickLayout 和 swift-syntax 由 UI 依赖图间接引入；本地协议／账号包另行引入精确版本 SwiftProtobuf 1.38.1。`AzureFish.xcworkspace/xcshareddata/swiftpm/Package.resolved` 保存解析结果。
 
 ## 客户端本地 SPM
 
-[SharePackage](SharePackage/README.md) 提供 **Swift 6.3／iOS 15+** 的 `AzureFishProtocol`、`AzureFishNetwork` 和 `AzureFishAPI`，分别负责服务端协议快照、通用 HTTP 传输和账号接口适配。借鉴 Nirvana 的分层，框架统一采用 AzureFish 命名；普通构建不依赖 Nirvana、AzureFishServer 或 protoc。
+[SharePackage](SharePackage/README.md) 提供 **Swift 6.3／iOS 15+** 的 `AzureFishProtocol`、`AzureFishNetwork` 和 `AzureFishAPI`，分别负责协议源副本与插件生成类型、通用 HTTP 传输和账号接口适配。借鉴 Nirvana 的分层，框架统一采用 AzureFish 命名；普通构建不依赖 Nirvana 或 AzureFishServer 目录；协议类型由官方插件及锁定依赖自带的 protoc 自动生成，无需手工安装生成器。
 
-打开 `AzureFishNetworking.xcworkspace`，使用共享 scheme `AzureFishNetworking` 验证本地包。当前尚未链接到 App target，登录状态、Keychain 和页面接入仍待后续实施；设计及本次证据见[网络接入说明](Documentation/Networking/README.md)。
+打开 `AzureFishNetworking.xcworkspace`，使用共享 scheme `AzureFishNetworking` 验证本地包。三个本地包已链接到 AzureFish App target，可在客户端按需 import；登录状态、Keychain 和页面接入仍待后续实施；设计及本次证据见[网络接入说明](Documentation/Networking/README.md)。
 
 ## 测试
 

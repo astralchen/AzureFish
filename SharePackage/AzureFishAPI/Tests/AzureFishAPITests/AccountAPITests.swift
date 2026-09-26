@@ -21,16 +21,16 @@ private func credentials(generation: Int64 = 1, userID: UUID = testUserID, sessi
         refreshExpiresAt: Date(timeIntervalSince1970: 1_802_592_000), refreshGeneration: generation)
 }
 
-private func profileMessage(version: Int64 = 1) -> Azurefish_V1_UserProfile {
-    var message = Azurefish_V1_UserProfile()
+private func profileMessage(version: Int64 = 1) -> AzureFishProtocol.UserProfile {
+    var message = AzureFishProtocol.UserProfile()
     message.userID = testUserID.uuidString.lowercased(); message.accountName = "fictional_user"
     message.nickname = "虚构测试"; message.profileVersion = version
     message.createdAtMs = 1_800_000_000_000; message.updatedAtMs = 1_800_000_000_000
     return message
 }
 
-private func authMessage(generation: Int64 = 1) -> Azurefish_V1_AuthResponse {
-    var message = Azurefish_V1_AuthResponse()
+private func authMessage(generation: Int64 = 1) -> AuthResponse {
+    var message = AuthResponse()
     message.environmentID = "test"; message.userID = testUserID.uuidString.lowercased()
     message.deviceID = testDeviceID.uuidString.lowercased(); message.sessionID = testSessionID.uuidString.lowercased()
     message.accessToken = String(repeating: "a", count: 43); message.refreshToken = String(repeating: "r", count: 43)
@@ -40,7 +40,7 @@ private func authMessage(generation: Int64 = 1) -> Azurefish_V1_AuthResponse {
 }
 
 private func serviceResponse(_ code: String, status: Int) throws -> HTTPResponse {
-    var message = Azurefish_V1_ApiError()
+    var message = ApiError()
     message.code = code; message.requestID = UUID().uuidString.lowercased(); message.field = "password"
     return HTTPResponse(statusCode: status, headers: ["Content-Type": "application/protobuf", "Retry-After": "60"], body: try message.serializedData())
 }
@@ -66,7 +66,7 @@ struct AccountAPITests {
         #expect(history[0].headers["X-Request-ID"] != history[1].headers["X-Request-ID"])
         #expect(history[0].url.path == "/v1/auth/register")
         #expect(history[0].headers["Authorization"] == nil)
-        let decoded = try Azurefish_V1_RegisterRequest(serializedBytes: #require(history[0].body))
+        let decoded = try RegisterRequest(serializedBytes: #require(history[0].body))
         #expect(decoded.operationID == id.uuidString.lowercased())
         #expect(decoded.password == "Fictional-Password-123")
         #expect(!String(reflecting: operation).contains("Fictional-Password"))
@@ -85,7 +85,7 @@ struct AccountAPITests {
         let history = await transport.requests
         #expect(history.count == 2 && history[0].body == history[1].body)
         #expect(history[0].headers["Authorization"] != history[1].headers["Authorization"])
-        let message = try Azurefish_V1_UpdateProfileRequest(serializedBytes: #require(history[0].body))
+        let message = try UpdateProfileRequest(serializedBytes: #require(history[0].body))
         #expect(message.hasBio && !message.hasNickname && message.bio.isEmpty)
         #expect(message.expectedProfileVersion == 1)
     }
