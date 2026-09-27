@@ -1,0 +1,139 @@
+import Fluent
+import Foundation
+import SwiftProtobuf
+import Vapor
+
+extension IMService {
+    func send(_ req: Request) async throws -> Response {
+        let (input, bytes) = try requestMessage(IMSendRequest.self, from: req)
+        let uuid = try Validation.uuid(input.messageUuid, field: "message_uuid")
+        let client = try Validation.uuid(input.clientMessageID, field: "client_message_id")
+        let device = try Validation.uuid(input.deviceID, field: "device_id").uuidString.lowercased()
+        guard ["text", "media_group", "audio", "file"].contains(input.contentType), input.contentSchemaVersion == 1 else { throw APIError(.badRequest, "UNSUPPORTED_CONTENT") }
+        if input.contentType == "text" {
+            try Validation.text(input.text, field: "text", max: 16384)
+            guard input.assetIds.isEmpty else { throw APIError(.badRequest, "VALIDATION_FAILED", field: "asset_ids") }
+            guard input.text.utf8.count <= 65536 else { throw APIError(.payloadTooLarge, "PAYLOAD_TOO_LARGE") }
+        } else {
+            guard input.text.isEmpty, !input.assetIds.isEmpty, input.assetIds.count <= 20 else { throw APIError(.badRequest, "VALIDATION_FAILED", field: "asset_ids") }
+        }
+        var canonical = input; canonical.operationID = ""
+        canonical.messageUuid = uuid.uuidString.lowercased(); canonical.clientMessageID = client.uuidString.lowercased()
+        canonical.deviceID = device
+        canonical.assetIds = try input.assetIds.map { try Validation.uuid($0, field: "asset_ids").uuidString.lowercased() }
+        canonical.conversationID = try Validation.uuid(input.conversationID, field: "conversation_id").uuidString.lowercased()
+        let fingerprint = crypto.digest(try canonical.serializedData(), purpose: "im-message")
+        return try await write(req, operation: input.operationID, bytes: bytes, name: "send") { session, db in
+            guard device == session.deviceID else { throw APIError(.forbidden, "DEVICE_MISMATCH") }
+            let (conversation, original) = try await self.load(input.conversationID, user: session.userID, db: db, active: true)
+            var state = original
+            let key = self.crypto.digest(Data((session.userID.uuidString + ":" + client.uuidString).utf8), purpose: "im-client-message")
+            let existingUUID = try await IMMessageRecord.find(uuid, on: db)
+            let existingClient = try await IMMessageRecord.query(on: db).filter(\.$clientKey == key).first()
+            if let existing = existingUUID ?? existingClient {
+                guard existing.id == uuid, existing.clientKey == key, existing.conversationID == conversation.id,
+                      try self.messageState(existing).fingerprint == fingerprint else { throw APIError(.conflict, "MESSAGE_ID_CONFLICT") }
+                return try self.renderedMessage(existing, state)
+            }
+            guard state.latest < 100_000 else { throw APIError(.conflict, "MESSAGE_LIMIT") }
+            state.latest += 1; state.summaryRevision += 1
+            var result = IMMessage(); result.conversationID = try conversation.requireID().uuidString.lowercased()
+            result.messageUuid = uuid.uuidString.lowercased(); result.clientMessageID = client.uuidString.lowercased()
+            result.serverMessageID = UUID().uuidString.lowercased(); result.senderUserID = session.userID.uuidString.lowercased()
+            result.deviceID = device; result.serverSeq = state.latest; result.serverCreatedAtMs = self.accounts.now
+            result.serverRevision = 1; result.contentType = input.contentType; result.contentSchemaVersion = input.contentSchemaVersion; result.text = input.text
+            let audience = state.members.filter { $0.active && $0.user != session.userID }.map(\.user)
+            let row = IMMessageRecord(); row.id = uuid; row.conversationID = try conversation.requireID()
+            row.sequence = state.latest; row.clientKey = key
+            row.payload = try self.encrypt(IMMessageState(envelope: result.serializedData(), audience: audience, fingerprint: fingerprint), context: "message:" + uuid.uuidString)
+            try await row.create(on: db)
+            if input.contentType != "text" {
+                guard let media = self.media else { throw APIError(.serviceUnavailable, "MEDIA_UNAVAILABLE") }
+                result.assets = try await media.attach(input.assetIds, kind: input.contentType, conversation: conversation.requireID(), message: uuid, user: session.userID, db: db)
+                row.payload = try self.encrypt(IMMessageState(envelope: result.serializedData(), audience: audience, fingerprint: fingerprint), context: "message:" + uuid.uuidString)
+                try await row.update(on: db)
+            }
+            try await self.save(conversation, state, db: db)
+            try await self.emit(conversation.requireID(), users: audience + [session.userID], kind: "message", message: uuid, db: db)
+            return try self.renderedMessage(row, state)
+        }
+    }
+    func revoke(_ req: Request) async throws -> Response {
+        let (input, bytes) = try requestMessage(IMRevokeRequest.self, from: req)
+        let uuid = try Validation.uuid(input.messageUuid, field: "message_uuid")
+        return try await write(req, operation: input.operationID, bytes: bytes, name: "revoke") { session, db in
+            let (conversation, original) = try await self.load(input.conversationID, user: session.userID, db: db)
+            var state = original
+            let row = try await self.visibleMessage(uuid, conversation: conversation.requireID(), state: state, user: session.userID, db: db)
+            var stored = try self.messageState(row)
+            var message = try IMMessage(serializedBytes: stored.envelope)
+            guard message.senderUserID == session.userID.uuidString.lowercased() else { throw APIError(.forbidden, "REVOKE_FORBIDDEN") }
+            if !message.revoked {
+                guard self.accounts.now <= message.serverCreatedAtMs + 120_000 else { throw APIError(.conflict, "REVOKE_WINDOW_EXPIRED") }
+                message.revoked = true; message.text = ""; message.assets = []; message.serverRevision += 1
+                try await self.media?.detach(message: uuid, db: db)
+                stored.envelope = try message.serializedData()
+                row.payload = try self.encrypt(stored, context: "message:" + uuid.uuidString)
+                state.summaryRevision += 1
+                try await row.update(on: db); try await self.save(conversation, state, db: db)
+                try await self.emit(conversation.requireID(), users: stored.audience + [session.userID], kind: "message", message: uuid, db: db)
+            }
+            return try self.renderedMessage(row, state)
+        }
+    }
+    func visibleMessage(_ id: UUID, conversation: UUID, state: IMConversationState, user: UUID, db: any Database) async throws -> IMMessageRecord {
+        guard let row = try await IMMessageRecord.find(id, on: db), row.conversationID == conversation,
+              let member = state.members.first(where: { $0.user == user }), member.sees(row.sequence) else { throw APIError(.notFound, "MESSAGE_NOT_FOUND") }
+        return row
+    }
+    func markRead(_ req: Request) async throws -> Response { try await watermark(req, reading: true) }
+    func markDelivered(_ req: Request) async throws -> Response { try await watermark(req, reading: false) }
+    private func watermark(_ req: Request, reading: Bool) async throws -> Response {
+        let (input, bytes) = try requestMessage(IMWatermarkRequest.self, from: req)
+        return try await write(req, operation: input.operationID, bytes: bytes, name: reading ? "read" : "delivered") { session, db in
+            let (row, original) = try await self.load(input.conversationID, user: session.userID, db: db)
+            var state = original
+            let index = state.members.firstIndex(where: { $0.user == session.userID })!
+            guard input.throughSeq >= 0, input.throughSeq <= state.members[index].upperBound(state.latest) else { throw APIError(.badRequest, "VALIDATION_FAILED", field: "through_seq") }
+            let oldRead = state.members[index].read, oldDelivered = state.members[index].delivered
+            if reading { state.members[index].read = max(oldRead, input.throughSeq) }
+            state.members[index].delivered = max(oldDelivered, input.throughSeq)
+            if oldRead != state.members[index].read || oldDelivered != state.members[index].delivered {
+                state.summaryRevision += 1
+                try await self.save(row, state, db: db)
+                try await self.emit(row.requireID(), users: state.members.map(\.user), kind: reading ? "read" : "receipt", db: db)
+            }
+            return try await self.view(row, state, user: session.userID, db: db).readState
+        }
+    }
+    func history(_ req: Request) async throws -> Response {
+        let (input, _) = try requestMessage(IMHistoryRequest.self, from: req)
+        let count = try limit(input.limit, max: 100, default: 50)
+        guard input.beforeSeq >= 0, input.upperBoundSeq >= 0, input.boundaryRevision >= 0 else { throw APIError(.badRequest, "VALIDATION_FAILED", field: "before_seq") }
+        return try await read(req) { session, db in
+            let (conversation, state) = try await self.load(input.conversationID, user: session.userID, db: db)
+            let member = state.members.first(where: { $0.user == session.userID })!
+            let boundary = try member.closedConversation.map { try IMConversation(serializedBytes: $0).boundaryRevision } ?? state.boundary
+            let initial = input.beforeSeq == 0 && input.upperBoundSeq == 0 && input.boundaryRevision == 0
+            guard initial || input.boundaryRevision == boundary else { throw APIError(.conflict, "HISTORY_BOUNDARY_CHANGED") }
+            let upper = initial ? member.upperBound(state.latest) : input.upperBoundSeq
+            let before = initial ? upper + 1 : input.beforeSeq
+            guard upper <= member.upperBound(state.latest), before > 0, before <= upper + 1 else { throw APIError(.badRequest, "VALIDATION_FAILED", field: "before_seq") }
+            // 扫描量有界；无权查看的序号也推进覆盖区间，避免空页死循环。
+            let rows = try await IMMessageRecord.query(on: db).filter(\.$conversationID == conversation.requireID())
+                .filter(\.$sequence >= (member.intervals.first?.joined ?? 1)).filter(\.$sequence < before).filter(\.$sequence <= upper).sort(\.$sequence, .descending).limit(count).all()
+            var response = IMHistoryResponse(); response.upperBoundSeq = upper; response.boundaryRevision = boundary
+            response.earliestAvailableSeq = member.intervals.first?.joined ?? 1
+            var next = before
+            for row in rows {
+                if member.sees(row.sequence) { response.messages.append(try self.renderedMessage(row, state)) }
+                next = row.sequence
+                if try response.serializedData().count > 3 * 1024 * 1024 { response.messages.removeLast(); next = row.sequence + 1; break }
+            }
+            response.nextBeforeSeq = next
+            response.hasMore_p = next > response.earliestAvailableSeq && !rows.isEmpty
+            if next < before { response.coveredFromSeq = next; response.coveredThroughSeq = before - 1 }
+            return response
+        }
+    }
+}

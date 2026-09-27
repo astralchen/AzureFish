@@ -6,8 +6,9 @@ struct APIError: Error, Sendable {
     let status: HTTPResponseStatus
     let code: String
     let field: String
-    init(_ status: HTTPResponseStatus, _ code: String, field: String = "") {
-        self.status = status; self.code = code; self.field = field
+    let contentRange: String?
+    init(_ status: HTTPResponseStatus, _ code: String, field: String = "", contentRange: String? = nil) {
+        self.status = status; self.code = code; self.field = field; self.contentRange = contentRange
     }
 }
 
@@ -19,8 +20,8 @@ func requestMessage<M: Message>(_ type: M.Type, from req: Request) throws -> (M,
     guard req.headers.contentType == HTTPMediaType(type: "application", subType: "protobuf") else {
         throw APIError(.unsupportedMediaType, "UNSUPPORTED_MEDIA_TYPE")
     }
-    guard let buffer = req.body.data else { throw APIError(.badRequest, "MALFORMED_PROTOBUF") }
-    let data = Data(buffer.readableBytesView)
+    // proto3 默认消息可编码为零字节，缺省 body 由业务字段校验决定是否有效。
+    let data = req.body.data.map { Data($0.readableBytesView) } ?? Data()
     do { return (try M(serializedBytes: data), data) }
     catch { throw APIError(.badRequest, "MALFORMED_PROTOBUF") }
 }
@@ -31,11 +32,15 @@ struct APIMiddleware: AsyncMiddleware {
         let requestID = UUID().uuidString.lowercased()
         let response: Response
         do {
-            try await limiter.check("ip:" + (request.remoteAddress?.ipAddress ?? "local"), limit: 120)
-            if let size = request.body.data?.readableBytes, size > 16 * 1024 {
+            let upload = request.method == .PUT && request.url.path.hasPrefix("/v1/media/uploads/")
+            let download = (request.method == .GET || request.method == .HEAD) && request.url.path.hasPrefix("/v1/media/resources/") && request.url.path.hasSuffix("/content")
+            let transfer = upload || download
+            try await limiter.check((transfer ? "media-ip:" : "ip:") + (request.remoteAddress?.ipAddress ?? "local"), limit: transfer ? 600 : 120)
+            let maxBody = upload ? MediaLimits.chunk : request.url.path == "/v1/im/messages/send" ? 256 * 1024 : 16 * 1024
+            if let size = request.body.data?.readableBytes, size > maxBody {
                 throw APIError(.payloadTooLarge, "PAYLOAD_TOO_LARGE")
             }
-            if let accept = request.headers.first(name: .accept),
+            if !download, let accept = request.headers.first(name: .accept),
                !accept.split(separator: ",").contains(where: {
                    let media = ($0.split(separator: ";", omittingEmptySubsequences: false).first ?? "").trimmingCharacters(in: .whitespaces)
                    return media == "application/protobuf" || media == "*/*" || media == "application/*"
@@ -56,6 +61,7 @@ struct APIMiddleware: AsyncMiddleware {
             var message = ApiError()
             message.code = mapped.code; message.field = mapped.field; message.requestID = requestID
             response = try protobufResponse(message, status: mapped.status)
+            if let range = mapped.contentRange { response.headers.replaceOrAdd(name: "Content-Range", value: range) }
             if mapped.status == .tooManyRequests { response.headers.replaceOrAdd(name: "Retry-After", value: "60") }
         }
         response.headers.replaceOrAdd(name: "X-Request-ID", value: requestID)

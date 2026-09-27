@@ -6,11 +6,13 @@ struct Cryptography: Sendable {
     let environment: String
     private let encryptionKey: SymmetricKey
     private let digestKey: SymmetricKey
+    private let mediaWrappingKey: SymmetricKey
 
     init(key: Data, environment: String) throws {
         guard key.count == 32 else { throw ConfigurationError.invalidKey }
         self.environment = environment
         let master = SymmetricKey(data: key)
+        mediaWrappingKey = HKDF<SHA256>.deriveKey(inputKeyMaterial: master, salt: Data(environment.utf8), info: Data("media-key-wrap-v1".utf8), outputByteCount: 32)
         encryptionKey = HKDF<SHA256>.deriveKey(inputKeyMaterial: master, salt: Data(environment.utf8), info: Data("fields-v1".utf8), outputByteCount: 32)
         digestKey = HKDF<SHA256>.deriveKey(inputKeyMaterial: master, salt: Data(environment.utf8), info: Data("indexes-v1".utf8), outputByteCount: 32)
     }
@@ -26,6 +28,15 @@ struct Cryptography: Sendable {
     func open(_ value: String, context: String) throws -> Data {
         guard let bytes = Data(base64Encoded: value) else { throw ConfigurationError.invalidCiphertext }
         return try AES.GCM.open(AES.GCM.SealedBox(combined: bytes), using: encryptionKey, authenticating: aad(context))
+    }
+
+    func wrapMediaKey(_ key: Data, resource: UUID) throws -> String {
+        try AES.GCM.seal(key, using: mediaWrappingKey, authenticating: aad("media-key:" + resource.uuidString)).combined!.base64EncodedString()
+    }
+    func unwrapMediaKey(_ value: String, resource: UUID) throws -> Data {
+        guard let bytes = Data(base64Encoded: value) else { throw ConfigurationError.invalidCiphertext }
+        let key = try AES.GCM.open(AES.GCM.SealedBox(combined: bytes), using: mediaWrappingKey, authenticating: aad("media-key:" + resource.uuidString))
+        guard key.count == 32 else { throw ConfigurationError.invalidKey }; return key
     }
 
     private func aad(_ context: String) -> Data {

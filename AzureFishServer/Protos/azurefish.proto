@@ -153,3 +153,313 @@ message UpdateProfileRequest {
     // 传入时最多 500 个 Swift Character，保留原始文本，拒绝除换行外的控制字符。
     optional string bio = 4;
 }
+
+// 按精确账号名查找可发起私聊的用户；不会返回密码或会话信息。
+message IMLookupUserRequest {
+    // 使用账号接口相同的规范化规则。
+    string account_name = 1;
+}
+// 对外可见的最小用户资料。
+message IMPublicUser {
+    string user_id = 1; // 用户 UUID。
+    string nickname = 2; // 昵称原文。
+    int64 profile_version = 3; // 资料版本。
+}
+// 幂等解析唯一私聊，不允许与自己创建私聊。
+message IMResolveRequest {
+    string operation_id = 1; // 写动作 UUID。
+    string peer_user_id = 2; // 对方用户 UUID。
+}
+// 创建群聊；创建者自动加入并成为群主。
+message IMCreateGroupRequest {
+    string operation_id = 1; // 写动作 UUID。
+    string title = 2; // 1～64 字符，禁止全空白。
+    repeated string member_user_ids = 3; // 不含创建者，1～99 个不重复用户 UUID。
+}
+// 群管理一次仅执行一种动作；使用版本检查避免覆盖其他设备的修改。
+message IMUpdateGroupRequest {
+    string operation_id = 1; // 写动作 UUID。
+    string conversation_id = 2; // 群会话 UUID。
+    int64 expected_revision = 3; // 当前会话资料版本。
+    string action = 4; // rename、add、remove、leave、transfer、dissolve。
+    string title = 5; // 仅 rename 使用。
+    string member_user_id = 6; // 仅 add、remove、transfer 使用。
+}
+// 当前账号可访问的会话查询。
+message IMConversationRequest {
+    string conversation_id = 1; // 会话 UUID。
+}
+// 成员每次加入形成独立的可见区间。
+message IMMembershipInterval {
+    int64 joined_seq = 1; // 包含此序号。
+    int64 left_seq = 2; // 不包含此序号；0 表示尚未离开。
+}
+// 群成员身份与历史可见边界，不随退出而删除。
+message IMMember {
+    string user_id = 1; // 用户 UUID。
+    bool active = 2; // 当前是否仍为成员。
+    repeated IMMembershipInterval intervals = 3; // 按加入时间升序。
+}
+// 当前账号的权威阅读摘要。
+message IMReadState {
+    int64 read_through_seq = 1; // 用户多设备合并的阅读水位。
+    int64 delivered_through_seq = 2; // 已覆盖的送达水位，至少等于阅读水位。
+    int64 unread_count = 3; // 排除自己发出和已撤回消息后的精确数量。
+    int64 summary_at_seq = 4; // 此摘要对应的会话最高序号。
+    int64 server_revision = 5; // 摘要版本，与会话资料版本独立。
+}
+// 会话当前权威状态；closed 可代表解散或当前账号已离开。
+message IMConversation {
+    string conversation_id = 1; // 会话 UUID。
+    string kind = 2; // direct 或 group。
+    string title = 3; // 群标题；私聊为空。
+    string owner_user_id = 4; // 群主；私聊为空。
+    repeated IMMember members = 5; // 含已离开成员及历次可见区间。
+    int64 server_revision = 6; // 资料版本。
+    int64 boundary_revision = 7; // 成员权限边界版本。
+    int64 latest_seq = 8; // 当前账号可见的最高边界，离开后不再推进。
+    bool closed = 9; // 当前账号不能再向此会话发消息。
+    IMReadState read_state = 10; // 当前账号的阅读摘要。
+}
+// 发送文本消息；身份以 Bearer 为准，设备必须匹配该会话凭据。
+message IMSendRequest {
+    string operation_id = 1; // 写动作 UUID；重试保留原字节。
+    string conversation_id = 2; // 已解析的权威会话 UUID。
+    string message_uuid = 3; // 环境内全局唯一 UUID。
+    string client_message_id = 4; // 发送者内唯一 UUID。
+    string device_id = 5; // 当前凭据绑定的安装 UUID。
+    string content_type = 6; // text、media_group、audio、file。
+    int32 content_schema_version = 7; // 首期为 1。
+    string text = 8; // text 类型必填，媒体类型为空。
+    repeated string asset_ids = 9; // 有序就绪附件 UUID；媒体组最多 20 个，语音／文件恰好 1 个。
+}
+// 权威消息信封；撤回终态保留身份与序号，清空正文。
+message IMMessage {
+    string conversation_id = 1; // 会话 UUID。
+    string message_uuid = 2; // 原发送端 UUID。
+    string client_message_id = 3; // 原发送端幂等 UUID。
+    string server_message_id = 4; // 服务端消息 UUID。
+    string sender_user_id = 5; // 认证得到的发送者 UUID。
+    string device_id = 6; // 原发送会话设备。
+    int64 server_seq = 7; // 会话内严格递增，从 1 开始。
+    int64 server_created_at_ms = 8; // 接受时间，Unix 毫秒。
+    int64 server_revision = 9; // 正文版本，撤回递增。
+    string content_type = 10; // 内容类型。
+    int32 content_schema_version = 11; // 内容版本。
+    string text = 12; // 撤回时为空。
+    bool revoked = 13; // 不允许恢复正文。
+    IMReceiptSummary receipt = 14; // 独立版本的回执摘要。
+    repeated MediaAsset assets = 15; // 有序权威附件；撤回后清空，不包含路径或下载凭据。
+}
+// 固定发送时接收范围的回执计数；发送者不计入。
+message IMReceiptSummary {
+    int64 expected_count = 1;
+    int64 delivered_count = 2;
+    int64 read_count = 3;
+    int64 audience_version = 4; // 首期固定 1。
+    int64 server_revision = 5; // 独立回执版本。
+}
+// 单调推进已覆盖水位；不能超过当前账号可见边界。
+message IMWatermarkRequest {
+    string operation_id = 1;
+    string conversation_id = 2;
+    int64 through_seq = 3; // 非负，已读隐含送达。
+}
+// 发送者在接受后 120 秒内撤回自己的消息。
+message IMRevokeRequest {
+    string operation_id = 1;
+    string conversation_id = 2;
+    string message_uuid = 3;
+}
+// 固定上界的逆序历史分页；首次三个边界均为 0。
+message IMHistoryRequest {
+    string conversation_id = 1;
+    int64 before_seq = 2; // 不包含此序号；首次为 0。
+    int64 upper_bound_seq = 3; // 首次为 0，后续沿用响应上界。
+    int64 boundary_revision = 4; // 首次为 0，后续必须匹配。
+    int32 limit = 5; // 1～100；0 使用 50。
+}
+// 返回完整扫描区间；序号缺口可能因加入前或离开期间无权限。
+message IMHistoryResponse {
+    repeated IMMessage messages = 1; // 按序号降序。
+    int64 upper_bound_seq = 2;
+    int64 next_before_seq = 3;
+    bool has_more = 4;
+    int64 covered_from_seq = 5; // 0 表示无覆盖区间。
+    int64 covered_through_seq = 6;
+    int64 boundary_revision = 7;
+    int64 earliest_available_seq = 8; // 首次加入序号；首期不清理历史。
+}
+// 账号事件增量，游标由服务端签名并绑定账号；空游标从流起点读取。
+message IMEventsRequest {
+    string cursor = 1;
+    string epoch = 2; // 空值仅用于首次拉取。
+    int32 limit = 3; // 1～200；0 使用 100。
+}
+// 同步事件是权威实体刷新通知；实体取本次读取时的最新版本。
+message IMEvent {
+    int64 position = 1; // 账号内连续位置，不等同于消息序号。
+    string kind = 2; // conversation、message、read、receipt。
+    IMConversation conversation = 3; // 含与本批次一致的当前账号摘要。
+    IMMessage message = 4; // message 事件存在，其余事件不携带。
+}
+message IMEventsResponse {
+    string base_cursor = 1; // 对应本次输入位置的规范游标。
+    repeated IMEvent events = 2;
+    string next_cursor = 3; // 客户端事务提交后才保存。
+    string epoch = 4;
+    bool has_more = 5;
+}
+// 固定会话快照；空 token 创建，后续必须原样携带 token 与 cursor。
+message IMSnapshotRequest {
+    string snapshot_token = 1;
+    string cursor = 2;
+    int32 limit = 3; // 1～100；0 使用 50。
+}
+message IMSnapshotResponse {
+    string snapshot_token = 1; // 绑定账号，10 分钟有效。
+    repeated IMConversation conversations = 2; // 含已关闭／已离开关系。
+    string next_cursor = 3;
+    bool complete = 4;
+    string baseline_cursor = 5; // 仅末页返回；以此继续增量，再拉历史。
+    string epoch = 6;
+}
+// 回执明细固定快照，成员变化不改变旧消息接收范围。
+message IMReceiptsRequest {
+    string conversation_id = 1;
+    string message_uuid = 2;
+    string snapshot_token = 3;
+    string cursor = 4;
+    int32 limit = 5; // 1～100；0 使用 50。
+}
+message IMReceiptDetail {
+    string user_id = 1;
+    bool delivered = 2;
+    bool read = 3;
+}
+message IMReceiptsResponse {
+    string snapshot_token = 1;
+    IMReceiptSummary summary = 2;
+    repeated IMReceiptDetail members = 3;
+    string next_cursor = 4;
+    bool complete = 5;
+}
+// WebSocket 仅发送此二进制提示；客户端使用自身已提交游标拉取 events。
+message IMSyncHint {
+    string epoch = 1;
+    string latest_cursor = 2; // 仅提示，不能直接替代客户端 checkpoint。
+}
+
+
+// 媒体开发环境的服务端能力；大小单位为字节，时长为毫秒。
+message MediaCapabilities {
+    repeated string asset_kinds = 1; // image、video、audio、file、live_photo。
+    int64 chunk_bytes = 2; // 固定分块大小，最后一块可较小。
+    int64 image_max_bytes = 3;
+    int64 video_max_bytes = 4;
+    int64 audio_max_bytes = 5;
+    int64 file_max_bytes = 6;
+    int32 group_max_items = 7;
+    int64 group_max_bytes = 8;
+    int64 account_quota_bytes = 9; // 含上传预留、派生资源与分块封装预算。
+    int64 instance_quota_bytes = 10;
+    int32 account_concurrency = 11;
+    int32 instance_concurrency = 12;
+    int64 upload_lifetime_ms = 13;
+    int64 grant_lifetime_ms = 14;
+    int64 audio_min_duration_ms = 15;
+    int64 audio_max_duration_ms = 16;
+    int64 image_max_pixels = 17;
+    int32 preview_max_dimension = 18;
+    int32 waveform_samples = 19;
+    int64 processing_timeout_ms = 20;
+    bool processor_available = 21;
+    int32 image_max_frames = 22;
+    int32 video_max_dimension = 23;
+    int32 audio_max_channels = 24;
+    int32 audio_max_sample_rate = 25;
+    int32 filename_max_bytes = 26;
+    int64 ready_lifetime_ms = 27;
+    int64 dereferenced_lifetime_ms = 28;
+    int64 collection_interval_ms = 29;
+    repeated MediaFormat formats = 30;
+    int64 derived_reservation_bytes = 31;
+}
+message MediaFormat {
+    string kind = 1;
+    repeated string mime_types = 2;
+}
+// 客户端声明的原件；摘要为小写十六进制 SHA-256，服务端重新验证。
+message MediaResourceInput {
+    string role = 1; // original，Live Photo 另外要求 paired_video。
+    string filename = 2; // 仅显示名称，不能含路径分隔或控制字符。
+    string mime_type = 3; // 声明的 MIME，不能替代内容验证。
+    int64 byte_count = 4; // 正数，创建时预留配额。
+    string sha256 = 5;
+}
+message MediaCreateRequest {
+    string operation_id = 1;
+    string conversation_id = 2; // 已取得的权威会话，创建者必须为活跃成员。
+    string kind = 3; // image、video、audio、file、live_photo。
+    repeated MediaResourceInput resources = 4;
+}
+message MediaAssetRequest {
+    string asset_id = 1;
+}
+message MediaAssetMutation {
+    string operation_id = 1;
+    string asset_id = 2;
+}
+// 可持久化的资源描述，无文件系统路径、对象存储路径或临时凭据。
+message MediaResource {
+    string resource_id = 1;
+    string role = 2;
+    string filename = 3;
+    string mime_type = 4;
+    int64 byte_count = 5;
+    string sha256 = 6;
+}
+// 已校验的逻辑附件。普通文件不解析其内部内容，也不声明已通过病毒扫描。
+message MediaAsset {
+    string asset_id = 1;
+    string kind = 2;
+    repeated MediaResource resources = 3;
+    int32 pixel_width = 4;
+    int32 pixel_height = 5;
+    int64 duration_ms = 6;
+    bool animated = 7;
+    repeated float waveform = 8; // 语音为 60 个 0～1 的有限值。
+    int64 metadata_version = 9; // 首期 1，原件保持不变。
+}
+message MediaUploadProgress {
+    string resource_id = 1;
+    string upload_id = 2; // 仅附件所有者状态响应返回，不进入消息。
+    int32 part_count = 3;
+    repeated int32 completed_parts = 4; // 零起始、升序；缺失编号需要上传。
+    string role = 5; // 对应创建请求中的资源用途，不依赖响应顺序。
+}
+message MediaAssetStatus {
+    string asset_id = 1;
+    string state = 2; // uploading、queued、processing、ready、failed、cancelled、expired、deleted。
+    repeated MediaUploadProgress uploads = 3;
+    MediaAsset asset = 4; // 仅 ready 存在。
+    string failure_code = 5; // 稳定分类，无底层异常文本。
+    int64 expires_at_ms = 6; // 无引用时截止；被有效消息引用后为 0。
+}
+message MediaPartResponse {
+    int32 index = 1;
+    int64 byte_count = 2;
+    string sha256 = 3;
+}
+message MediaAuthorizeRequest {
+    string resource_id = 1;
+    string purpose = 2; // draft_preview 或 message_view。
+    string message_uuid = 3; // message_view 必填；draft_preview 必须为空。
+}
+message MediaDownloadGrant {
+    string token = 1; // 放入 X-Media-Grant 请求头，同时提供 Bearer；不写日志或消息。
+    int64 expires_at_ms = 2;
+    string resource_id = 3;
+    string etag = 4; // 带双引号的稳定实体标识，可用于 If-Range。
+    int64 byte_count = 5;
+}

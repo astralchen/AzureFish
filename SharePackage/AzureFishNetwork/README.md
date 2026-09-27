@@ -1,6 +1,6 @@
 # AzureFishNetwork
 
-Swift 6.3、iOS 15／macOS 12 的 Foundation HTTP 基础包，无 UIKit、SwiftProtobuf、业务错误码、凭据存储或全局会话依赖。
+Swift 6.3、iOS 15／macOS 12 的 Foundation HTTP／WebSocket 基础包，无 UIKit、SwiftProtobuf、业务错误码、凭据存储或全局会话依赖。
 
 - `HTTPRequest` 为不可变请求，`HTTPTransport` 可替换，`HTTPClient` 统一发送、取消与有限重试。
 - 默认 HTTPS。只有 Debug macOS／iOS 模拟器可显式选择 `debugLoopbackForFictionalData`，允许字面地址 127.0.0.1／::1；Release 与真机不开放 HTTP。始终使用系统 TLS 校验。
@@ -40,4 +40,41 @@ log stream --level debug --predicate 'subsystem == "AzureFish.Network" AND categ
 
 `AzureFishNetworkTestSupport` 是单独 product；MockHTTPTransport 保存含原始请求的内存历史，**只应用于虚构测试数据**，不用于生产记录或诊断。
 
-当前未实现头像、文件上传下载、后台传输、SSE、WebSocket、证书固定或自动刷新。这些能力按后续业务单独加入，不以无效果的接口占位。
+当前未实现头像、文件上传下载、后台传输、SSE、证书固定或业务认证刷新。这些能力按后续业务单独加入，不以无效果的接口占位。
+
+## WebSocket
+
+`WebSocketConnection` 是 actor，构造时注入异步握手提供器和传输工厂。每次尝试创建独立 `WebSocketTransport`；默认原生 `URLSessionWebSocketTransport` 使用 ephemeral session、系统 TLS、禁用缓存／Cookie／凭据存储并拒绝重定向。仅系统 `didOpen` 回调表示握手成功。
+
+```swift
+let socket = try WebSocketConnection {
+    WebSocketHandshake(url: URL(string: "wss://your-server.example/live")!)
+}
+let messages = await socket.messages()
+let receiver = Task {
+    do {
+        for try await message in messages {
+            // 交给业务解码器；不要记录正文。
+            _ = message.byteCount
+        }
+    } catch {
+        // receiveOverflow 必须触发业务补偿，不能忽略消息缺口。
+    }
+}
+try await socket.connect()
+try await socket.send(.text("example"))
+await socket.shutdown()
+receiver.cancel()
+```
+
+并发 `connect` 共享握手，取消单个等待者不会关闭连接。`disconnect` 清空发送队列并结束原始消息订阅，可以再次连接并重新订阅；`shutdown` 永久结束。结束使用时显式调用 `shutdown`。
+
+默认握手／发送超时 15 秒，消息最大 1 MiB，待发送队列最多 100 条／8 MiB，订阅前缓存及每个消息订阅各 16 条。状态订阅仅保留最新状态；原始消息订阅溢出以 `receiveOverflow` 终止，缓存缺口也在下次订阅明确报告。心跳默认关闭，可配置 ping 间隔及 pong 超时。异常断线最多重连 5 次，采用基础 1 秒、上限 30 秒的指数退避和 full jitter。首次握手失败不自动重连；证书、认证、协议和正常关闭不盲目重试。
+
+`enqueue` 只保证进入内存队列，不主动连接、不持久化。返回收据的 `wait()` 表示传输提交结果，不代表业务 ACK。自动重连只保留未提交的条目；已提交失败统一报告 `deliveryUncertain`，绝不自动重发。显式停止会清空队列。`sendEvents` 只供诊断，可丢弃旧事件，逐条可靠结果应使用收据。
+
+`WebSocketRequestBroker<Identity, Response>` 在发送前注册等待；发送闭包取得包含 identity、nonce、generation 的 token，业务适配层自行关联帧身份。必须用原 token 解析响应，并在断线时调用 `invalidate()`。只按重复使用的业务 identity 配对会丢失代次信息，不能这样接入。取消／超时移除等待，旧 token 无法完成新请求。
+
+`MessageRouter<Route, Message>` 返回注册 token，注销阻止后续投递，已取得快照的回调仍会完成；单次投递并发运行处理器，不保证顺序。两者都不定义业务帧格式。
+
+WebSocket 沿用 `-AzureFishNetworkLogging true`，仅输出代次、状态、耗时、字节数和脱敏错误分类，不输出 URL、Bearer、正文或关闭原因。测试支持产品提供 `MockWebSocketTransport`、`MockWebSocketFactory`、`TestNetworkClock`，仅用于虚构数据。

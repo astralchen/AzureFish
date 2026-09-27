@@ -15,11 +15,14 @@ public struct ServerConfiguration: Sendable {
     let key: Data
     let environmentID: String
     let bcryptCost: Int
+    let mediaWorkerPath: String?
+    let mediaLimits: MediaLimits
     let clock: @Sendable () -> Date
 
-    init(directory: String, key: Data, environmentID: String = "local-development", bcryptCost: Int = 12, clock: @escaping @Sendable () -> Date = { Date() }) {
+    init(directory: String, key: Data, environmentID: String = "local-development", bcryptCost: Int = 12, mediaWorkerPath: String? = nil, mediaLimits: MediaLimits = MediaLimits(), clock: @escaping @Sendable () -> Date = { Date() }) {
         self.directory = directory; self.key = key; self.environmentID = environmentID
         self.bcryptCost = bcryptCost; self.clock = clock
+        self.mediaWorkerPath = mediaWorkerPath; self.mediaLimits = mediaLimits
     }
 
     public static func local() throws -> ServerConfiguration {
@@ -62,6 +65,8 @@ public func configure(_ app: Application, configuration: ServerConfiguration) as
     let crypto = try Cryptography(key: configuration.key, environment: configuration.environmentID)
     app.databases.use(.sqlite(.file(path)), as: .sqlite)
     app.migrations.add(CreateSchema())
+    app.migrations.add(CreateIMSchema())
+    app.migrations.add(CreateMediaSchema())
     if existing {
         // 在迁移或业务写入前验证原库的环境和密钥，错误时保留原文件。
         guard let marker = try await MetadataRecord.find("key-check-v1", on: app.db),
@@ -96,4 +101,25 @@ public func configure(_ app: Application, configuration: ServerConfiguration) as
     v1.post("auth", "logout", use: service.logout)
     v1.get("me", use: service.me)
     v1.patch("me", use: service.update)
+    let epochKey = "im-epoch-v1"
+    let epoch: String
+    if let marker = try await MetadataRecord.find(epochKey, on: app.db) {
+        epoch = String(decoding: try crypto.open(marker.value, context: epochKey), as: UTF8.self)
+    } else {
+        epoch = UUID().uuidString.lowercased()
+        let marker = MetadataRecord(); marker.id = epochKey
+        marker.value = try crypto.seal(Data(epoch.utf8), context: epochKey)
+        try await marker.create(on: app.db)
+    }
+    let baseIM = IMService(accounts: service, epoch: epoch)
+    let directory = URL(fileURLWithPath: configuration.directory)
+    let blobs = LocalMediaBlobStore(root: directory.appendingPathComponent("media"), work: directory.appendingPathComponent("media-work"), environment: configuration.environmentID, app: app)
+    try await blobs.initialize()
+    let worker = configuration.mediaWorkerPath ?? Environment.get("AZUREFISH_MEDIA_WORKER") ?? URL(fileURLWithPath: CommandLine.arguments[0]).deletingLastPathComponent().appendingPathComponent("AzureFishMediaWorker").path
+    let media = MediaService(accounts: service, im: baseIM, blobs: blobs, limits: configuration.mediaLimits, worker: worker)
+    try await media.recover(app.db)
+    app.storage[MediaServiceKey.self] = media
+    app.lifecycle.use(MediaLifecycle(service: media))
+    IMService(accounts: service, epoch: epoch, media: media).register(on: v1)
+    media.register(on: v1)
 }

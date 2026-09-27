@@ -1,13 +1,13 @@
-# 密码账号接口契约 v1
+# 账号及公共网络契约 v1
 
-本文件解释实现行为，消息、字段类型和编号的唯一来源是 [azurefish.proto](../Protos/azurefish.proto)。包名 `azurefish.v1`；生成清单记录 schema SHA-256 与生成器版本。删字段时保留原编号为 `reserved`，不重新分配已发布编号。
+本文件解释实现行为，消息、字段类型和编号的唯一来源是 [azurefish.proto](../Protos/azurefish.proto)。IM 操作与分页语义见 [IM 契约](im-contract.md)。包名 `azurefish.v1`；生成清单记录 schema SHA-256 与生成器版本。删字段时保留原编号为 `reserved`，不重新分配已发布编号。
 
 proto 中维护中文消息与字段注释，并设置 `option swift_prefix = "";`，生成的 Swift 类型直接使用 `RegisterRequest`、`AuthResponse` 等消息原名；该选项只影响 Swift 标识符，网络消息名仍为 `azurefish.v1.*`。客户端同步此文件后由官方 SwiftProtobufPlugin 在构建时生成类型，不独立修改契约。
 
 ## 传输与通用规则
 
-- 当前只有虚构数据回环 HTTP。真实账号、Apple、真机与部署必须先实现 HTTPS，不关闭证书校验；未来 IM 使用 WSS。
-- 请求／响应为 `application/protobuf`，GET 无 body，写请求最大 16 KiB；可接受的 `Accept` 是 Protobuf 或兼容通配符。认证头为 `Authorization: Bearer <access_token>`。
+- 当前只有虚构数据回环 HTTP／WS。真实账号、Apple、真机与部署必须先实现 HTTPS，不关闭证书校验；真实 IM 必须使用 WSS。
+- 请求／响应为 `application/protobuf`，GET 无 body，账号请求最大 16 KiB；IM 发送请求上限单独定义为 256 KiB；可接受的 `Accept` 是 Protobuf 或兼容通配符。认证头为 `Authorization: Bearer <access_token>`。
 - 响应统一 `Cache-Control: no-store`，服务端为每次调用生成 `X-Request-ID`；错误体 `ApiError.request_id` 与头一致，不回显未经信任的请求 ID 或正文。业务错误仅提供稳定 code／field，由客户端翻译。
 - 时间戳均为 Unix 毫秒。`operation_id` 和 `device_id` 必须是 36 字符 UUID；设备 ID 为安装标识，不当作可信硬件证明。服务端返回的 UUID 使用小写。
 - 写动作须生成新 operation ID；同一动作重试必须复用原 ID 与完全相同的 Protobuf 字节。未知字段也参与指纹，不能解码后重新序列化作为重试请求。
@@ -57,3 +57,5 @@ proto 中维护中文消息与字段注释，并设置 `option swift_prefix = ""
 | 500 | `INTERNAL_ERROR` | 内部错误，仅保留 request_id 供诊断 |
 
 IP 每分钟最多 120 次；规范化账号的注册／登录合计每分钟最多 10 次；排队最多 64 个数据库操作。限流存于进程内，重启重置，来源使用连接地址而非客户端转发头，当前不支持反向代理、多实例或互联网暴露。
+
+媒体协议和二进制接口见 [媒体契约](media-contract.md)：控制接口继续使用 HTTP＋Protobuf，分块和下载字节使用独立路由。客户端仅同步契约，不代表 iOS 传输队列或聊天媒体已接入。

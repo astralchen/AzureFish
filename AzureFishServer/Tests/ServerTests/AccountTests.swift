@@ -21,7 +21,7 @@ struct Fixture: Sendable {
         let app = try await Application.make(.testing)
         app.logger.logLevel = .critical
         do {
-            try await configure(app, configuration: .init(directory: directory, key: override ?? key, environmentID: "test", bcryptCost: 4, clock: { clock.now() }))
+            try await configure(app, configuration: .init(directory: directory, key: override ?? key, environmentID: "test", bcryptCost: 4, mediaWorkerPath: URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent(".build/debug/AzureFishMediaWorker").path, clock: { clock.now() }))
             return app
         } catch {
             try await app.asyncShutdown()

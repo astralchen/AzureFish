@@ -27,4 +27,20 @@ struct ProtocolTests {
         let message = try EmptyResponse(serializedBytes: bytes)
         #expect(try message.serializedData() == bytes)
     }
+
+    @Test func mediaAppendOnlyFieldsAndUnknownEnvelopeRoundTrip() throws {
+        var request = IMSendRequest(); request.assetIds = ["asset"]
+        #expect(try request.serializedData().first == 0x4a) // 字段 9，保留原来的 1～8。
+        var resource = MediaResource(); resource.resourceID = "resource"; resource.role = "original"
+        resource.byteCount = 536_870_875; resource.sha256 = String(repeating: "a", count: 64)
+        var asset = MediaAsset(); asset.assetID = "asset"; asset.kind = "file"; asset.resources = [resource]
+        var message = IMMessage(); message.assets = [asset]
+        #expect(try message.serializedData().first == 0x7a) // 字段 15，保留原来的 1～14。
+        message.messageUuid = "message"; message.serverSeq = 42; message.contentType = "file"
+        let unknown = try EmptyResponse(serializedBytes: message.serializedData())
+        #expect(try IMMessage(serializedBytes: unknown.serializedData()) == message)
+        var progress = MediaUploadProgress(); progress.role = "paired_video"; progress.completedParts = [0, 3, 7]
+        #expect(try MediaUploadProgress(serializedBytes: progress.serializedData()) == progress)
+    }
+
 }

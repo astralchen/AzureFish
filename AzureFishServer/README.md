@@ -1,8 +1,8 @@
 # AzureFishServer
 
-AzureFish 的独立 Swift 6＋Vapor 服务端，位于仓库根目录的 `AzureFishServer/`。首期实现密码账号 HTTP＋Protobuf 接口，持久化采用 Fluent SQLite。客户端不依赖本工程目录构建，不共享数据库。
+AzureFish 的独立 Swift 6＋Vapor 服务端，位于仓库根目录的 `AzureFishServer/`。实现密码账号及文本 IM HTTP＋Protobuf 接口，持久化采用 Fluent SQLite。客户端不依赖本工程目录构建，不共享数据库。
 
-**当前仅供本机虚构账号开发联调。** 服务固定监听 `127.0.0.1:8080`，要求显式启用测试数据模式；不提供生产、局域网真机或真实账号运行模式。Apple、头像、改密、删除账号与 IM 尚未实现，iOS App 仍使用原来的本地聊天演示。
+**当前仅供本机虚构账号开发联调。** 服务固定监听 `127.0.0.1:8080`，要求显式启用测试数据模式；不提供生产、局域网真机或真实账号运行模式。文本 IM 已提供私聊、群聊、同步与实时提示；媒体后台已提供分块上传、原生处理和授权下载；Apple、头像、改密、删除账号尚未实现，iOS App 仍使用原来的本地聊天演示。
 
 ## 本机启动
 
@@ -29,12 +29,16 @@ sh Scripts/run-local.sh
 | `GET /v1/me` | Bearer，无 body | `UserProfile` |
 | `PATCH /v1/me` | `UpdateProfileRequest`＋Bearer | `UserProfile` |
 
-所有响应（含错误）为 `application/protobuf`。详情见[网络协议](Documentation/protobuf-contract.md)，字段编号唯一来源为 [Protos/azurefish.proto](Protos/azurefish.proto)。不要通过浏览器或 JSON 请求推断二进制接口行为。
+IM 新增 13 个 HTTP 接口及 WebSocket 实时提示，包含会话／群管理、发送／撤回、阅读／送达、历史、增量、固定快照和回执；见 [IM 契约](Documentation/im-contract.md)与[完整需求分析](Documentation/im-requirements.md)。
+
+所有 HTTP 响应（含错误）为 `application/protobuf`。详情见[网络协议](Documentation/protobuf-contract.md)，字段编号唯一来源为 [Protos/azurefish.proto](Protos/azurefish.proto)。不要通过浏览器或 JSON 请求推断二进制接口行为。
 
 ## 验证和协议生成
 
 ```sh
 swift test -j 4
+# 隔离临时数据库＋随机回环端口的 HTTP/WebSocket 联调；需要 protoc
+AZUREFISH_RUN_HTTP_SMOKE=1 PROTOC=/绝对路径/protoc swift test -j 4
 # 安装官方 protoc 后；另一终端保持服务运行
 python3 Scripts/smoke-test.py
 # 仅在修改 .proto 或生成器版本时执行
@@ -45,9 +49,9 @@ sh Scripts/generate-protocol.sh
 
 ## 架构与后续顺序
 
-- `Sources/Server`：配置、错误与二进制 HTTP 边界、账号服务、数据库模型及迁移；`Sources/Run`：可执行入口。
+- `Sources/Server`：配置、错误与二进制 HTTP 边界、账号服务、`IM/` 业务、数据库模型及迁移；`Sources/Run`：可执行入口。
 - `Tests/ServerTests`：Swift Testing 的真实 SQLite＋内存 HTTP 集成测试，临时目录和随机密钥逐用例隔离。
 - 写事务与认证读取经过同一个有界异步锁，避免 SQLite 并发刷新和重复注册竞态；文件锁禁止多个实例共享同一数据库。这是首期单实例设计，不能直接扩展为多节点。
-- 下一阶段先补 HTTPS、部署密钥管理与轮换／恢复、持久化分布式限流及数据清理策略，再开放真实账号；随后实现 Apple、头像、账号安全和 iOS 接入。IM 独立推进。
+- 下一阶段先补 HTTPS、部署密钥管理与轮换／恢复、持久化分布式限流及数据清理策略，再开放真实账号；随后实现 Apple、头像、账号安全和 iOS 接入。文本 IM 本机接口已实现，媒体后台见 [媒体契约](Documentation/media-contract.md)，客户端接入独立推进。
 
 安全边界见[安全说明](Documentation/security.md)，本次测试证据与未验证项见[验证记录](Documentation/validation.md)。

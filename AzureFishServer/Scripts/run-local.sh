@@ -21,4 +21,5 @@ if not key.exists():
         stream.flush()
         os.fsync(stream.fileno())
 PY
+swift build -j 4 --product AzureFishMediaWorker
 exec swift run -j 4 AzureFishServer

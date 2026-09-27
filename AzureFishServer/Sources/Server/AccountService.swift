@@ -168,7 +168,7 @@ final class AccountService: Sendable {
         return raw(data)
     }
 
-    private func authenticate(_ req: Request, db: any Database, allowRevoked: Bool = false) async throws -> SessionRecord {
+    func authenticate(_ req: Request, db: any Database, allowRevoked: Bool = false) async throws -> SessionRecord {
         guard let token = req.headers.bearerAuthorization?.token, token.utf8.count == 43 else { throw APIError(.unauthorized, "UNAUTHENTICATED") }
         let digest = crypto.digest(Data(token.utf8), purpose: "access")
         guard let session = try await SessionRecord.query(on: db).filter(\.$accessDigest == digest).first(),
@@ -199,7 +199,7 @@ final class AccountService: Sendable {
         return result
     }
 
-    private func payload(_ user: UserRecord) throws -> UserPayload {
+    func payload(_ user: UserRecord) throws -> UserPayload {
         try JSONDecoder().decode(UserPayload.self, from: crypto.open(user.payload, context: "user:" + user.requireID().uuidString))
     }
     private func encrypt(_ payload: UserPayload, id: UUID) throws -> String {
@@ -214,7 +214,7 @@ final class AccountService: Sendable {
         return profile
     }
 
-    private func replay(_ id: UUID, scope: String, bytes: Data, db: any Database, requireActive: Bool = true) async throws -> Data? {
+    func replay(_ id: UUID, scope: String, bytes: Data, db: any Database, requireActive: Bool = true) async throws -> Data? {
         guard let op = try await OperationRecord.find(id, on: db) else { return nil }
         guard op.scope == scope, op.fingerprint == crypto.digest(bytes, purpose: scope) else { throw APIError(.conflict, "OPERATION_CONFLICT", field: "operation_id") }
         guard let session = try await SessionRecord.find(op.sessionID, on: db), session.refreshExpiry > now,
@@ -228,7 +228,7 @@ final class AccountService: Sendable {
         return try crypto.open(op.result, context: "operation:" + id.uuidString)
     }
 
-    private func record(_ id: UUID, scope: String, bytes: Data, result: Data, session: SessionRecord, db: any Database) async throws {
+    func record(_ id: UUID, scope: String, bytes: Data, result: Data, session: SessionRecord, db: any Database) async throws {
         let op = OperationRecord()
         op.id = id; op.scope = scope; op.fingerprint = crypto.digest(bytes, purpose: scope)
         op.sessionID = try session.requireID(); op.generation = session.generation

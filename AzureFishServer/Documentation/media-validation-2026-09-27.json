@@ -1,0 +1,81 @@
+{
+  "date": "2026-09-27",
+  "scope": "macOS 单实例、虚构账号、独立临时数据库与随机回环端口",
+  "server_tests": {
+    "passed": 40,
+    "suites": 8,
+    "failed": 0
+  },
+  "client_protocol_tests": {
+    "passed": 4,
+    "failed": 0
+  },
+  "capacity": {
+    "original_bytes": 536870875,
+    "resident_baseline_bytes": 75284480,
+    "resident_peak_bytes": 106610688
+  },
+  "schema_sha256": "87b54601fc8bbbee2e2ea6afb7c4924c03292c1292c17329d4a7bb2fdbf7b0e8",
+  "checks": [
+    "原件 SHA-256 一致",
+    "真实 HTTP 全媒体闭环",
+    "HTTP/WS 账号与 IM 回归",
+    "慢上传控制接口响应与取消",
+    "数据库写失败回滚",
+    "存储不足边界注入",
+    "密文篡改与重启续传",
+    "HEAD/Range 与下载权限",
+    "客户端协议同步",
+    "生成代码逐字一致"
+  ],
+  "not_executed": [
+    "物理磁盘耗尽／断电",
+    "iOS App 编译、模拟器及真机接入",
+    "生产 HTTPS/WSS 与真实账号",
+    "Linux",
+    "对象存储",
+    "病毒扫描与内容审核"
+  ],
+  "server_test_names": [
+    "registerLoginProfileLogout()",
+    "authenticatedChunksAndManifestRejectSubstitution()",
+    "rangeAndConcurrencyLimits()",
+    "diskCapacityAndWriteFailureKeepUploadRecoverable()",
+    "uniqueDirectAndConcurrentSendDeduplication()",
+    "refreshRecoverySupersessionAndReplayRevocation()",
+    "concurrentDuplicateRefreshIssuesOneGeneration()",
+    "resumeAfterRestartAndFreshLogin()",
+    "authorizationValidationAndCrossAccountIsolation()",
+    "concurrentRegistrationCreatesOneAccount()",
+    "profileRetrySurvivesTokenRotation()",
+    "expiredRefreshRecoveryNeverExecutesAgain()",
+    "secondProcessLeaseAndCipherTampering()",
+    "groupOwnershipVersionsAndMembershipHistory()",
+    "profilePresenceConflictsAndIsolation()",
+    "credentialsAndOperationConflict()",
+    "readMergeReceiptSnapshotAndUnreadCorrections()",
+    "expiryAndRecoveryWindow()",
+    "protocolErrorsAndBodyLimit()",
+    "revokeSanitizesHistoryEventsAndLostSendResponse()",
+    "validationAndAccountRateLimit()",
+    "restartPreservesSessionAndRefreshRecovery()",
+    "historyFixedUpperBoundAndPaginatedEvents()",
+    "atRestEncryptionAndWrongKey()",
+    "fixedSnapshotIncludesClosedRelationsAndBaseline()",
+    "invalidMediaMissingPairCancellationAndQuota()",
+    "restartEncryptionAndRetryAfterTokenRotation()",
+    "slowUploadAndCancellation()",
+    "concurrentDistinctMessagesHaveContiguousSequence()",
+    "removedMemberMetadataAndBoundaryStayFrozen()",
+    "membershipIntervalsAndCrossAccountReferences()",
+    "databaseFailureRemovesUncommittedCiphertext()",
+    "workerCrashTimeoutAndMissingKey()",
+    "nativeFormatsOverHTTP()",
+    "fileResumeRangeRevokeAndCollection()",
+    "largePagesRespectByteBudgetWithoutSkippingMessages()",
+    "ciphertextSubstitutionFailsWithoutAdvancingState()",
+    "existingAccountDatabaseMigratesWithoutLosingSessions()",
+    "realSocketSmoke()",
+    "near512MiBResumeAndRange()"
+  ]
+}
