@@ -22,6 +22,12 @@
             "state" : "translated",
             "value" : "AzureFish"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AzureFish"
+          }
         }
       }
     },
@@ -41,6 +47,12 @@
           }
         },
         "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AzureFish"
+          }
+        },
+        "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "AzureFish"
@@ -68,6 +80,12 @@
             "state" : "translated",
             "value" : "演示需要使用麦克风录制音频消息并将语音转换为文字。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "示範功能需要使用麥克風錄製語音訊息，並將語音轉換為文字。"
+          }
         }
       }
     },
@@ -90,6 +108,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "点击保存时，演示应用会将收到的照片和视频添加到你的照片图库。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "點一下儲存時，示範 App 會將收到的照片與影片加入你的照片圖庫。"
           }
         }
       }
@@ -114,6 +138,12 @@
             "state" : "translated",
             "value" : "读取你所选实况照片的原始照片和配对视频，以保留实况播放与声音。可以仅允许访问所选照片。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "讀取你所選原況照片的原始照片和配對影片，以保留原況播放與聲音。可僅允許取用所選照片。"
+          }
         }
       }
     },
@@ -136,6 +166,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "演示需要使用语音识别将你说的话转换为消息草稿，并为发送和接收的音频消息生成文字。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "示範功能需要使用語音辨識，將你說的話轉換為訊息草稿，並為傳送和接收的語音訊息產生文字。"
           }
         }
       }

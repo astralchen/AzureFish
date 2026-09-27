@@ -18,9 +18,20 @@ struct LiveAccountAPITests {
         let login = try api.prepareLogin(operationID: UUID(), deviceID: device, accountName: name, password: "Fictional-SPM-Password-123")
         let loggedIn = try await api.execute(login)
         #expect(loggedIn.profile.userID == registered.profile.userID)
+        let second = try await api.execute(api.prepareLogin(operationID: UUID(), deviceID: UUID(),
+            accountName: name, password: "Fictional-SPM-Password-123"))
         let edit = try api.prepareProfileUpdate(operationID: UUID(), changes: .init(expectedVersion: 1, bio: "繁體 العربية English 简体"), using: loggedIn.credentials)
         let edited = try await api.execute(edit, using: loggedIn.credentials)
         #expect(edited.version == 2)
+        let staleEdit = try api.prepareProfileUpdate(operationID: UUID(),
+            changes: .init(expectedVersion: second.profile.version, nickname: "第二客户端草稿"), using: second.credentials)
+        do { _ = try await api.execute(staleEdit, using: second.credentials); Issue.record("Stale profile update unexpectedly succeeded") }
+        catch APIClientError.service(let failure) { #expect(failure.code == .profileVersionConflict) }
+        let latest = try await api.profile(using: second.credentials)
+        #expect(latest.version == 2 && latest.bio == edited.bio)
+        let confirmedEdit = try api.prepareProfileUpdate(operationID: UUID(),
+            changes: .init(expectedVersion: latest.version, nickname: "第二客户端草稿"), using: second.credentials)
+        #expect(try await api.execute(confirmedEdit, using: second.credentials).version == 3)
         let refresh = try api.prepareRefresh(operationID: UUID(), using: loggedIn.credentials)
         let renewed = try await api.execute(refresh)
         #expect(try await api.execute(refresh) == renewed)
@@ -31,6 +42,7 @@ struct LiveAccountAPITests {
         _ = try await api.execute(logout, using: renewed.credentials)
         do { _ = try await api.profile(using: renewed.credentials); Issue.record("Logged-out session remained usable") }
         catch APIClientError.service(let failure) { #expect(failure.isUnauthenticated) }
+        _ = try await api.execute(api.prepareLogout(operationID: UUID(), using: second.credentials), using: second.credentials)
         _ = try await api.execute(api.prepareLogout(operationID: UUID(), using: registered.credentials), using: registered.credentials)
     }
 }

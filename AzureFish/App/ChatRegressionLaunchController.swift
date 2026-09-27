@@ -2,7 +2,7 @@
 import UIKit
 
 /// UI 回归专用入口，用于验证聊天页退出、再次进入及草稿恢复。
-/// 仅在显式传入测试启动参数时使用，正常启动直接进入聊天页。
+/// 仅在 Debug 显式传入测试启动参数时使用，正常启动经过账号会话恢复。
 @available(iOS 26.0, *)
 final class ChatRegressionLaunchController: UICollectionViewController {
     /// 创建包含一个聊天入口的系统列表。

@@ -193,3 +193,27 @@ struct AccountAPITests {
         #expect(await transport.requests.count == 1)
     }
 }
+
+extension AccountAPITests {
+    @Test func logoutRevocationRoundTripKeepsOnlyAccessAndOriginalBody() async throws {
+        let transport = MockHTTPTransport { _, _ in HTTPResponse(statusCode: 200, headers: ["Content-Type": "application/protobuf"], body: Data()) }
+        let api = AccountAPI(environment: try environment(), transport: transport)
+        let creds = try credentials()
+        let ticket = try api.prepareLogoutRevocation(operationID: UUID(), using: creds)
+        let bytes = try JSONEncoder().encode(ticket)
+        let text = String(decoding: bytes, as: UTF8.self)
+        #expect(!text.contains(creds.refreshToken.rawValue))
+        #expect(!String(reflecting: ticket).contains(creds.accessToken.rawValue))
+        let restored = try JSONDecoder().decode(LogoutRevocation.self, from: bytes)
+        try await api.executeLogoutRevocation(ticket, now: Date(timeIntervalSince1970: 1_800_000_000))
+        try await api.executeLogoutRevocation(restored, now: Date(timeIntervalSince1970: 1_800_000_001))
+        let requests = await transport.requests
+        #expect(requests.count == 2 && requests[0].body == requests[1].body)
+        #expect(requests.allSatisfy { $0.url.path == "/v1/auth/logout" })
+        #expect(requests[0].headers["Authorization"] == "Bearer " + creds.accessToken.rawValue)
+        await #expect(throws: APIClientError.invalidRequest) { try await api.executeLogoutRevocation(restored, now: creds.accessExpiresAt) }
+        let other = AccountAPI(environment: try environment("other"), transport: transport)
+        await #expect(throws: APIClientError.operationEnvironmentMismatch) { try await other.executeLogoutRevocation(restored) }
+        #expect(await transport.requests.count == 2)
+    }
+}

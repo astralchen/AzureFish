@@ -14,7 +14,7 @@ enum Localization {
         "demo.language.menu"
 
     static let localizationController = LocalizationController(
-        supportedLocales: [.englishUS, .simplifiedChinese, .arabic],
+        supportedLocales: [.englishUS, .simplifiedChinese, AppLocale(identifier: "zh-Hant", displayName: "繁體中文"), .arabic],
         fallbackLocale: .englishUS,
         preferenceStore: UserDefaultsLocalePreferenceStore(
             key: "azurefish.locale.identifier"

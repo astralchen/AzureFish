@@ -1,6 +1,6 @@
 # 登录与个人中心开发文档
 
-> **状态：客户端本地网络／账号 API 包已实现，认证尚未接入 App；服务端已实现首期密码账号接口。** 更新日期：2026-09-24。App 路由、Keychain、认证状态协调和 UI 仍待实施。
+> **状态：已实现客户端密码认证、资料与安装偏好，核心模拟器流程通过。** 更新日期：2026-09-26。仅限 Debug 模拟器和本机虚构账号服务，真实环境未开放。见 [实施与验收记录](client-implementation.md)。
 
 AzureFish 是 iOS 客户端；仓库根目录下的 `AzureFishServer/` 是独立 Swift 服务端。登录和用户模块首期共用一个服务端进程，后续 IM 复用身份和会话。客户端数据库与服务端数据库各有职责，不共享文件。
 
@@ -31,10 +31,10 @@ AzureFish 是 iOS 客户端；仓库根目录下的 `AzureFishServer/` 是独立
 
 ## 与当前代码的关系
 
-现有 [SceneDelegate](../../AzureFish/SceneDelegate.swift) 正常启动直接进入 iOS 26+ ChatViewController 或旧系统 LegacyChatViewController；后续才引入认证协调器和个人中心。保留现有 Debug 回归入口，不把登录页强行插入无关聊天测试。
+现有 [SceneDelegate](../../AzureFish/SceneDelegate.swift) 正常启动经过 SessionCoordinator 恢复后进入欢迎页或“聊天／我”。聊天仍通过本地演示入口打开；显式 Debug 回归入口绕过认证，保留聊天测试。
 
-后续先完成加密依赖与密钥可行性，再实现服务端账号／用户及四语言自适应认证 UI，随后多设备联调和独立 IM。
+已完成虚构账号范围内的加密依赖可行性与客户端接入；多设备完整验收、真实账号门槛和独立 IM 仍待完成。
 
 独立 AzureFishServer 首期实现服务底座、注册、密码登录、刷新、当前会话退出和资料读写；仅限回环 HTTP＋虚构数据。服务端使用 Fluent SQLite 和字段加密，不代表客户端 SQLCipher 或真实账号安全门槛已经通过。权威字段编号见[服务端协议源](../../AzureFishServer/Protos/azurefish.proto)，运行与测试结果见[服务端验证记录](../../AzureFishServer/Documentation/validation.md)。
 
-客户端已提供三个独立本地 SPM 和账号调用适配，已链接到 App target，账号流程与页面尚未接入。Apple、头像、密码设置／修改、退出全部设备、删除账号、客户端会话／UI 接入和 IM 仍待实施。后续依照既定顺序推进，在开放真实账号前完成安全文档中的验收门槛。
+客户端通过三个独立本地 SPM 接入密码注册、登录、刷新、当前设备退出与资料读写。Apple、头像上传、密码设置／修改、退出全部设备和删除账号保留不可提交的说明入口，演示状态只在 Debug 目录中存在。真实 IM 尚未接入；实际验证范围见实施记录。

@@ -1,0 +1,1 @@
+../../../../AzureFishTests/Account/SessionCoordinatorTests.swift

@@ -1,30 +1,30 @@
 import UIKit
 
-/// 管理 AzureFish 场景窗口与聊天页面的语言环境。
+/// 管理 AzureFish 场景窗口、认证入口与语言环境。
 final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     /// 场景持有的主窗口；场景断开时由系统释放。
     var window: UIWindow?
 
-    /// 创建导航容器并在正常启动时直接展示聊天页。
+    /// 在首帧前恢复安装偏好，正常启动经过会话恢复。
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
         guard let windowScene = scene as? UIWindowScene else { return }
         Localization.start()
         let root: UIViewController
-        if #available(iOS 26.0, *) {
-            #if DEBUG
-            if ProcessInfo.processInfo.arguments.contains("-chat-ui-test-root") {
-                root = ChatRegressionLaunchController()
-            } else {
-                root = ChatViewController()
-            }
-            #else
-            root = ChatViewController()
-            #endif
+        #if DEBUG
+        if let scenario = AccountDebugScenario.controller(arguments: ProcessInfo.processInfo.arguments) {
+            root = scenario
+        } else if ProcessInfo.processInfo.arguments.contains("-chat-ui-test-root") {
+            if #available(iOS 26.0, *) { root = UINavigationController(rootViewController: ChatRegressionLaunchController()) }
+            else { root = UINavigationController(rootViewController: LegacyChatViewController()) }
         } else {
-            root = LegacyChatViewController()
+            root = AccountRootViewController()
         }
+        #else
+        root = AccountRootViewController()
+        #endif
         let window = UIWindow(windowScene: windowScene)
-        window.rootViewController = UINavigationController(rootViewController: root)
+        AppearancePreference.apply(to: window)
+        window.rootViewController = root
         self.window = window
         Localization.register(window: window)
         window.makeKeyAndVisible()

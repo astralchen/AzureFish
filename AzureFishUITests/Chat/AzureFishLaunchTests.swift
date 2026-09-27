@@ -1,14 +1,16 @@
 import XCTest
 
-/// 验证迁移后的正式启动入口和 iOS 15～25 适配入口。
+/// 验证聊天专用测试入口；正式认证启动另由 AccountFlowUITests 覆盖。
 final class AzureFishLaunchTests: XCTestCase {
-    /// 普通启动直接展示对应系统版本的页面，并验证聊天输入和发送链路。
+    /// 显式进入本地聊天回归入口，验证输入和发送链路。
     @MainActor func testLaunchRoutesBySystemVersion() {
         continueAfterFailure = false
         let app = XCUIApplication()
-        app.launchArguments = ["-azurefish.locale.identifier", "zh-Hans", "-imessage-basic-history"]
+        app.launchArguments = ["-chat-ui-test-root", "-azurefish.locale.identifier", "zh-Hans", "-imessage-basic-history"]
         app.launch()
         if #available(iOS 26.0, *) {
+            let entry = app.cells["demo.imessage.title"]
+            XCTAssertTrue(entry.waitForExistence(timeout: 15)); entry.tap()
             let editor = app.textViews["imessage.composer.text"]
             XCTAssertTrue(editor.waitForExistence(timeout: 15))
             editor.tap()
@@ -20,7 +22,7 @@ final class AzureFishLaunchTests: XCTestCase {
             XCTAssertTrue(app.staticTexts["此 iOS 版本的聊天界面待适配。"].waitForExistence(timeout: 10))
         }
         let screenshot = XCTAttachment(screenshot: app.screenshot())
-        screenshot.name = "AzureFish-正式启动入口"
+        screenshot.name = "AzureFish-聊天回归入口"
         screenshot.lifetime = .keepAlways
         add(screenshot)
     }

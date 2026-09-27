@@ -199,6 +199,10 @@ public struct AccountAPI: Sendable {
         } else if credentials != nil {
             throw APIClientError.credentialsMismatch
         }
+        return try await executeValidated(operation, headers: headers)
+    }
+
+    private func executeValidated<Value>(_ operation: AccountOperation<Value>, headers: [String: String]) async throws -> Value {
         let replay: HTTPReplayPolicy = operation.operationID.map { .idempotentWriteOnce(operationID: $0) } ?? .readOnce
         let request = HTTPRequest(url: environment.url(path: operation.path), method: operation.method, headers: headers,
                                   body: operation.body, maximumResponseBytes: 64 * 1024, replayPolicy: replay)
@@ -227,6 +231,34 @@ public struct AccountAPI: Sendable {
         } catch let error as APIClientError { throw error }
         catch is CancellationError { throw CancellationError() }
         catch { throw APIClientError.decodingFailed }
+    }
+
+    /// 为当前设备退出保存原始请求和有限期访问凭据；结果只能存入独立 Keychain 队列。
+    public func prepareLogoutRevocation(operationID: UUID, using credentials: SessionCredentials) throws -> LogoutRevocation {
+        let operation = try prepareLogout(operationID: operationID, using: credentials)
+        return LogoutRevocation(operationID: operationID, environmentID: environment.identifier,
+            baseURL: environment.baseURL, body: operation.body!, accessToken: credentials.accessToken.rawValue,
+            expiresAt: credentials.accessExpiresAt)
+    }
+
+    /// 仅重放退出请求，拒绝跨环境、过期或被改写的请求，不接受任意路径。
+    public func executeLogoutRevocation(_ revocation: LogoutRevocation, now: Date = Date()) async throws {
+        guard revocation.environmentID == environment.identifier, revocation.baseURL == environment.baseURL else {
+            throw APIClientError.operationEnvironmentMismatch
+        }
+        guard revocation.expiresAt > now, revocation.body.count <= 16 * 1024,
+              let request = try? LogoutRequest(serializedBytes: revocation.body),
+              request.operationID == revocation.operationID.uuidString.lowercased(),
+              request.unknownFields.data.isEmpty else { throw APIClientError.invalidRequest }
+        let token = try SessionToken(rawValue: revocation.accessToken)
+        let operation = AccountOperation<Acknowledgement>(operationID: revocation.operationID,
+            environment: environment, path: "v1/auth/logout", method: .post, body: revocation.body,
+            expectedStatus: 200, authorization: nil) { data in
+                _ = try EmptyResponse(serializedBytes: data)
+                return Acknowledgement()
+            }
+        _ = try await executeValidated(operation, headers: ["Accept": "application/protobuf",
+            "Content-Type": "application/protobuf", "Authorization": "Bearer " + token.rawValue])
     }
 
     /// 将协议消息编码一次并封装响应转换规则；编码结果超过 16 KiB 时拒绝创建操作。

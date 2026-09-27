@@ -1,6 +1,6 @@
 # 数据安全与客户端加密设计
 
-> **状态：设计阶段，尚未接入应用。** 更新日期：2026-09-24。本轮只写文档，未集成 SQLCipher、修改网络配置或生成密钥。返回 [项目入口](../../README.md)。
+> **状态：已增加 Keychain 会话包与 AES-GCM 资料快照，仅供虚构账号开发验证。** 更新日期：2026-09-26。SQLCipher 主机及模拟器可行性通过，完整 iOS／真机安全门槛尚未完成。见 [客户端实施记录](../Authentication/client-implementation.md)。
 
 ## 1. 阅读与权威边界
 
@@ -76,4 +76,4 @@ AAD 采用明确的长度分隔 UTF-8 编码，包含 environment_id、user_id�
 
 先完成 SQLCipher 与密钥存取可行性验证，再实现账号数据持久化。登录阶段不必提前实现全部 IM 表，但资料快照必须使用上述 AES-GCM 保护，不留明文过渡快照。既有 local-demo 草稿迁移时先写入隔离的加密演示目录，核对成功并记录幂等结果后才清理旧明文副本，不能归给真实账号。
 
-本轮没有运行加解密、重启、锁屏、Keychain、SQLCipher 或恢复测试，验收场景见 [验证矩阵](validation.md)。
+本次执行结果逐项记录在 [客户端验收记录](../Authentication/Implementation/2026-09-26.md)，未执行项目不得视为通过。完整场景见 [验证矩阵](validation.md)。
