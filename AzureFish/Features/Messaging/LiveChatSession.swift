@@ -27,6 +27,8 @@ final class LiveChatSession: ChatSessionProviding {
     var operations: [UUID: Task<Void, Never>] = [:]
     var page: ChatHistory?
     var historyLimit = 200
+    var contextAnchor: String?
+    private var focusLatestAfterLoad = false
     var reeditable = Set<String>()
     var visible = Set<Int64>()
     var stopped = false
@@ -42,12 +44,11 @@ final class LiveChatSession: ChatSessionProviding {
     func start(in controller: ChatViewController) {
         self.controller = controller
         controller.navigationItem.titleView = nil
-        controller.navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(systemName: "ellipsis.circle"),
-            primaryAction: UIAction { [weak self, weak controller] _ in
-                guard let self, let controller else { return }
-                controller.navigationController?.pushViewController(
-                    ConversationDetailsViewController(runtime: runtime, conversation: conversation), animated: true)
-            })
+        let selfConversation = conversation
+        ConversationDetailsNavigation.install(on: controller, runtime: runtime, conversation: { [weak self] in self?.conversation ?? selfConversation }) { [weak self] message in
+            guard let self else { throw ChatStoreError.unavailable }
+            try await locate(message)
+        }
         observer = runtime.observe { [weak self] in self?.refresh() }
         clockTask = Task { [weak self] in
             while !Task.isCancelled {
@@ -59,6 +60,29 @@ final class LiveChatSession: ChatSessionProviding {
         }
         refresh()
         loadHistory()
+    }
+    func didAppear() { runtime.enteredConversation(conversation.id) }
+    func locate(_ message: ChatMessage) async throws {
+        guard let engine = runtime.engine, let controller,
+              try await engine.store.visibleMessage(message.id, conversation: conversation.id) != nil,
+              runtime.engine === engine else { throw ChatStoreError.unavailable }
+        contextAnchor = message.id
+        controller.conversationView.requestMessageFocus(identity(message.id))
+        pendingReason = .olderHistoryLoaded
+        refresh()
+        await reloadTask?.value
+        controller.viewModel.historyState = .exhausted
+        controller.viewModel.publish(reason: .historyStatus)
+        controller.latestMessagesButton.isHidden = false
+        controller.setNeedsQuickLayout()
+    }
+    func leaveSearchContext() {
+        guard contextAnchor != nil else { return }
+        contextAnchor = nil
+        focusLatestAfterLoad = true
+        controller?.viewModel.historyState = page?.hasMore == false ? .exhausted : .idle
+        pendingReason = .historyLoaded
+        refresh()
     }
     func identity(_ id: String) -> Int {
         let key = id.lowercased()
@@ -104,7 +128,9 @@ final class LiveChatSession: ChatSessionProviding {
         reloadTask = Task { [weak self] in
             guard let self else { return }
             do {
-                let loaded = try await engine.store.messages(conversation.id, limit: historyLimit)
+                let loaded: [ChatMessage]
+                if let contextAnchor { loaded = try await engine.store.messageContext(contextAnchor, conversation: conversation.id) }
+                else { loaded = try await engine.store.messages(conversation.id, limit: historyLimit) }
                 let pending = try await engine.store.pending().filter { $0.outgoing.conversationID == conversation.id }
                 let uploads = try await engine.store.transfers(as: ChatUploadBatch.self).filter { $0.conversation == conversation.id }
                 let order = try await engine.store.orderedMessageIDs(conversation: conversation.id)
@@ -145,6 +171,12 @@ final class LiveChatSession: ChatSessionProviding {
                     : !Set(loaded.map(\.id)).subtracting(previous).isEmpty && !loadingHistory ? .receivedMessage : .messageStatus)
                 pendingReason = nil
                 hasRendered = true
+                if focusLatestAfterLoad, contextAnchor == nil {
+                    focusLatestAfterLoad = false
+                    controller.conversationView.requestLatestMessageFocus()
+                    controller.latestMessagesButton.isHidden = true
+                    controller.setNeedsQuickLayout()
+                }
                 controller.viewModel.publish(reason: reason)
                 scheduleMedia()
                 viewportChanged()
@@ -213,7 +245,7 @@ final class LiveChatSession: ChatSessionProviding {
             sentAt: batch.createdAt, deliveryState: batch.state == "failed" ? .failed : .sending, statusText: status, canCancel: true)
     }
     func loadHistory() {
-        guard !stopped, !loadingHistory, page?.hasMore != false, let engine = runtime.engine else { return }
+        guard contextAnchor == nil, !stopped, !loadingHistory, page?.hasMore != false, let engine = runtime.engine else { return }
         let initialPage = page == nil
         loadingHistory = true
         controller?.viewModel.historyState = .loading
@@ -241,7 +273,8 @@ final class LiveChatSession: ChatSessionProviding {
         let list = controller.conversationView.collectionView
         guard !list.isDragging, !list.isDecelerating else { return }
         scheduleMedia()
-        if list.contentSize.height + list.adjustedContentInset.bottom - list.contentOffset.y - list.bounds.height < 80,
+        if contextAnchor == nil,
+           list.contentSize.height + list.adjustedContentInset.bottom - list.contentOffset.y - list.bounds.height < 80,
            !controller.latestMessagesButton.isHidden {
             controller.latestMessagesButton.isHidden = true
             controller.setNeedsQuickLayout()

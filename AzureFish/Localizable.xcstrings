@@ -1,6 +1,180 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "chat.list.markUnread" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "标记未读"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "標記未讀"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mark as Unread"
+          }
+        },
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تمييز كغير مقروء"
+          }
+        }
+      }
+    },
+    "chat.list.manuallyUnread" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已标记为未读"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已標記為未讀"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Marked as unread"
+          }
+        },
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "مميّزة كغير مقروءة"
+          }
+        }
+      }
+    },
+    "chat.list.hide" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "不显示"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "不顯示"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hide"
+          }
+        },
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "إخفاء"
+          }
+        }
+      }
+    },
+    "chat.list.delete" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "删除"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "刪除"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete"
+          }
+        },
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "حذف"
+          }
+        }
+      }
+    },
+    "chat.list.deleteTitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "删除聊天？"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "刪除聊天？"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete Chat?"
+          }
+        },
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "حذف المحادثة؟"
+          }
+        }
+      }
+    },
+    "chat.list.deleteHelp" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "将清空本机聊天记录并从列表移除。草稿和待发送内容会保留，不会删除好友或退出群聊。收到或发送新消息后会重新显示。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "將清空本機聊天記錄並從列表移除。草稿和待傳送內容會保留，不會刪除好友或退出群組。收到或傳送新訊息後會重新顯示。"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This clears chat history on this device and removes the chat from the list. Drafts and pending messages are kept. Your contact and group membership are unchanged. The chat reappears when you send or receive a new message."
+          }
+        },
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "سيُمسح سجل المحادثة على هذا الجهاز وتُزال المحادثة من القائمة. ستبقى المسودات والرسائل قيد الإرسال، ولن تُحذف جهة الاتصال ولن تغادر المجموعة. ستظهر المحادثة مجددًا عند إرسال رسالة جديدة أو استقبالها."
+          }
+        }
+      }
+    },
     "chat.live.revokeFailed" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2820,19 +2994,19 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "会话详情"
+            "value" : "聊天详情"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "對話詳細資料"
+            "value" : "聊天詳情"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Conversation details"
+            "value" : "Chat Details"
           }
         },
         "ar" : {
@@ -3168,25 +3342,25 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "清空本机记录"
+            "value" : "清空本地聊天记录"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "清除本機紀錄"
+            "value" : "清除本機聊天記錄"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Clear local history"
+            "value" : "Clear Local Chat History"
           }
         },
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "مسح السجل المحلي"
+            "value" : "مسح سجل المحادثة المحلي"
           }
         }
       }
@@ -3197,25 +3371,25 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "仅隐藏本设备已有记录，不删除对方记录，不退出群聊，也不改变已读状态。"
+            "value" : "清空本设备截至当前的聊天记录，之后补拉的旧记录也会隐藏。不会删除对方记录、草稿、待发送内容，也不会退出群聊或改变已读状态。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "僅隱藏此裝置的現有紀錄，不刪除對方紀錄、不退出群組，也不變更已讀狀態。"
+            "value" : "清除本機截至目前的聊天記錄，之後補載的舊記錄也會隱藏。不會刪除對方記錄、草稿或待傳送內容，也不會退出群組或變更已讀狀態。"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hide existing history on this device only. Other people’s records, group membership and read status are unchanged."
+            "value" : "Hide chat history up to the current message on this device, including older history loaded later. Other people’s records, drafts, pending messages, membership and read status stay unchanged."
           }
         },
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "إخفاء السجل الحالي على هذا الجهاز فقط. لا تتغير سجلات الآخرين أو عضوية المجموعة أو حالة القراءة."
+            "value" : "إخفاء سجل المحادثة حتى الرسالة الحالية على هذا الجهاز، بما في ذلك السجل الأقدم الذي يُحمّل لاحقًا. لا تتغير سجلات الآخرين أو المسودات أو الرسائل المعلقة أو العضوية أو حالة القراءة."
           }
         }
       }
@@ -12438,6 +12612,354 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "إشعار النظام"
+          }
+        }
+      }
+    },
+    "chat.details.search" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "查找聊天记录"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "尋找聊天記錄"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Search Chat History"
+          }
+        },
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "البحث في سجل المحادثة"
+          }
+        }
+      }
+    },
+    "chat.details.searchHelp" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "仅搜索已同步到本机的文字记录"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "僅搜尋已同步到本機的文字記錄"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Search text synced to this device"
+          }
+        },
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "البحث في النصوص المتزامنة مع هذا الجهاز"
+          }
+        }
+      }
+    },
+    "chat.details.members" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "查看全部群成员"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "查看所有群組成員"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "View All Group Members"
+          }
+        },
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "عرض جميع أعضاء المجموعة"
+          }
+        }
+      }
+    },
+    "chat.details.groupName" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "群聊名称"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "群組名稱"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Group Name"
+          }
+        },
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "اسم المجموعة"
+          }
+        }
+      }
+    },
+    "chat.details.pin" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "置顶聊天"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "置頂聊天"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pin Chat"
+          }
+        },
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تثبيت المحادثة"
+          }
+        }
+      }
+    },
+    "chat.details.mute" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "消息免打扰"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "訊息免打擾"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mute Chat"
+          }
+        },
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "كتم المحادثة"
+          }
+        }
+      }
+    },
+    "chat.details.muteHelp" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "仅关闭本设备的应用内横幅提醒"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "僅關閉本機的 App 內橫幅提醒"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mute in-app banners on this device only"
+          }
+        },
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "كتم تنبيهات التطبيق على هذا الجهاز فقط"
+          }
+        }
+      }
+    },
+    "chat.details.pinned" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已置顶"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已置頂"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pinned"
+          }
+        },
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "مثبّتة"
+          }
+        }
+      }
+    },
+    "chat.details.muted" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已免打扰"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已免打擾"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Muted"
+          }
+        },
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "مكتومة"
+          }
+        }
+      }
+    },
+    "chat.details.moreResults" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "加载更多结果"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "載入更多結果"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Load More Results"
+          }
+        },
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تحميل المزيد من النتائج"
+          }
+        }
+      }
+    },
+    "chat.details.messageUnavailable" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这条消息已不可用，请重新搜索。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "這則訊息已無法使用，請重新搜尋。"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This message is no longer available. Search again."
+          }
+        },
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "لم تعد هذه الرسالة متاحة. ابحث مرة أخرى."
+          }
+        }
+      }
+    },
+    "chat.details.dismissBanner" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "关闭消息提醒"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "關閉訊息提醒"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dismiss Message Alert"
+          }
+        },
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "إغلاق تنبيه الرسالة"
           }
         }
       }

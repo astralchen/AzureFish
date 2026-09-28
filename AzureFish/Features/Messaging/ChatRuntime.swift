@@ -6,6 +6,15 @@ import Foundation
 /// 当前账号聊天运行环境；退出时停止连接、队列与明文租约，保留加密文件。
 @MainActor
 final class ChatRuntime {
+    private final class WeakRuntime {
+        weak var value: ChatRuntime?
+        init(_ value: ChatRuntime) { self.value = value }
+    }
+    private static var instances: [WeakRuntime] = []
+    private func registerInstance() {
+        Self.instances.removeAll { $0.value == nil }
+        Self.instances.append(WeakRuntime(self))
+    }
     let session: SessionCoordinator
     private(set) var engine: ChatEngine?
     private(set) var media: ChatMediaStore?
@@ -18,20 +27,28 @@ final class ChatRuntime {
     private(set) var failure: String?
     private(set) var hasSnapshot = false
     private(set) var synchronization: ChatSynchronizationState = .idle
+    private(set) var preferences: [String: ConversationLocalPreferences] = [:]
+    private(set) var listStates: [String: ConversationListState] = [:]
+    private var listRefresh = UUID()
+    var incomingMessages: (([ChatMessage]) -> Void)?
+    private var incomingTask: Task<Void, Never>?
+    private var foreground = false
     private var observers: [UUID: () -> Void] = [:]
     private var task: Task<Void, Never>?
     private var generation = UUID()
     var api: IMAPI? { session.sessionManager.map(IMAPI.init) }
     var userID: String { session.profile?.userID.uuidString.lowercased() ?? "" }
-    init(session: SessionCoordinator) { self.session = session }
+    init(session: SessionCoordinator) { self.session = session; registerInstance() }
     /// 注入已打开的账号资源，供隔离集成验证使用；不启动后台同步或创建替代密钥。
     init(session: SessionCoordinator, engine: ChatEngine, media: ChatMediaStore,
          conversations: [ChatConversation], pageLeaseRoot: URL) {
         self.session = session; self.engine = engine; self.media = media
+        self.hasSnapshot = true
         self.conversations = conversations.sorted {
                         let left = $0.latestMessage?.createdAt ?? 0, right = $1.latestMessage?.createdAt ?? 0
                         return left == right ? $0.id < $1.id : left > right
                     }; self.pageLeaseRoot = pageLeaseRoot
+        registerInstance()
         originalDraftStore = AccountChatDraftStore(store: engine.store, media: media)
         if let manager = session.sessionManager {
             transfers = ChatTransferQueue(store: engine.store, media: media, session: manager, engine: engine)
@@ -80,9 +97,12 @@ final class ChatRuntime {
                 var values = URLResourceValues()
                 values.isExcludedFromBackup = true
                 try root.setResourceValues(values)
-                let store = try ChatStore(
-                    url: root.appendingPathComponent("main.sqlite"), key: databaseKey,
-                    environment: manager.environment.identifier, userID: user)
+                let databaseURL = root.appendingPathComponent("main.sqlite")
+                let environmentID = manager.environment.identifier
+                // FTS 回填可能读取较多历史文字，不占用场景的主线程。
+                let store = try await Task.detached {
+                    try ChatStore(url: databaseURL, key: databaseKey, environment: environmentID, userID: user)
+                }.value
                 let media = try ChatMediaStore(
                     root: root.appendingPathComponent("media", isDirectory: true), key: mediaKey,
                     environment: manager.environment.identifier, userID: user)
@@ -103,6 +123,14 @@ final class ChatRuntime {
                     store: store, media: media, session: manager, engine: engine)
                 self.transfers = transfers
                 await transfers.resume()
+                incomingTask = Task { [weak self, engine] in
+                    let stream = await engine.incomingMessages()
+                    for await messages in stream {
+                        guard !Task.isCancelled, let self, self.engine === engine else { break }
+                        self.incomingMessages?(messages)
+                    }
+                }
+                await engine.setForegroundNotificationsEnabled(foreground)
                 let changes = await engine.updates()
                 await engine.start()
                 for await update in changes {
@@ -115,11 +143,12 @@ final class ChatRuntime {
                     self.synchronization = update.synchronization
                     self.hasSnapshot = hasSnapshot
                     self.contacts = contacts
+                    self.preferences = try await store.allConversationPreferences()
                     self.conversations = conversations.sorted {
                         let left = $0.latestMessage?.createdAt ?? 0, right = $1.latestMessage?.createdAt ?? 0
                         return left == right ? $0.id < $1.id : left > right
                     }
-                    self.publish()
+                    try await self.refreshListStates()
                     if let invalidated = try? await store.mediaInvalidations() {
                         var removed = Set<UUID>()
                         for id in invalidated {
@@ -138,6 +167,10 @@ final class ChatRuntime {
     }
     func stop() {
         generation = UUID()
+        incomingTask?.cancel(); incomingTask = nil
+        preferences = [:]
+        listStates = [:]
+        listRefresh = UUID()
         task?.cancel()
         task = nil
         let old = engine
@@ -164,6 +197,92 @@ final class ChatRuntime {
             try? await old?.store.close()
         }
     }
+    func setForeground(_ enabled: Bool) {
+        guard foreground != enabled else { return }
+        foreground = enabled
+        let engine = engine
+        Task {
+            await engine?.setForegroundNotificationsEnabled(enabled)
+            if enabled { try? await engine?.synchronize() }
+        }
+    }
+    func preference(_ id: String) -> ConversationLocalPreferences { preferences[id] ?? .init() }
+    func setPreference(_ value: ConversationLocalPreferences, conversation: String) async throws {
+        guard let engine else { throw ChatStoreError.unavailable }
+        try await engine.store.setConversationPreferences(value, conversation: conversation)
+        guard self.engine === engine else { throw ChatStoreError.unavailable }
+        publishPreference(value, conversation: conversation, engine: engine)
+    }
+    func updatePreference(conversation: String, isPinned: Bool? = nil, isMuted: Bool? = nil) async throws {
+        guard let engine else { throw ChatStoreError.unavailable }
+        let value = try await engine.store.updateConversationPreferences(conversation: conversation, isPinned: isPinned, isMuted: isMuted)
+        guard self.engine === engine else { throw ChatStoreError.unavailable }
+        publishPreference(value, conversation: conversation, engine: engine)
+    }
+    private func publishPreference(_ value: ConversationLocalPreferences, conversation: String, engine: ChatEngine) {
+        for runtime in Self.instances.compactMap(\.value) {
+            guard let other = runtime.engine, other.store.userID == engine.store.userID,
+                  other.store.environment == engine.store.environment else { continue }
+            runtime.preferences[conversation] = value
+            runtime.publish()
+        }
+    }
+    var sortedConversations: [ChatConversation] {
+        conversations.sorted {
+            let left = preference($0.id).isPinned, right = preference($1.id).isPinned
+            if left != right { return left }
+            let a = listStates[$0.id]?.activityAt ?? $0.latestMessage?.createdAt ?? 0
+            let b = listStates[$1.id]?.activityAt ?? $1.latestMessage?.createdAt ?? 0
+            return a == b ? $0.id < $1.id : a > b
+        }
+    }
+    var visibleSortedConversations: [ChatConversation] {
+        sortedConversations.filter { listStates[$0.id]?.isVisible == true }
+    }
+    /// 读取持久列表状态并刷新同账号场景；较早的读取不能覆盖较新的请求。
+    func refreshListStates() async throws {
+        guard let engine else { throw ChatStoreError.unavailable }
+        let targets = Self.instances.compactMap(\.value).filter {
+            $0.engine?.store.userID == engine.store.userID && $0.engine?.store.environment == engine.store.environment
+        }
+        let request = UUID()
+        for target in targets { target.listRefresh = request }
+        let values = try await engine.store.conversationListStates()
+        guard self.engine === engine else { return }
+        for target in targets where target.listRefresh == request && target.engine != nil {
+            target.listStates = values
+            target.publish()
+        }
+    }
+    func markConversationUnread(_ conversation: String, enabled: Bool = true) async throws {
+        guard let engine else { throw ChatStoreError.unavailable }
+        try await engine.store.setManuallyUnread(enabled, conversation: conversation)
+        guard self.engine === engine else { return }
+        try await refreshListStates()
+    }
+    func hideConversation(_ conversation: String, deleting: Bool = false) async throws {
+        guard let engine else { throw ChatStoreError.unavailable }
+        try await engine.store.hideConversation(conversation, clearHistory: deleting)
+        guard self.engine === engine else { return }
+        try await refreshListStates()
+        changed()
+    }
+    /// 页面实际可见后消除手动提醒；失败时保留提醒，下一次进入仍可重试。
+    func enteredConversation(_ conversation: String) {
+        guard let engine else { return }
+        Task {
+            guard self.engine === engine else { return }
+            do {
+                try await engine.store.setManuallyUnread(false, conversation: conversation)
+                guard self.engine === engine else { return }
+                try await refreshListStates()
+            } catch { /* 保留持久标记，下一次进入页面时重试。 */ }
+        }
+    }
+    func memberName(_ member: ChatMember) -> String {
+        contacts.first { $0.peer.id == member.id }?.peer.nickname
+            ?? (member.id == userID ? session.profile?.nickname : nil) ?? member.profile.nickname
+    }
     func title(_ conversation: ChatConversation) -> String {
         if conversation.kind == "group" { return conversation.title }
         let peer = conversation.members.first { $0.id != userID }?.id ?? ""
@@ -183,6 +302,17 @@ final class ChatRuntime {
     func refresh() { Task { try? await engine?.synchronize() } }
     /// 等待共享同步结束，供刷新控件结束动画；存储不可用时不创建替代数据库。
     func refreshAndWait() async { try? await engine?.synchronize() }
-    func changed() { Task { await engine?.changed() } }
-    deinit { task?.cancel() }
+    func changed() {
+        guard let engine else { return }
+        Task {
+            guard self.engine === engine else { return }
+            try? await refreshListStates()
+            guard self.engine === engine else { return }
+            let engines = Self.instances.compactMap(\.value).compactMap(\.engine).filter {
+                $0.store.userID == engine.store.userID && $0.store.environment == engine.store.environment
+            }
+            for engine in engines { await engine.changed() }
+        }
+    }
+    deinit { task?.cancel(); incomingTask?.cancel() }
 }

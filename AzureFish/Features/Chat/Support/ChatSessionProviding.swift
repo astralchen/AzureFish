@@ -5,6 +5,7 @@ import UIKit
 @available(iOS 26.0, *)
 protocol ChatSessionProviding: AnyObject {
     func start(in controller: ChatViewController)
+    func didAppear()
     func stop()
     func refresh()
     func loadHistory()
@@ -15,4 +16,9 @@ protocol ChatSessionProviding: AnyObject {
     func reedit(_ messageID: Int)
     func viewportChanged()
     func didTranscribe(_ text: String, messageID: Int, attachmentID: UUID)
+}
+
+@available(iOS 26.0, *)
+extension ChatSessionProviding {
+    func didAppear() {}
 }

@@ -267,6 +267,7 @@ final class ChatViewController: LocalizedQuickLayoutHostingController, MediaImag
         latestMessagesButton.isHidden = true
         latestMessagesButton.setTitle(Localization.text("chat.live.latest"), for: .normal)
         latestMessagesButton.addAction(UIAction { [weak self] _ in
+            (self?.session as? LiveChatSession)?.leaveSearchContext()
             self?.conversationView.scrollToBottom(animated: true)
             self?.latestMessagesButton.isHidden = true
             self?.setNeedsQuickLayout()
@@ -452,6 +453,7 @@ final class ChatViewController: LocalizedQuickLayoutHostingController, MediaImag
     /// 页面完成显示后尝试展示恢复错误或此前保存失败的提示。
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        session?.didAppear()
         presentPendingDraftNotice()
         session?.viewportChanged()
     }

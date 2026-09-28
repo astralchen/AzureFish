@@ -211,3 +211,31 @@ enum ConversationPreviewData {
     )
 }
 #endif
+
+#if DEBUG
+import AzureFishAPI
+
+@available(iOS 16.0, *)
+extension ConversationPreviewData {
+    static func detailsConversation(group: Bool = true, owner: Bool = true) -> ChatConversation {
+        let own = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+        let names = ["小鱼", "林沐", "周知", "沈一", "陈安", "方舟", "江南", "苏晴", "李想", "许诺", "夏天", "星河"]
+        let members: [[String: Any]] = (group ? Array(names.enumerated()) : Array(names.prefix(2).enumerated())).map { index, name in
+            let id = index == 0 ? own : String(format: "bbbbbbbb-bbbb-4bbb-8bbb-%012d", index)
+            return ["id": id, "active": true, "intervals": [["joined": 1, "left": 0]], "profile": ["id": id, "nickname": name, "version": 1]]
+        }
+        let value: [String: Any] = ["id": group ? "cccccccc-cccc-4ccc-8ccc-cccccccccccc" : "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+            "kind": group ? "group" : "direct", "title": group ? "周末去海边" : "林沐", "ownerID": owner ? own : members[1]["id"]!,
+            "members": members, "revision": 1, "boundaryRevision": 1, "latest": 260, "closed": false,
+            "readState": ["read": 0, "delivered": 0, "unread": 0, "through": 0, "revision": 1]]
+        return try! JSONDecoder().decode(ChatConversation.self, from: JSONSerialization.data(withJSONObject: value))
+    }
+    static func detailsRuntime() -> ChatRuntime {
+        let keys = KeychainValueStore()
+        let session = SessionCoordinator(service: nil, store: CredentialStore(values: keys, environmentID: "details-preview"),
+            repository: UserRepository(root: FileManager.default.temporaryDirectory.appendingPathComponent("DetailsPreview"), keys: keys, environment: "details-preview"))
+        session.installDebugProfile()
+        return ChatRuntime(session: session)
+    }
+}
+#endif

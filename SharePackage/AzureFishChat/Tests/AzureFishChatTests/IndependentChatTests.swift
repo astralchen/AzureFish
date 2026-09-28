@@ -64,13 +64,24 @@
                     try await store.contacts().contains {
                         $0.state == "friend" && $0.peer.id == bID.uuidString.lowercased()
                     })
+                try await store.setConversationPreferences(.init(isPinned: true, isMuted: true), conversation: conversation.id)
+                #expect(try await store.conversationPreferences(conversation.id).isPinned)
+                var incoming = await engine.incomingMessages().makeAsyncIterator()
+                await engine.setForegroundNotificationsEnabled(true)
+                let bDevice = try await b.localIdentity().deviceID
+                _ = try await second.send(.init(conversationID: conversation.id, deviceID: bDevice, text: "前台基线"))
+                try await engine.synchronize()
+                let alertMessage = try await second.send(.init(conversationID: conversation.id, deviceID: bDevice, text: "新的前台消息"))
+                try await engine.synchronize()
+                #expect(await incoming.next()?.map(\.id) == [alertMessage.id])
+                #expect(try await store.searchMessages(conversation: conversation.id, query: "前台消息").messages.map(\.id) == [alertMessage.id])
                 try await engine.send(conversation: conversation.id, text: "真实 HTTP 与加密 outbox")
                 #expect(try await store.pending().isEmpty)
                 let history = try await second.history(conversation.id)
-                #expect(history.messages.last?.text == "真实 HTTP 与加密 outbox")
-                let original = try #require(history.messages.last)
+                let original = try #require(history.messages.first { $0.text == "真实 HTTP 与加密 outbox" })
                 let revoked = try await engine.revoke(original, fallbackOperationID: UUID())
                 #expect(revoked.message.revoked && revoked.canReedit)
+                #expect(try await store.searchMessages(conversation: conversation.id, query: "outbox").messages.isEmpty)
                 try await store.saveDraft(
                     .init(text: "Existing draft", assets: ["draft-attachment"]),
                     conversation: conversation.id)

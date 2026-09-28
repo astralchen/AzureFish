@@ -161,14 +161,15 @@ final class LiveConversationViewController: LocalizedQuickLayoutHostingControlle
         latestButton.addAction(
             UIAction { [weak self] _ in self?.scrollLatest() }, for: .touchUpInside)
         latestButton.isHidden = true
-        navigationItem.rightBarButtonItem = UIBarButtonItem(
-            image: UIImage(systemName: "ellipsis.circle"),
-            primaryAction: UIAction { [weak self] _ in
-                guard let self else { return }
-                navigationController?.pushViewController(
-                    ConversationDetailsViewController(runtime: runtime, conversation: conversation),
-                    animated: true)
-            })
+        let current = conversation
+        ConversationDetailsNavigation.install(on: self, runtime: runtime, conversation: { [weak self] in self?.conversation ?? current }) { [weak self] message in
+            guard let self, let engine = runtime.engine,
+                  try await engine.store.visibleMessage(message.id, conversation: conversation.id) != nil,
+                  runtime.engine === engine else { throw ChatStoreError.unavailable }
+            contextAnchor = message.id
+            focusMessage = message.id
+            reloadMessages()
+        }
         mediaCoordinator = LiveMediaCoordinator(controller: self)
         observer = runtime.observe { [weak self] in self?.reloadMessages() }
         NotificationCenter.default.addObserver(
@@ -193,6 +194,7 @@ final class LiveConversationViewController: LocalizedQuickLayoutHostingControlle
     }
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        runtime.enteredConversation(conversation.id)
         reloadMessages()
         markVisibleRead()
     }
@@ -221,6 +223,10 @@ final class LiveConversationViewController: LocalizedQuickLayoutHostingControlle
             } catch {}
         }
     }
+    var conversationID: String { conversation.id }
+    private var contextAnchor: String?
+    private var focusMessage: String?
+    private var focusLatestAfterLoad = false
     private func reloadMessages() {
         guard isViewLoaded, let engine = runtime.engine else { return }
         reloadGeneration += 1
@@ -235,7 +241,9 @@ final class LiveConversationViewController: LocalizedQuickLayoutHostingControlle
                     initial
                     || list.contentSize.height - list.contentOffset.y - list.bounds.height < 80
                 let previousLast = messages.last?.id
-                let loaded = try await engine.store.messages(conversation.id, limit: 200)
+                let loaded: [ChatMessage]
+                if let contextAnchor { loaded = try await engine.store.messageContext(contextAnchor, conversation: conversation.id) }
+                else { loaded = try await engine.store.messages(conversation.id, limit: 200) }
                 let availability = try await engine.store.reeditAvailability(
                     conversation: conversation.id)
                 guard runtime.engine === engine, generation == reloadGeneration else { return }
@@ -322,7 +330,10 @@ final class LiveConversationViewController: LocalizedQuickLayoutHostingControlle
                     ? Localization.text(
                         conversation.closed ? "chat.live.closed" : "chat.live.friendRequired")
                     : runtime.online ? nil : Localization.text("chat.live.offline")
-                if wasAtEnd {
+                historyButton.isHidden = contextAnchor != nil
+                if contextAnchor != nil {
+                    latestButton.isHidden = false
+                } else if wasAtEnd {
                     scrollLatest()
                 } else if previousLast != messages.last?.id {
                     latestButton.isHidden = false
@@ -335,7 +346,29 @@ final class LiveConversationViewController: LocalizedQuickLayoutHostingControlle
     }
     private func render() {
         let values = rows
-        adapter.apply(transaction: .disabled) {
+        adapter.apply(transaction: .disabled, completion: { [weak self] _ in
+            guard let self else { return }
+            if focusLatestAfterLoad, contextAnchor == nil {
+                focusLatestAfterLoad = false
+                scrollLatest()
+                return
+            }
+            guard let id = focusMessage, let index = rows.firstIndex(where: { $0.id == id }) else { return }
+            focusMessage = nil
+            list.layoutIfNeeded()
+            let path = IndexPath(item: index, section: 0)
+            list.scrollToItem(at: path, at: .centeredVertically, animated: false)
+            list.layoutIfNeeded()
+            if let cell = list.cellForItem(at: path) {
+                let highlight = UIView(frame: cell.contentView.bounds)
+                highlight.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+                highlight.backgroundColor = UIColor.systemYellow.withAlphaComponent(0.25)
+                highlight.isUserInteractionEnabled = false
+                cell.contentView.addSubview(highlight)
+                UIView.animate(withDuration: UIAccessibility.isReduceMotionEnabled ? 0 : 1.5, animations: { highlight.alpha = 0 }) { _ in highlight.removeFromSuperview() }
+                UIAccessibility.post(notification: .layoutChanged, argument: cell)
+            }
+        }) {
             ListSection("timeline") {
                 ListKit.ForEach(values, id: \.id) { row in
                     if row.revoked || row.systemNotice {
@@ -405,6 +438,7 @@ final class LiveConversationViewController: LocalizedQuickLayoutHostingControlle
         let selected = attachments
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !selected.isEmpty
         else { return }
+        contextAnchor = nil
         submitting = true
         draftTask?.cancel()
         Task { [weak self] in
@@ -414,7 +448,7 @@ final class LiveConversationViewController: LocalizedQuickLayoutHostingControlle
                 let credentials = try await manager.localIdentity()
                 var batches: [ChatUploadBatch] = []
                 var group: [ChatUploadItem] = []
-                func flushGroup() {
+                @MainActor func flushGroup() {
                     if !group.isEmpty {
                         batches.append(
                             .init(
@@ -465,6 +499,7 @@ final class LiveConversationViewController: LocalizedQuickLayoutHostingControlle
         }
     }
     private func scrollLatest() {
+        if contextAnchor != nil { contextAnchor = nil; focusLatestAfterLoad = true; reloadMessages(); return }
         guard !rows.isEmpty else { return }
         list.layoutIfNeeded()
         list.scrollToItem(

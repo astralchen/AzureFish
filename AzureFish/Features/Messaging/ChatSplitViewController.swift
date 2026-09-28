@@ -73,8 +73,9 @@ final class ChatSplitViewController: UIViewController, UISplitViewControllerDele
             }
         }
     }
-    private func open(_ conversation: ChatConversation) {
+    func open(_ conversation: ChatConversation) {
         if selection == conversation.id {
+            runtime.enteredConversation(conversation.id)
             split.show(.secondary)
             return
         }

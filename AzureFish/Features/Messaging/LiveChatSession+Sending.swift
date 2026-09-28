@@ -9,11 +9,12 @@ extension LiveChatSession {
         guard !stopped, runtime.canSend(conversation), let engine = runtime.engine,
               let media = runtime.media, let drafts = runtime.originalDraftStore,
               let manager = runtime.session.sessionManager, let controller else { completion(false); return }
+        contextAnchor = nil
         let release = (controller.attachmentStore as? PageAttachmentStore)?.acquireFileLease()
         let conversationID = conversation.id
         let task = drafts.enqueue { [self] in
             let credentials = try await manager.localIdentity()
-            guard runtime.engine === engine, credentials.userID == (await engine.store.userID) else { throw ChatStoreError.scopeMismatch }
+            guard runtime.engine === engine, credentials.userID == engine.store.userID else { throw ChatStoreError.scopeMismatch }
             var items: [ChatCompositionItem] = []
             var presentations: [String: MessageContent] = [:]
             for content in values {

@@ -36,9 +36,9 @@ public struct ChatReeditAvailability: Sendable {
 }
 /// 每个环境及账号独占的 SQLCipher 库；调用者从 Keychain 提供独立随机密钥。
 public actor ChatStore {
-    private let db: DatabaseQueue
-    public let userID: UUID
-    public let environment: String
+    let db: DatabaseQueue
+    public nonisolated let userID: UUID
+    public nonisolated let environment: String
     private var closed = false
     private let now: @Sendable () -> Date
     public init(
@@ -101,6 +101,20 @@ public actor ChatStore {
                 try Self.order(item.1, conversation: item.2, db: db)
             }
         }
+        migrations.registerMigration("chat-v4-local-details-search") { db in
+            try db.execute(sql: "CREATE TABLE IF NOT EXISTS conversation_clear (conversation TEXT PRIMARY KEY, sequence INTEGER NOT NULL)")
+            try db.execute(sql: "DROP TABLE message_search")
+            try db.execute(sql: "CREATE VIRTUAL TABLE message_search USING fts5(id UNINDEXED, body, tokenize='ascii')")
+            for data in try Data.fetchAll(db, sql: "SELECT payload FROM entity WHERE bucket='message' AND id NOT IN (SELECT id FROM hidden)") {
+                let message = try JSONDecoder().decode(ChatMessage.self, from: data)
+                if !message.revoked && ["text", "link"].contains(message.kind) {
+                    try db.execute(sql: "INSERT INTO message_search VALUES (?,?)", arguments: [message.id, ChatSearchTokenizer.tokens(message.text).joined(separator: " ")])
+                }
+            }
+        }
+        migrations.registerMigration("chat-v5-conversation-list") { db in
+            try Self.migrateConversationList(db, userID: userID)
+        }
         try migrations.migrate(db)
         let scope = Data((environment + ":" + userID.uuidString.lowercased()).utf8)
         try db.write { db in
@@ -117,7 +131,7 @@ public actor ChatStore {
             try Self.expireReedits(now: now(), db: db)
         }
     }
-    private func check() throws { guard !closed else { throw ChatStoreError.unavailable } }
+    func check() throws { guard !closed else { throw ChatStoreError.unavailable } }
     public func close() throws {
         closed = true
         try db.close()
@@ -143,7 +157,8 @@ public actor ChatStore {
             let summary = try data.map { try JSONDecoder().decode(ChatConversation.self, from: $0) }.flatMap(\.latestMessage)
             let local = try Data.fetchOne(db, sql: "SELECT payload FROM entity WHERE bucket='message' AND conversation=? AND id NOT IN (SELECT id FROM hidden) ORDER BY sequence DESC LIMIT 1", arguments: [conversation])
                 .map { try JSONDecoder().decode(ChatMessage.self, from: $0) }
-            let candidates = [summary, local].compactMap { $0 }.filter { !hidden.contains($0.id) }
+            let cutoff = try Int64.fetchOne(db, sql: "SELECT sequence FROM conversation_clear WHERE conversation=?", arguments: [conversation]) ?? 0
+            let candidates = [summary, local].compactMap { $0 }.filter { !hidden.contains($0.id) && $0.sequence > cutoff }
             return candidates.max { lhs, rhs in
                 lhs.sequence == rhs.sequence ? lhs.revision < rhs.revision : lhs.sequence < rhs.sequence
             }
@@ -187,16 +202,19 @@ public actor ChatStore {
                     db: db)
             }
             for conversation in snapshot.conversations {
-                try Self.putConversation(conversation, db: db)
+                try Self.putConversation(conversation, userID: userID, db: db)
             }
             if snapshot.complete {
                 try Self.checkpoint(.init(cursor: snapshot.baseline, epoch: snapshot.epoch), db: db)
             }
         }
     }
-    public func apply(events: ChatEvents, expected: ChatCheckpoint) throws {
+    /// 原子保存增量与游标，返回本批首次入库的他人消息候选；展示前仍须复核可见性及偏好。
+    @discardableResult
+    public func apply(events: ChatEvents, expected: ChatCheckpoint) throws -> [ChatMessage] {
         try check()
-        try db.write { db in
+        return try db.write { db in
+            var incoming: [ChatMessage] = []
             let saved = try Data.fetchOne(db, sql: "SELECT payload FROM meta WHERE id='checkpoint'")
             guard let saved,
                 let current = try? JSONDecoder().decode(ChatCheckpoint.self, from: saved),
@@ -210,13 +228,18 @@ public actor ChatStore {
                         db: db)
                 }
                 if let conversation = event.conversation {
-                    try Self.putConversation(conversation, db: db)
+                    try Self.putConversation(conversation, userID: userID, db: db)
                 }
                 if let message = event.message {
-                    try Self.putMessage(message, userID: userID, now: now(), db: db)
+                    let exists = try Bool.fetchOne(db, sql: "SELECT EXISTS(SELECT 1 FROM entity WHERE bucket='message' AND id=?)", arguments: [message.id]) ?? false
+                    try Self.putMessage(message, userID: userID, now: now(), restoreListVisibility: event.kind == "message" && !exists, db: db)
+                    if event.kind == "message", !exists, !message.revoked, message.kind != "system", message.senderID != userID.uuidString.lowercased() {
+                        incoming.append(message)
+                    }
                 }
             }
             try Self.checkpoint(.init(cursor: events.next, epoch: events.epoch), db: db)
+            return incoming
         }
     }
     public func save(_ contact: ChatContact) throws {
@@ -228,17 +251,19 @@ public actor ChatStore {
     }
     public func save(_ conversation: ChatConversation) throws {
         try check()
-        try db.write { try Self.putConversation(conversation, db: $0) }
+        try db.write { try Self.putConversation(conversation, userID: userID, db: $0) }
     }
     public func save(_ message: ChatMessage) throws {
         try check()
         try db.write { try Self.putMessage(message, userID: userID, now: now(), db: $0) }
     }
-    public func apply(history: ChatHistory, conversation: String) throws {
+    /// 保存历史及连续覆盖范围；普通分页不恢复用户隐藏的会话。
+    /// - Parameter restoringListVisibility: 仅同步器核实隐藏边界之后的新内容时传入 true。
+    public func apply(history: ChatHistory, conversation: String, restoringListVisibility: Bool = false) throws {
         try check()
         try db.write { db in
             for message in history.messages {
-                try Self.putMessage(message, userID: userID, now: now(), db: db)
+                try Self.putMessage(message, userID: userID, now: now(), restoreListVisibility: restoringListVisibility, db: db)
             }
             if history.coveredFrom > 0 {
                 guard history.coveredThrough >= history.coveredFrom else {
@@ -294,6 +319,7 @@ public actor ChatStore {
                     try Self.order(batch.messageID, conversation: conversation, db: db)
                 }
             }
+            try Self.recordListSend(conversation, at: now(), db: db)
             try db.execute(sql: "DELETE FROM draft WHERE id=?", arguments: [conversation])
             try db.execute(sql: "DELETE FROM meta WHERE id IN (?,?)", arguments: ["attachments:" + conversation, "rich-draft:" + conversation])
         }
@@ -320,6 +346,7 @@ public actor ChatStore {
         try db.write { db in
             try db.execute(sql: "INSERT INTO outbox VALUES (?,?)", arguments: [outgoing.id.uuidString.lowercased(), data])
             try Self.order(outgoing.id, conversation: outgoing.conversationID, db: db)
+            try Self.recordListSend(outgoing.conversationID, at: value.createdAt, db: db)
         }
     }
     public func pending() throws -> [ChatPendingMessage] {
@@ -389,6 +416,7 @@ public actor ChatStore {
         try db.write { db in
             try Self.invalidateMedia(message: message, db: db)
             try db.execute(sql: "INSERT OR IGNORE INTO hidden VALUES (?)", arguments: [message])
+            try db.execute(sql: "DELETE FROM message_search WHERE id=?", arguments: [message])
             try db.execute(
                 sql: "UPDATE revoke_recovery SET text=NULL,runs=NULL,state='expired' WHERE id=?",
                 arguments: [message])
@@ -396,22 +424,28 @@ public actor ChatStore {
     }
     public func clear(conversation: String) throws {
         try check()
-        try db.write { db in
-            if let data = try Data.fetchOne(db, sql: "SELECT payload FROM entity WHERE bucket='conversation' AND id=?", arguments: [conversation]),
-               let latest = try JSONDecoder().decode(ChatConversation.self, from: data).latestMessage {
-                try db.execute(sql: "INSERT OR IGNORE INTO hidden VALUES (?)", arguments: [latest.id])
-            }
-            for id in try String.fetchAll(db, sql: "SELECT id FROM entity WHERE bucket='message' AND conversation=?", arguments: [conversation]) {
-                try Self.invalidateMedia(message: id, db: db)
-            }
-            try db.execute(
-                sql:
-                    "INSERT OR IGNORE INTO hidden SELECT id FROM entity WHERE bucket='message' AND conversation=?",
-                arguments: [conversation])
-            try db.execute(
-                sql: "UPDATE revoke_recovery SET text=NULL,runs=NULL,state='expired' WHERE conversation=?",
-                arguments: [conversation])
+        try db.write { try Self.clearHistory(conversation, db: $0) }
+    }
+    static func clearHistory(_ conversation: String, db: Database) throws {
+        let snapshot = try Data.fetchOne(db, sql: "SELECT payload FROM entity WHERE bucket='conversation' AND id=?", arguments: [conversation])
+            .map { try JSONDecoder().decode(ChatConversation.self, from: $0) }
+        let local = try Int64.fetchOne(db, sql: "SELECT MAX(sequence) FROM entity WHERE bucket='message' AND conversation=?", arguments: [conversation]) ?? 0
+        try db.execute(sql: "INSERT INTO conversation_clear VALUES (?,?) ON CONFLICT(conversation) DO UPDATE SET sequence=MAX(sequence,excluded.sequence)", arguments: [conversation, max(local, snapshot?.latest ?? 0)])
+        if let data = try Data.fetchOne(db, sql: "SELECT payload FROM entity WHERE bucket='conversation' AND id=?", arguments: [conversation]),
+           let latest = try JSONDecoder().decode(ChatConversation.self, from: data).latestMessage {
+            try db.execute(sql: "INSERT OR IGNORE INTO hidden VALUES (?)", arguments: [latest.id])
         }
+        try db.execute(sql: "DELETE FROM message_search WHERE id IN (SELECT id FROM entity WHERE bucket='message' AND conversation=?)", arguments: [conversation])
+        for id in try String.fetchAll(db, sql: "SELECT id FROM entity WHERE bucket='message' AND conversation=?", arguments: [conversation]) {
+            try Self.invalidateMedia(message: id, db: db)
+        }
+        try db.execute(
+            sql:
+                "INSERT OR IGNORE INTO hidden SELECT id FROM entity WHERE bucket='message' AND conversation=?",
+            arguments: [conversation])
+        try db.execute(
+            sql: "UPDATE revoke_recovery SET text=NULL,runs=NULL,state='expired' WHERE conversation=?",
+            arguments: [conversation])
     }
     /// 在网络调用前保存撤回身份和本人文本；重复调用不刷新保留期限。
     public func prepareRevoke(_ message: ChatMessage, operationID: UUID) throws -> ChatRevokeAttempt
@@ -549,6 +583,7 @@ public actor ChatStore {
     public func saveTransfer<T: Codable & Sendable>(_ value: T, id: UUID) throws {
         try check()
         try db.write { db in
+            let exists = try Bool.fetchOne(db, sql: "SELECT EXISTS(SELECT 1 FROM transfer WHERE id=?)", arguments: [id.uuidString]) ?? false
             var data = try JSONEncoder().encode(value)
             if var batch = value as? ChatUploadBatch,
                 let oldData = try Data.fetchOne(
@@ -564,6 +599,7 @@ public actor ChatStore {
                 arguments: [id.uuidString, data])
             if let batch = value as? ChatUploadBatch {
                 try Self.order(batch.messageID, conversation: batch.conversation, db: db)
+                if !exists { try Self.recordListSend(batch.conversation, at: batch.createdAt, db: db) }
             }
         }
     }
@@ -675,7 +711,7 @@ public actor ChatStore {
             sql: "INSERT OR REPLACE INTO entity VALUES (?,?,?,?,?,?)",
             arguments: [bucket, id, revision, conversation, sequence, JSONEncoder().encode(value)])
     }
-    private static func putConversation(_ value: ChatConversation, db: Database) throws {
+    private static func putConversation(_ value: ChatConversation, userID: UUID, db: Database) throws {
         var value = value
         if let data = try Data.fetchOne(
             db, sql: "SELECT payload FROM entity WHERE bucket='conversation' AND id=?",
@@ -702,15 +738,16 @@ public actor ChatStore {
             }
         }
         try put(value, bucket: "conversation", id: value.id, revision: value.revision, db: db)
+        if let message = value.latestMessage {
+            try recordListMessage(message, userID: userID, restoreHidden: true, db: db)
+        }
     }
-    private static func putMessage(_ value: ChatMessage, userID: UUID, now: Date, db: Database)
+    private static func putMessage(_ value: ChatMessage, userID: UUID, now: Date, restoreListVisibility: Bool? = nil, db: Database)
         throws
     {
         var value = value
-        if let data = try Data.fetchOne(
-            db, sql: "SELECT payload FROM entity WHERE bucket='message' AND id=?",
-            arguments: [value.id])
-        {
+        let previousData = try Data.fetchOne(db, sql: "SELECT payload FROM entity WHERE bucket='message' AND id=?", arguments: [value.id])
+        if let data = previousData {
             let old = try JSONDecoder().decode(ChatMessage.self, from: data)
             if old.revision > value.revision || old.revoked {
                 let receipt = value.receipt
@@ -733,6 +770,7 @@ public actor ChatStore {
             value, bucket: "message", id: value.id, revision: value.revision,
             conversation: value.conversationID,
             sequence: value.sequence, db: db)
+        try recordListMessage(value, userID: userID, restoreHidden: restoreListVisibility ?? (previousData == nil), db: db)
         try expireReedits(now: now, db: db)
         if value.revoked, value.senderID == userID.uuidString.lowercased() {
             try db.execute(
@@ -743,12 +781,17 @@ public actor ChatStore {
                     value.conversationID,
                 ])
         }
+        let cutoff = try Int64.fetchOne(db, sql: "SELECT sequence FROM conversation_clear WHERE conversation=?", arguments: [value.conversationID]) ?? 0
+        if value.sequence <= cutoff {
+            try db.execute(sql: "INSERT OR IGNORE INTO hidden VALUES (?)", arguments: [value.id])
+        }
         try db.execute(sql: "DELETE FROM outbox WHERE id=?", arguments: [value.id])
         try db.execute(sql: "DELETE FROM delivery_order WHERE message=?", arguments: [value.id])
         try db.execute(sql: "DELETE FROM message_search WHERE id=?", arguments: [value.id])
-        if !value.revoked && ["text", "link"].contains(value.kind) {
+        if !value.revoked && ["text", "link"].contains(value.kind),
+           try !(Bool.fetchOne(db, sql: "SELECT EXISTS(SELECT 1 FROM hidden WHERE id=?)", arguments: [value.id]) ?? false) {
             try db.execute(
-                sql: "INSERT INTO message_search VALUES (?,?)", arguments: [value.id, value.text])
+                sql: "INSERT INTO message_search VALUES (?,?)", arguments: [value.id, ChatSearchTokenizer.tokens(value.text).joined(separator: " ")])
         }
     }
 }

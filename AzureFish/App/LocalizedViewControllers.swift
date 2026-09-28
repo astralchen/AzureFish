@@ -31,6 +31,9 @@ private enum LocalizedScreenUpdater {
             controller.navigationItem.title = controller.title
         }
         controller.reloadLanguageMenu()
+        if controller.navigationItem.rightBarButtonItem?.accessibilityIdentifier == "chat.details.open" {
+            controller.navigationItem.rightBarButtonItem?.accessibilityLabel = Localization.text("chat.live.details")
+        }
     }
 }
 

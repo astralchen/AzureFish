@@ -11,7 +11,9 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         Localization.start()
         let root: UIViewController
         #if DEBUG
-        if let scenario = AccountDebugScenario.controller(arguments: ProcessInfo.processInfo.arguments) {
+        if ProcessInfo.processInfo.arguments.contains("-chat-details-ui-test"), #available(iOS 26.0, *) {
+            root = UINavigationController(rootViewController: ChatDetailsRegressionController())
+        } else if let scenario = AccountDebugScenario.controller(arguments: ProcessInfo.processInfo.arguments) {
             root = scenario
         } else if ProcessInfo.processInfo.arguments.contains("-chat-ui-test-root") {
             if #available(iOS 26.0, *) { root = UINavigationController(rootViewController: ChatRegressionLaunchController()) }
@@ -22,7 +24,7 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         #else
         root = AccountRootViewController()
         #endif
-        let window = UIWindow(windowScene: windowScene)
+        let window = ChatInteractionWindow(windowScene: windowScene)
         AppearancePreference.apply(to: window)
         window.rootViewController = root
         self.window = window

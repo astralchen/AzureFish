@@ -11,6 +11,10 @@ struct LiveChatRow: Sendable, Equatable {
     var subtitle: String = ""
     var symbol: String = "person.crop.circle.fill"
     var badge: String = ""
+    var markers: [String] = []
+    var highlight: String? = nil
+    var isPinned = false
+    var manuallyUnread = false
 }
 /// 通讯录、会话和成员选择共享的原生列表，实体身份不随语言改变。
 class LiveChatListController: LocalizedQuickLayoutHostingController, UISearchResultsUpdating {
@@ -22,6 +26,7 @@ class LiveChatListController: LocalizedQuickLayoutHostingController, UISearchRes
     private var observation: UUID?
     private let search = UISearchController(searchResultsController: nil)
     var query: String { search.searchBar.text ?? "" }
+    var showsSeparators: Bool { true }
     init(runtime: ChatRuntime) {
         self.runtime = runtime
         super.init(nibName: nil, bundle: nil)
@@ -58,6 +63,15 @@ class LiveChatListController: LocalizedQuickLayoutHostingController, UISearchRes
         super.reloadLocalizedContent()
         search.searchBar.placeholder = Localization.text("chat.live.search")
         reloadRows()
+        // 用户标题和正文可能不随语言变化，仍需更新“已置顶”和手动未读的无障碍说明。
+        adapter.reconfigureRows(forRowIDs: rows.map(\.id), transaction: .disabled, completion: nil)
+    }
+    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+        if isViewLoaded, previousTraitCollection?.preferredContentSizeCategory != traitCollection.preferredContentSizeCategory {
+            adapter.reconfigureRows(forRowIDs: rows.map(\.id), layout: .invalidate,
+                transaction: .disabled, completion: nil)
+        }
     }
     func updateSearchResults(for searchController: UISearchController) { reloadRows() }
     func reloadRows() { renderRows() }
@@ -70,35 +84,69 @@ class LiveChatListController: LocalizedQuickLayoutHostingController, UISearchRes
                     Row(value.id, model: value, cell: UICollectionViewListCell.self) { cell, value, _ in
                         var c = UIListContentConfiguration.subtitleCell()
                         c.text = value.title
+                        if let highlight = value.highlight, !highlight.isEmpty,
+                           let range = value.title.range(of: highlight, options: .caseInsensitive) {
+                            let text = NSMutableAttributedString(string: value.title)
+                            text.addAttribute(.backgroundColor, value: UIColor.systemYellow.withAlphaComponent(0.3), range: NSRange(range, in: value.title))
+                            c.attributedText = text
+                        }
                         c.secondaryText = value.subtitle
                         c.textProperties.font = .preferredFont(forTextStyle: .body)
                         c.textProperties.numberOfLines = 0
                         c.secondaryTextProperties.numberOfLines = 2
                         c.secondaryTextProperties.color = .secondaryLabel
-                        c.image = UIImage(systemName: value.symbol)
+                        let accessibilitySize = cell.traitCollection.preferredContentSizeCategory.isAccessibilityCategory
+                        c.image = accessibilitySize ? nil : UIImage(systemName: value.symbol)
                         c.imageProperties.tintColor = .systemBlue
                         cell.contentConfiguration = c
+                        var background = UIBackgroundConfiguration.listPlainCell()
+                        background.backgroundColor = value.isPinned ? .secondarySystemBackground : .systemBackground
+                        cell.backgroundConfiguration = background
                         cell.accessories = [.disclosureIndicator()]
-                        if !value.badge.isEmpty {
-                            let badge = UnreadCountBadgeView(text: value.badge)
+                        if accessibilitySize {
+                            // 原生内容视图的大字体环绕在混合 RTL 文本中可能与头像重叠，改由 accessory 保留独立宽度。
+                            let avatar = UIImageView(image: UIImage(systemName: value.symbol))
+                            avatar.tintColor = .systemBlue
+                            avatar.contentMode = .scaleAspectFit
+                            avatar.frame.size = CGSize(width: 36, height: 36)
+                            avatar.isAccessibilityElement = false
+                            cell.accessories.append(.customView(configuration: .init(customView: avatar,
+                                placement: .leading(), reservedLayoutWidth: .actual, maintainsFixedSize: true)))
+                        }
+                        for marker in value.markers {
+                            let image = UIImageView(image: UIImage(systemName: marker))
+                            image.tintColor = .secondaryLabel
+                            image.accessibilityLabel = Localization.text(marker == "pin.fill" ? "chat.details.pinned" : "chat.details.muted")
+                            cell.accessories.insert(.customView(configuration: .init(customView: image, placement: .trailing())), at: 0)
+                        }
+                        if !value.badge.isEmpty || value.manuallyUnread {
+                            let badge = UnreadCountBadgeView(text: value.badge, dot: value.badge.isEmpty)
                             // 保留容器尺寸，由系统按整行中心排列；内部文字不参与 accessory 基线对齐。
                             cell.accessories.insert(.customView(configuration: .init(
                                 customView: badge, placement: .trailing(),
                                 reservedLayoutWidth: .actual, maintainsFixedSize: true)), at: 0)
                         }
-                        cell.accessibilityLabel = [value.title, value.subtitle, value.badge].filter { !$0.isEmpty }
+                        let status = (value.isPinned ? [Localization.text("chat.details.pinned")] : [])
+                            + (value.manuallyUnread ? [Localization.text("chat.list.manuallyUnread")] : [])
+                        cell.accessibilityLabel = ([value.title, value.subtitle, value.badge] + status + value.markers.map { Localization.text($0 == "pin.fill" ? "chat.details.pinned" : "chat.details.muted") }).filter { !$0.isEmpty }
                             .joined(separator: ", ")
                         cell.accessibilityIdentifier = "chat.row." + value.id
                     }.onSelect { [weak self] _, _ in self?.selected?(value.id) }
                 }
             }.layout(
-                ListCustomSectionLayout(id: "content") { _, _, environment in
+                ListCustomSectionLayout(id: "content") { [weak self] _, _, environment in
                     var config = UICollectionLayoutListConfiguration(appearance: .plain)
                     config.backgroundColor = .clear
+                    config.showsSeparators = self?.showsSeparators ?? true
+                    config.trailingSwipeActionsConfigurationProvider = { [weak self] indexPath in
+                        guard let self, let id = adapter.rowIdentifier(at: indexPath, as: String.self) else { return nil }
+                        return trailingActions(for: id)
+                    }
                     return NSCollectionLayoutSection.list(using: config, layoutEnvironment: environment)
                 })
         }
     }
+    func trailingActions(for id: String) -> UISwipeActionsConfiguration? { nil }
     func showError(_ error: Error) {
         let key: String
         if case APIClientError.service(let failure) = error {
@@ -198,6 +246,7 @@ final class ConversationListViewController: LiveChatListController {
     private var renderGeneration = UUID()
     private var keyboardFrame: CGRect?
     override var localizedTitleKey: String? { "account.design.chat" }
+    override var showsSeparators: Bool { false }
     override func viewDidLoad() {
         quickLayoutKeyboardSafeAreaBehavior = .disabled
         super.viewDidLoad()
@@ -264,10 +313,48 @@ final class ConversationListViewController: LiveChatListController {
                 ConversationPageFactory.make(runtime: runtime, conversation: conversation), animated: true)
         }
     }
+    override func trailingActions(for id: String) -> UISwipeActionsConfiguration? {
+        guard runtime.visibleSortedConversations.contains(where: { $0.id == id }) else { return nil }
+        let unread = UIContextualAction(style: .normal, title: Localization.text("chat.list.markUnread")) { [weak self] _, _, completion in
+            guard let self else { completion(false); return }
+            Task {
+                do { try await runtime.markConversationUnread(id); completion(true) }
+                catch { completion(false); showError(error) }
+            }
+        }
+        unread.backgroundColor = .systemBlue
+        let hide = UIContextualAction(style: .normal, title: Localization.text("chat.list.hide")) { [weak self] _, _, completion in
+            guard let self else { completion(false); return }
+            Task {
+                do { try await runtime.hideConversation(id); completion(true) }
+                catch { completion(false); showError(error) }
+            }
+        }
+        hide.backgroundColor = .systemGray
+        let delete = UIContextualAction(style: .destructive, title: Localization.text("chat.list.delete")) { [weak self] _, _, completion in
+            guard let self else { completion(false); return }
+            // 先结束滑动状态，确认取消时不会留下已执行的视觉反馈。
+            completion(false)
+            let alert = UIAlertController(title: Localization.text("chat.list.deleteTitle"),
+                message: Localization.text("chat.list.deleteHelp"), preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: Localization.text("chat.live.cancel"), style: .cancel))
+            alert.addAction(UIAlertAction(title: Localization.text("chat.list.delete"), style: .destructive) { [weak self] _ in
+                guard let self else { return }
+                Task {
+                    do { try await runtime.hideConversation(id, deleting: true) }
+                    catch { showError(error) }
+                }
+            })
+            present(alert, animated: true)
+        }
+        let configuration = UISwipeActionsConfiguration(actions: [delete, hide, unread])
+        configuration.performsFirstActionWithFullSwipe = false
+        return configuration
+    }
     override func reloadRows() {
         let generation = UUID()
         renderGeneration = generation
-        let matches = runtime.conversations.filter {
+        let matches = runtime.visibleSortedConversations.filter {
             query.isEmpty || runtime.title($0).localizedStandardContains(query)
         }
         rows = matches.map {
@@ -278,11 +365,14 @@ final class ConversationListViewController: LiveChatListController {
                     : ($0.readState.unread > 0
                         ? String($0.readState.unread) + " · " + Localization.text("chat.live.unread") : ""),
                 symbol: $0.kind == "group" ? "person.3.fill" : "person.crop.circle.fill",
-                badge: $0.readState.unread > 99 ? "99+" : $0.readState.unread > 0 ? String($0.readState.unread) : "")
+                badge: $0.readState.unread > 99 ? "99+" : $0.readState.unread > 0 ? String($0.readState.unread) : "",
+                markers: runtime.preference($0.id).isMuted ? ["bell.slash.fill"] : [],
+                isPinned: runtime.preference($0.id).isPinned,
+                manuallyUnread: runtime.listStates[$0.id]?.manuallyUnread == true)
         }
         let state = ChatListContentState.resolve(
             hasSnapshot: runtime.hasSnapshot, synchronization: runtime.synchronization,
-            storageFailure: runtime.failure != nil, totalCount: runtime.conversations.count,
+            storageFailure: runtime.failure != nil, totalCount: runtime.visibleSortedConversations.count,
             matchCount: matches.count, searching: !query.isEmpty)
         if state == .storageFailure { rows = [] }
         if state == .content {
@@ -318,4 +408,14 @@ final class ConversationListViewController: LiveChatListController {
 #if DEBUG
     @available(iOS 17.0, *)
     #Preview("通讯录 · 原生列表") { ContactsViewController(runtime: ChatRuntime(session: .configured())) }
+@available(iOS 17.0, *)
+#Preview("会话列表 · 置顶与未读") {
+    let controller = LiveChatListController(runtime: ChatRuntime(session: .configured()))
+    controller.loadViewIfNeeded()
+    controller.rows = [
+        LiveChatRow(id: "pinned", title: "周末去海边", subtitle: "我们周六见", isPinned: true, manuallyUnread: true),
+        LiveChatRow(id: "ordinary", title: "林沐", subtitle: "照片", badge: "3")
+    ]
+    return controller
+}
 #endif

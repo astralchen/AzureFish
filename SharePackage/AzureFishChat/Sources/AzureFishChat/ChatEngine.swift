@@ -24,6 +24,8 @@ public actor ChatEngine {
     private var flushing = false
     private var observers: [UUID: AsyncStream<Bool>.Continuation] = [:]
     private var updateObservers: [UUID: AsyncStream<ChatEngineUpdate>.Continuation] = [:]
+    private var incomingObservers: [UUID: AsyncStream<[ChatMessage]>.Continuation] = [:]
+    private var notificationGate = ChatIncomingNotificationGate()
     private var online = false
     private var synchronization: ChatSynchronizationState = .idle
     public init(store: ChatStore, session: APISessionManager) {
@@ -60,6 +62,19 @@ public actor ChatEngine {
         for observer in observers.values { observer.yield(online) }
         publishUpdate()
     }
+    /// 前台提醒是临时事件；首次进入前台完成的补拉只建立基线。
+    public func setForegroundNotificationsEnabled(_ enabled: Bool) {
+        notificationGate.setEnabled(enabled)
+    }
+    /// 订阅前台同步产生的临时消息批次；缓冲至多 16 批，不替代持久同步游标。
+    public func incomingMessages() -> AsyncStream<[ChatMessage]> {
+        let id = UUID()
+        let (stream, continuation) = AsyncStream<[ChatMessage]>.makeStream(bufferingPolicy: .bufferingNewest(16))
+        incomingObservers[id] = continuation
+        continuation.onTermination = { [weak self] _ in Task { await self?.removeIncomingObserver(id) } }
+        return stream
+    }
+    private func removeIncomingObserver(_ id: UUID) { incomingObservers[id] = nil }
     public func start() async {
         guard !running else { return }
         running = true
@@ -79,6 +94,7 @@ public actor ChatEngine {
         }
     }
     public func stop() async {
+        notificationGate.setEnabled(false)
         running = false
         signals?.cancel()
         timer?.cancel()
@@ -108,13 +124,46 @@ public actor ChatEngine {
         }
     }
     private func pull() async throws {
+        let checkpoint = try await store.checkpoint()
+        let notificationPull = notificationGate.begin(hasCheckpoint: checkpoint != nil)
+        var received: [ChatMessage] = []
         try await store.expireReedits()
         if try await store.checkpoint() == nil { try await snapshot() }
-        do { try await events() } catch APIClientError.service(let error)
+        do { received = try await events() } catch APIClientError.service(let error)
             where error.code == .cursorExpired
         {
             try await snapshot()
-            try await events()
+            _ = try await events()
+        }
+        try await inspectConversationLists()
+        if notificationGate.complete(notificationPull), !received.isEmpty {
+            for observer in incomingObservers.values { observer.yield(received) }
+        }
+    }
+    /// 摘要为系统消息时检查历史，直到找到可显示内容或穷尽当前成员范围。
+    private func inspectConversationLists() async throws {
+        let states = try await store.conversationListStates()
+        for conversation in try await store.conversations() {
+            let state = states[conversation.id] ?? .init()
+            guard !state.isVisible,
+                  state.inspectedThrough != conversation.latest || state.inspectedBoundary != conversation.boundaryRevision,
+                  conversation.latest > (state.hiddenThrough ?? 0) else { continue }
+            do {
+                var before: Int64 = 0, upper: Int64 = 0, boundary: Int64 = 0
+                while true {
+                    try Task.checkCancellation()
+                    let page = try await api.history(conversation.id, before: before, upper: upper, boundary: boundary)
+                    try await store.apply(history: page, conversation: conversation.id, restoringListVisibility: true)
+                    let updated = try await store.conversationListStates()[conversation.id] ?? .init()
+                    if updated.isVisible || !page.hasMore || page.before <= (updated.hiddenThrough ?? 0) { break }
+                    guard page.before > 0, before == 0 || page.before < before else { throw APIClientError.invalidResponse }
+                    before = page.before; upper = page.upper; boundary = page.boundary
+                }
+                try await store.finishListInspection(conversation)
+            } catch {
+                if Task.isCancelled { throw CancellationError() }
+                // 未核实的边界留待下次同步重试；历史查询失败不能阻断正常收发队列。
+            }
         }
     }
     private func snapshot() async throws {
@@ -129,13 +178,15 @@ public actor ChatEngine {
             cursor = page.nextCursor
         } while true
     }
-    private func events() async throws {
+    private func events() async throws -> [ChatMessage] {
+        var received: [ChatMessage] = []
         while let checkpoint = try await store.checkpoint() {
             try Task.checkCancellation()
             let batch = try await api.events(cursor: checkpoint.cursor, epoch: checkpoint.epoch)
-            try await store.apply(events: batch, expected: checkpoint)
+            received += try await store.apply(events: batch, expected: checkpoint)
             if !batch.hasMore { break }
         }
+        return received
     }
     public func history(
         _ conversation: String, before: Int64 = 0, upper: Int64 = 0, boundary: Int64 = 0

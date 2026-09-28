@@ -586,6 +586,7 @@ final class ConversationView: QuickLayoutView, UICollectionViewDelegate, UIGestu
                 }
                 self.collectionView.layoutIfNeeded()
                 self.refreshMaterializedContentLayoutDirection()
+                if self.applyMessageFocus() { return }
 
                 if !self.initialPresentation.isPresented {
                     self.pendingExplicitScroll = false
@@ -848,6 +849,37 @@ final class ConversationView: QuickLayoutView, UICollectionViewDelegate, UIGestu
         )
     }
 
+    private var requestedMessageFocus: Int?
+    private var requestedLatestFocus = false
+    /// 在下次快照完成后定位消息，避免异步列表提交覆盖主动定位。
+    func requestMessageFocus(_ id: Int) { requestedMessageFocus = id }
+    /// 在切回最新消息窗口后滚动到底部，不恢复旧搜索窗口的阅读锚点。
+    func requestLatestMessageFocus() { requestedLatestFocus = true; requestedMessageFocus = nil }
+    private func applyMessageFocus() -> Bool {
+        if requestedLatestFocus {
+            requestedLatestFocus = false
+            pendingExplicitScroll = false
+            scrollToBottom(animated: false)
+            return true
+        }
+        guard let id = requestedMessageFocus, let state = lastState,
+              let index = state.timeline.firstIndex(where: { $0.id == .message(id) }) else { return false }
+        requestedMessageFocus = nil
+        pendingExplicitScroll = false
+        let path = IndexPath(item: index, section: 0)
+        collectionView.scrollToItem(at: path, at: .centeredVertically, animated: false)
+        collectionView.layoutIfNeeded()
+        if let cell = collectionView.cellForItem(at: path) {
+            let highlight = UIView(frame: cell.contentView.bounds)
+            highlight.isUserInteractionEnabled = false
+            highlight.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            highlight.backgroundColor = UIColor.systemYellow.withAlphaComponent(0.25)
+            cell.contentView.addSubview(highlight)
+            UIView.animate(withDuration: UIAccessibility.isReduceMotionEnabled ? 0 : 1.5, animations: { highlight.alpha = 0 }) { _ in highlight.removeFromSuperview() }
+            UIAccessibility.post(notification: .layoutChanged, argument: cell)
+        }
+        return true
+    }
     /// 将最后一个时间线项目滚动到可见区域底部；列表为空时直接返回。
     func scrollToBottom(animated: Bool) {
         debugLogScroll("bottom.begin", detail: "animated=\(animated)")

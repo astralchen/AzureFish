@@ -12,7 +12,13 @@ struct ChatUnreadBadgeTests {
     }
 
     @Test func badgesKeepPaddedSizeInRealListAndDisappearOnReuse() async throws {
-        let controller = ContactsViewController(runtime: ChatRuntime(session: .configured()))
+        let controller = LiveChatListController(runtime: ChatRuntime(session: .configured()))
+        let scene = try #require(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
+        let previous = scene.windows.first(where: \.isKeyWindow)
+        let window = UIWindow(windowScene: scene)
+        window.rootViewController = controller
+        window.makeKeyAndVisible()
+        defer { window.isHidden = true; previous?.makeKey() }
         controller.loadViewIfNeeded()
         for width: CGFloat in [320, 390, 700] {
             controller.view.frame = CGRect(x: 0, y: 0, width: width, height: 844)

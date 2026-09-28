@@ -12,6 +12,7 @@ final class AccountRootViewController: LocalizedViewController, UITabBarControll
     private weak var tabs: UITabBarController?
     private var chatRuntime: ChatRuntime?
     private var tabRestored = false
+    private var bannerCoordinator: ChatIncomingBannerCoordinator?
     init(session: SessionCoordinator = .configured()) { self.session = session; super.init(nibName: nil, bundle: nil) }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
     override func viewDidLoad() {
@@ -20,12 +21,16 @@ final class AccountRootViewController: LocalizedViewController, UITabBarControll
         render()
         Task { await session.restore() }
     }
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        bannerCoordinator?.updateActivity()
+    }
     private func render() {
         guard renderedPhase != session.phase || renderedIdentity != session.sessionIdentity else {
             (current as? UINavigationController)?.viewControllers.compactMap { $0 as? AccountRecoveryViewController }.forEach { $0.reloadLocalizedContent() }
             return
         }
-        if session.phase != .signedIn || renderedIdentity != session.sessionIdentity { chatRuntime?.stop(); chatRuntime = nil; tabRestored = false }
+        if session.phase != .signedIn || renderedIdentity != session.sessionIdentity { bannerCoordinator?.stop(); bannerCoordinator = nil; chatRuntime?.stop(); chatRuntime = nil; tabRestored = false }
         renderedPhase = session.phase
         renderedIdentity = session.sessionIdentity
         let next: UIViewController
@@ -51,6 +56,10 @@ final class AccountRootViewController: LocalizedViewController, UITabBarControll
                     if let selected, (0...2).contains(selected) { self.tabs?.selectedIndex = selected }
                 }
             }
+            bannerCoordinator = ChatIncomingBannerCoordinator(host: self, runtime: runtime) { [weak tabs, weak chat] conversation in
+                tabs?.selectedIndex = 0
+                chat?.open(conversation)
+            }
             runtime.start()
             self.tabs = tabs; next = tabs
         }
@@ -69,6 +78,7 @@ final class AccountRootViewController: LocalizedViewController, UITabBarControll
         if let controllers = tabs?.viewControllers, controllers.count == 3 { controllers[1].tabBarItem = UITabBarItem(title: Localization.text("chat.live.contacts"), image: UIImage(systemName: "person.2"), tag: 1) }
         tabs?.viewControllers?.last?.tabBarItem = UITabBarItem(title: Localization.text("account.design.me"), image: UIImage(systemName: "person.crop.circle"), tag: 2)
         updateUnreadBadges()
+        bannerCoordinator?.reloadLocalizedContent()
     }
     private func updateUnreadBadges() {
         guard let runtime = chatRuntime, let controllers = tabs?.viewControllers, controllers.count == 3 else { return }
