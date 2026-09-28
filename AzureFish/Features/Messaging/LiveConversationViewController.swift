@@ -33,8 +33,17 @@ final class LiveMessageCell: QuickLayoutCollectionViewCell {
     private let bubble = LiveTextBubble(), sender = UILabel(), status = UILabel()
     private var text: UILabel { bubble.label }
     private var outgoing = false
+    private let mediaPreview = UIImageView()
+    private let mediaProgress = UIActivityIndicatorView(style: .medium)
+    private var hasMedia = false
+    private var mediaHeight: CGFloat = 44
+    private var mediaIdentity: String?
+    private var mediaTask: Task<Void, Never>?
     override init(frame: CGRect) {
         super.init(frame: frame)
+        mediaPreview.contentMode = .scaleAspectFit
+        mediaPreview.clipsToBounds = true
+        mediaPreview.layer.cornerRadius = 12
         quickLayoutHorizontalFlexibility = .fixedSize
         quickLayoutVerticalFlexibility = .fullyFlexible
         for label in [text, sender, status] {
@@ -53,6 +62,9 @@ final class LiveMessageCell: QuickLayoutCollectionViewCell {
             if outgoing { Spacer() }
             VStack(alignment: outgoing ? .trailing : .leading, spacing: 4) {
                 if sender.text?.isEmpty == false { sender.resizable(axis: .horizontal) }
+                if hasMedia {
+                    ZStack { mediaPreview.resizable(); mediaProgress }.frame(height: mediaHeight).frame(maxWidth: .infinity)
+                }
                 bubble.resizable(axis: .horizontal)
                 if status.text?.isEmpty == false { status.resizable(axis: .horizontal) }
             }.frame(maxWidth: min(420, max(160, contentView.bounds.width * 0.78)))
@@ -69,6 +81,39 @@ final class LiveMessageCell: QuickLayoutCollectionViewCell {
         bubble.setNeedsQuickLayout()
         setNeedsQuickLayout()
     }
+    func configureMedia(_ message: ChatMessage?, runtime: ChatRuntime) {
+        let asset = message?.assets.first
+        let resource = asset?.resources.first { $0.role == "preview" }
+        let identity = message.map { $0.id + ":" + (resource?.id ?? "") }
+        guard identity != mediaIdentity else { return }
+        mediaTask?.cancel(); mediaIdentity = identity
+        hasMedia = asset != nil
+        mediaHeight = resource == nil ? 44 : 160
+        mediaPreview.image = UIImage(systemName: asset?.kind == "audio" ? "waveform" : asset?.kind == "video" ? "play.rectangle.fill" : "doc.fill")
+        mediaProgress.stopAnimating(); setNeedsQuickLayout()
+        guard let message, let resource, let queue = runtime.transfers, let media = runtime.media else { return }
+        mediaProgress.startAnimating()
+        mediaTask = Task { [weak self] in
+            do {
+                let id = try await queue.download(resource, message: message.id)
+                try Task.checkCancellation()
+                let url = try await media.lease(id)
+                let image = UIImage(contentsOfFile: url.path)
+                try await media.release(url)
+                guard !Task.isCancelled, self?.mediaIdentity == identity else { return }
+                self?.mediaPreview.image = image
+                self?.mediaProgress.stopAnimating()
+            } catch {
+                if self?.mediaIdentity == identity { self?.mediaProgress.stopAnimating() }
+            }
+        }
+    }
+    override func prepareForReuse() {
+        super.prepareForReuse(); mediaTask?.cancel(); mediaIdentity = nil
+        hasMedia = false; mediaPreview.image = nil; mediaProgress.stopAnimating()
+    }
+    deinit { mediaTask?.cancel() }
+
 }
 /// iOS 15 起的真实消息时间线；布局变化保留列表和输入控件实例。
 final class LiveConversationViewController: LocalizedQuickLayoutHostingController,
@@ -101,16 +146,8 @@ final class LiveConversationViewController: LocalizedQuickLayoutHostingControlle
     private var reloadGeneration = 0
     var attachments: [ChatUploadItem] = [] {
         didSet {
-            let value = attachments
-            let store = runtime.engine?.store
-            let id = conversation.id
-            Task { [weak self] in
-                do {
-                    try await store?.saveDraftAttachments(value, conversation: id)
-                    if self?.runtime.engine?.store === store { try await self?.runtime.refreshListStates() }
-                } catch { /* 保存失败时保留编辑器内容。 */ }
-            }
-            attachmentButton.accessibilityValue = String(value.count)
+            attachmentButton.accessibilityValue = String(attachments.count)
+            if isViewLoaded, !restoringDraft, !submitting { scheduleDraftSave() }
         }
     }
     var mediaCoordinator: LiveMediaCoordinator?
@@ -124,6 +161,7 @@ final class LiveConversationViewController: LocalizedQuickLayoutHostingControlle
     override var body: Layout {
         VStack(spacing: 4) {
             notice.resizable(axis: .horizontal).padding(.horizontal, 16)
+            if draftSaveFailed { draftRetry.frame(minHeight: 44) }
             historyButton.frame(minHeight: 44)
             list.resizable().frame(maxWidth: .infinity, maxHeight: .infinity)
             if !latestButton.isHidden { latestButton.frame(minHeight: 44) }
@@ -138,6 +176,9 @@ final class LiveConversationViewController: LocalizedQuickLayoutHostingControlle
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .systemBackground
+        draftRetry.setTitle(Localization.text("chat.draft.saveFailed"), for: .normal)
+        draftRetry.titleLabel?.numberOfLines = 0
+        draftRetry.addAction(UIAction { [weak self] _ in self?.scheduleDraftSave() }, for: .touchUpInside)
         quickLayoutKeyboardSafeAreaBehavior = .docked()
         list.backgroundColor = .clear
         list.contentInsetAdjustmentBehavior = .never
@@ -210,23 +251,46 @@ final class LiveConversationViewController: LocalizedQuickLayoutHostingControlle
         historyButton.setTitle(Localization.text("chat.live.history"), for: .normal)
         latestButton.setTitle(Localization.text("chat.live.latest"), for: .normal)
         sendButton.accessibilityLabel = Localization.text("chat.live.sendMessage")
+        draftRetry.setTitle(Localization.text("chat.draft.saveFailed"), for: .normal)
         attachmentButton.accessibilityLabel = Localization.text("chat.live.attach")
         voiceButton.accessibilityLabel = Localization.text("chat.live.record")
         reloadMessages()
     }
+    private var draftSaveFailed = false
+    private let draftRetry = UIButton(type: .system)
     func textViewDidChange(_ textView: UITextView) {
         setNeedsQuickLayout()
-        guard !restoringDraft else { return }
-        draftTask?.cancel()
-        let value = textView.text ?? ""
+        if !restoringDraft, !submitting { scheduleDraftSave() }
+    }
+    private func scheduleDraftSave() {
+        let previous = draftTask
+        previous?.cancel()
+        let text = editor.text ?? "", files = attachments
         let id = conversation.id
-        let store = runtime.engine?.store
-        draftTask = Task {
+        guard let engine = runtime.engine else { return }
+        draftTask = Task { [weak self] in
+            await previous?.value
+            guard let self else { return }
             do {
                 try await Task.sleep(nanoseconds: 200_000_000)
-                try await store?.saveDraft(.init(text: value), conversation: id)
-                if runtime.engine?.store === store { try await runtime.refreshListStates() }
-            } catch {}
+                try Task.checkCancellation()
+                guard runtime.engine === engine else { return }
+                try await engine.store.saveDraft(.init(text: text), conversation: id)
+                try Task.checkCancellation()
+                try await engine.store.saveDraftAttachments(files, conversation: id)
+                try await runtime.refreshListStates()
+                draftSaveFailed = false; setNeedsQuickLayout()
+            } catch is CancellationError { }
+            catch {
+                guard runtime.engine === engine else { return }
+                draftSaveFailed = true; setNeedsQuickLayout()
+            }
+        }
+    }
+    private func performMessageAction(_ operation: @escaping @MainActor () async throws -> Void) {
+        Task { [weak self] in
+            do { try await operation() }
+            catch { self?.showFailure() }
         }
     }
     var conversationID: String { conversation.id }
@@ -322,7 +386,7 @@ final class LiveConversationViewController: LocalizedQuickLayoutHostingControlle
                 }
                 render()
                 guard runtime.engine === engine, generation == reloadGeneration else { return }
-                let allowed = runtime.canSend(conversation) && !reediting
+                let allowed = runtime.canSend(conversation) && !reediting && !submitting
                 editor.isEditable = allowed
                 sendButton.isEnabled = allowed
                 attachmentButton.isEnabled = allowed
@@ -390,8 +454,9 @@ final class LiveConversationViewController: LocalizedQuickLayoutHostingControlle
                             }
                         }
                     } else {
-                        Row(row.id, model: row, cell: LiveMessageCell.self) { cell, row, _ in
+                        Row(row.id, model: row, cell: LiveMessageCell.self) { [weak self] cell, row, _ in
                             cell.configure(row)
+                            if let self { cell.configureMedia(messages.first { $0.id == row.id }, runtime: runtime) }
                         }
                         .refreshID(row).refresh(
                             when: .automatic, action: .reconfigure(layout: .invalidate)
@@ -441,11 +506,16 @@ final class LiveConversationViewController: LocalizedQuickLayoutHostingControlle
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !selected.isEmpty
         else { return }
         contextAnchor = nil
-        submitting = true
-        draftTask?.cancel()
+        submitting = true; sendButton.isEnabled = false
+        let previousDraft = draftTask
+        previousDraft?.cancel()
         Task { [weak self] in
+            await previousDraft?.value
             guard let self else { return }
-            defer { submitting = false }
+            defer {
+                submitting = false; sendButton.isEnabled = runtime.canSend(conversation)
+                if runtime.engine === engine { scheduleDraftSave() }
+            }
             do {
                 let credentials = try await manager.localIdentity()
                 var batches: [ChatUploadBatch] = []
@@ -543,8 +613,9 @@ final class LiveConversationViewController: LocalizedQuickLayoutHostingControlle
                     title: Localization.text("chat.live.localDelete"), attributes: .destructive
                 ) { [weak self] _ in
                     guard let self else { return }
-                    Task {
-                        try? await runtime.engine?.store.hide(message: id)
+                    performMessageAction { [weak self] in
+                        guard let self, let engine = runtime.engine else { throw ChatStoreError.unavailable }
+                        try await engine.store.hide(message: id)
                         reloadMessages()
                     }
                 })
@@ -558,29 +629,27 @@ final class LiveConversationViewController: LocalizedQuickLayoutHostingControlle
                     })
             }
             if !message.assets.isEmpty {
-                actions.append(
-                    UIAction(title: Localization.text("chat.live.open")) { [weak self] _ in
-                        self?.openMessage(id)
-                    })
+                actions.append(UIAction(title: Localization.text("chat.live.open")) { [weak self] _ in self?.openMessage(id) })
+                actions.append(UIAction(title: Localization.text("chat.media.export")) { [weak self] _ in self?.mediaCoordinator?.export(message) })
             }
         } else if let value = pending.first(where: { $0.outgoing.id.uuidString.lowercased() == id })
         {
             actions.append(
                 UIAction(title: Localization.text("chat.live.retry")) { [weak self] _ in
-                    Task { try? await self?.runtime.engine?.retry(value) }
+                    self?.performMessageAction { [weak self] in try await self?.runtime.engine?.retry(value) }
                 })
         }
         if let batch = uploads.first(where: { $0.id.uuidString == id }) {
             if batch.state == "failed" || batch.state == "waiting" {
                 actions.append(
                     UIAction(title: Localization.text("chat.live.retry")) { [weak self] _ in
-                        Task { try? await self?.runtime.transfers?.retry(batch.id) }
+                        self?.performMessageAction { [weak self] in try await self?.runtime.transfers?.retry(batch.id) }
                     })
             }
             actions.append(
                 UIAction(title: Localization.text("chat.live.cancel"), attributes: .destructive) {
                     [weak self] _ in
-                    Task { try? await self?.runtime.transfers?.cancel(batch.id) }
+                    self?.performMessageAction { [weak self] in try await self?.runtime.transfers?.cancel(batch.id) }
                 })
         }
         return UIMenu(children: actions)
@@ -749,13 +818,13 @@ final class LiveConversationViewController: LocalizedQuickLayoutHostingControlle
                     sheet.addAction(
                         UIAlertAction(title: action.title, style: .destructive) { [weak self] _ in
                             guard let uuid = UUID(uuidString: id) else { return }
-                            Task { try? await self?.runtime.transfers?.cancel(uuid) }
+                            self?.performMessageAction { [weak self] in try await self?.runtime.transfers?.cancel(uuid) }
                         })
                 } else {
                     sheet.addAction(
                         UIAlertAction(title: action.title, style: .default) { [weak self] _ in
                             guard let uuid = UUID(uuidString: id) else { return }
-                            Task { try? await self?.runtime.transfers?.retry(uuid) }
+                            self?.performMessageAction { [weak self] in try await self?.runtime.transfers?.retry(uuid) }
                         })
                 }
             }
@@ -769,6 +838,7 @@ final class LiveConversationViewController: LocalizedQuickLayoutHostingControlle
         mediaCoordinator?.open(message)
     }
     func showFailure() {
+        guard presentedViewController == nil else { return }
         let alert = UIAlertController(
             title: Localization.text("chat.live.failed"), message: nil, preferredStyle: .alert)
         alert.addAction(

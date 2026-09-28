@@ -1,9 +1,15 @@
 import Foundation
+import CryptoKit
 import AzureFishAPI
 
 /// 协调单个应用会话的恢复、刷新、资料和退出，拒绝已退出代次的迟到响应。
 @MainActor
 final class SessionCoordinator {
+    private final class WeakSession {
+        weak var value: SessionCoordinator?
+        init(_ value: SessionCoordinator) { self.value = value }
+    }
+    private static var instances: [WeakSession] = []
     enum Phase: Equatable { case restoring, welcome, signedIn, recovery }
     private(set) var phase: Phase = .restoring
     private(set) var profile: AccountProfile?
@@ -21,6 +27,9 @@ final class SessionCoordinator {
     private var refreshTask: Task<SessionCredentials, Error>?
     private var authentication: (AuthenticationInput, AccountOperation<AuthenticatedSession>)?
     private var profileOperation: (AccountProfile, String, String, AccountOperation<UserProfile>)?
+    private var securityOperation: (AccountSecurityAction, String, AccountOperation<Bool>, SessionCredentials)?
+    private var avatarOperation: (Data, AccountOperation<UserProfile>)?
+    private var avatarCache: AccountAvatarCache?
     private var exitPending = false
     private var pendingLogout: LogoutRevocation?
     private var requests: [UUID: () -> Void] = [:]
@@ -28,6 +37,7 @@ final class SessionCoordinator {
     init(service: (any AccountServicing)?, store: CredentialStore, repository: UserRepository) {
         self.service = service; self.store = store; self.repository = repository
         sessionManager = service.map { APISessionManager(api: $0.api, store: KeychainAPISessionStore(store: store)) }
+        Self.instances.removeAll { $0.value == nil }; Self.instances.append(WeakSession(self))
     }
     static func configured() -> SessionCoordinator {
         let service = LiveAccountService.configured()
@@ -49,6 +59,8 @@ final class SessionCoordinator {
         defer { busy = false; publish() }
         guard service != nil else { phase = .welcome; noticeKey = AccountFailure.unavailable.key; return }
         do {
+            try await recoverDeletionRequest()
+            try await recoverLocalDeletion()
             stored = try store.load()
             try await sessionManager?.restore()
             stored = try store.load()
@@ -82,6 +94,9 @@ final class SessionCoordinator {
         busy = true; publish()
         let generation = epoch
         defer { busy = false; publish() }
+        // 未决删除先恢复，避免换号后用新会话覆盖旧账号的清理状态。
+        try await recoverDeletionRequest()
+        try await recoverLocalDeletion()
         if authentication?.0 != input {
             let device = try store.installationID()
             let operation = try input.register
@@ -205,9 +220,131 @@ final class SessionCoordinator {
         } else {
             try await sessionManager?.logout(operationID: ticket.operationID)
         }
+        try await ChatRuntime.stopAccount(user: credentials.userID, environment: store.environmentID)
         try await sessionManager?.clearLocalSession()
+        try await endOtherWindows(user: credentials.userID)
+        avatarCache = nil; avatarOperation = nil; securityOperation = nil
         stored = nil; profile = nil; authentication = nil; profileOperation = nil; pendingLogout = nil
         readOnly = false; noticeKey = nil; phase = .welcome
+    }
+    func securityInfo() async throws -> AccountSecurityInfo {
+        try await authorized { api, credentials in try await api.security(using: credentials) }
+    }
+    /// 网络重试复用原敏感操作；服务端撤销当前会话后不自动刷新凭据。
+    func performSecurity(_ action: AccountSecurityAction, password: String, newPassword: String = "") async throws {
+        guard !busy, let api = service?.api, let manager = sessionManager else { throw AccountFailure.busy }
+        busy = true; publish()
+        defer { busy = false; publish() }
+        let generation = epoch
+        if securityOperation?.0 != action || securityOperation?.1 != newPassword {
+            let credentials = try await manager.credentials()
+            let proof = try await api.execute(api.prepareReauthentication(operationID: UUID(), password: password, action: action, using: credentials), using: credentials)
+            try check(generation)
+            let op = try api.prepareSecurityAction(operationID: UUID(), action: action, proof: proof, newPassword: newPassword, using: credentials)
+            securityOperation = (action, newPassword, op, credentials)
+        }
+        guard let pending = securityOperation else { throw AccountFailure.invalidInput }
+        if action == .deleteAccount {
+            let recovery = try api.deletionRecovery(for: pending.2, using: pending.3)
+            if try store.values.read(deletionRequestKey) == nil {
+                try store.values.write(JSONEncoder().encode(recovery), key: deletionRequestKey)
+            }
+        }
+        do { _ = try await api.execute(pending.2, using: pending.3) }
+        catch APIClientError.service(let failure) where failure.code == .reauthRequired || failure.code == .ownerTransferRequired {
+            if action == .deleteAccount { try store.values.remove(deletionRequestKey) }
+            securityOperation = nil; throw APIClientError.service(failure)
+        }
+        try check(generation)
+        if action == .deleteAccount {
+            // 标记先于文件清理；失败或进程退出后，启动先完成清理再恢复会话。
+            try store.values.write(Data(pending.3.userID.uuidString.utf8), key: deletionKey)
+        }
+        try await ChatRuntime.stopAccount(user: pending.3.userID, environment: store.environmentID)
+        epoch = UUID(); requests.values.forEach { $0() }; requests.removeAll()
+        try await manager.clearLocalSession()
+        try await endOtherWindows(user: pending.3.userID)
+        if action == .deleteAccount { try await recoverLocalDeletion() }
+        securityOperation = nil; avatarOperation = nil; avatarCache = nil
+        stored = nil; profile = nil; readOnly = false; phase = .welcome
+        noticeKey = action == .deleteAccount ? "account.deletion.accepted" : "account.security.completed"
+    }
+    private func endOtherWindows(user: UUID) async throws {
+        for other in Self.instances.compactMap(\.value) where other !== self && other.store.environmentID == store.environmentID && other.profile?.userID == user {
+            other.epoch = UUID(); other.requests.values.forEach { $0() }; other.requests.removeAll()
+            other.refreshTask?.cancel(); other.profile = nil; other.stored = nil
+            other.avatarCache = nil; other.avatarOperation = nil; other.securityOperation = nil
+            other.authentication = nil; other.profileOperation = nil; other.readOnly = false
+            do { try await other.sessionManager?.clearLocalSession(); other.phase = .welcome }
+            catch { other.phase = .recovery; other.noticeKey = AccountFailure.storage.key; other.publish(); throw error }
+            other.publish()
+        }
+    }
+    private var deletionKey: String { "pending-account-deletion." + store.environmentID }
+    private var deletionRequestKey: String { "pending-account-deletion-request." + store.environmentID }
+    private func recoverDeletionRequest() async throws {
+        // 已确认的清理任务不再依赖网络或结果恢复窗口。
+        if try store.values.read(deletionKey) != nil { return }
+        guard let bytes = try store.values.read(deletionRequestKey), let api = service?.api else { return }
+        let recovery = try JSONDecoder().decode(AccountDeletionRecovery.self, from: bytes)
+        guard recovery.expiresAt > Date() else {
+            try store.values.remove(deletionRequestKey)
+            noticeKey = "account.security.resultUnknown"
+            return
+        }
+        do { try await api.recoverDeletion(recovery) }
+        catch APIClientError.service(let failure) where failure.code == .reauthRequired || failure.code == .ownerTransferRequired {
+            try store.values.remove(deletionRequestKey)
+            return
+        }
+        try store.values.write(Data(recovery.userID.uuidString.utf8), key: deletionKey)
+        noticeKey = "account.deletion.accepted"
+    }
+    private func recoverLocalDeletion() async throws {
+        guard let bytes = try store.values.read(deletionKey) else { return }
+        guard let user = UUID(uuidString: String(decoding: bytes, as: UTF8.self)) else { throw AccountFailure.storage }
+        try await ChatRuntime.stopAccount(user: user, environment: store.environmentID)
+        try await endOtherWindows(user: user)
+        let scope = store.environmentID + ":" + user.uuidString.lowercased()
+        let hash = SHA256.hash(data: Data(scope.utf8)).map { String(format: "%02x", $0) }.joined()
+        let directory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("ChatAccounts/" + hash)
+        if FileManager.default.fileExists(atPath: directory.path) { try FileManager.default.removeItem(at: directory) }
+        let avatars = AccountAvatarCache(keys: store.values, environment: store.environmentID, user: user)
+        try repository.deleteFiles(user: user)
+        try avatars.deleteFiles()
+        try repository.deleteKey(user: user)
+        try avatars.deleteKey()
+        try store.values.remove("chat.database." + scope)
+        try store.values.remove("chat.media." + scope)
+        try await sessionManager?.clearLocalSession()
+        try store.values.remove(deletionRequestKey)
+        try store.values.remove(deletionKey)
+    }
+    func updateAvatar(_ jpeg: Data) async throws {
+        guard !busy, let api = service?.api, let profile, let manager = sessionManager else { throw AccountFailure.busy }
+        busy = true; publish(); defer { busy = false; publish() }
+        if avatarOperation?.0 != jpeg {
+            let credentials = try await manager.credentials()
+            avatarOperation = (jpeg, try api.prepareAvatar(operationID: UUID(), expectedVersion: profile.version, jpeg: jpeg, using: credentials))
+        }
+        let operation = avatarOperation!.1
+        do {
+            let value = try await authorized { api, credentials in try await api.execute(operation, using: credentials) }
+            acceptProfile(AccountProfile(value)); avatarOperation = nil
+        } catch APIClientError.service(let failure) where failure.code == .profileVersionConflict || failure.code == .operationResultExpired {
+            avatarOperation = nil; try await reloadProfile(); throw AccountFailure.conflict
+        }
+    }
+    func avatar(user: UUID, asset: String?) async throws -> Data? {
+        guard let asset, let owner = stored?.userID else { return nil }
+        if avatarCache == nil { avatarCache = AccountAvatarCache(keys: store.values, environment: store.environmentID, user: owner) }
+        if let cached = try avatarCache?.load(user: user, asset: asset) { return cached }
+        let generation = epoch
+        let result = try await authorized { api, credentials in try await api.avatar(user: user, using: credentials) }
+        try check(generation)
+        guard result.id == asset else { return nil }
+        try avatarCache?.save(result.jpeg, user: user, asset: asset)
+        return result.jpeg
     }
     private func drainRevocations() async {
         guard let api = service?.api, let queue = try? store.revocations() else { return }

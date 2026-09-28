@@ -6,9 +6,13 @@ public struct ChatUser: Codable, Sendable, Equatable {
     public var id: String
     public var nickname: String
     public var version: Int64
+    public var avatarID: String? = nil
+    public var deleted: Bool? = nil
     init(_ value: IMPublicUser) {
         id = value.userID
         nickname = value.nickname
+        avatarID = value.avatarID.isEmpty ? nil : value.avatarID
+        deleted = value.deleted
         version = value.profileVersion
     }
 }

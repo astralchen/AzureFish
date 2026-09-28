@@ -10,9 +10,9 @@ extension IMService {
         return try await read(req) { session, db in
             try await self.accounts.limiter.check("lookup:" + session.userID.uuidString, limit: 20, now: self.accounts.clock())
             let digest = self.crypto.digest(Data(account.utf8), purpose: "account")
-            guard let user = try await UserRecord.query(on: db).filter(\.$accountDigest == digest).first() else { throw APIError(.notFound, "USER_NOT_FOUND") }
+            guard let user = try await UserRecord.query(on: db).filter(\.$accountDigest == digest).first(), try self.accounts.payload(user).deleted != true else { throw APIError(.notFound, "USER_NOT_FOUND") }
             var result = IMPublicUser(); result.userID = try user.requireID().uuidString.lowercased()
-            result.nickname = try self.accounts.payload(user).nickname; result.profileVersion = user.version; return result
+            result.nickname = try self.accounts.payload(user).nickname; result.profileVersion = user.version; result.avatarID = try self.accounts.payload(user).avatarID ?? ""; return result
         }
     }
     func resolve(_ req: Request) async throws -> Response {

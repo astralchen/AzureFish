@@ -69,15 +69,23 @@ public actor ChatTransferQueue {
         resume()
     }
     public func resume() {
-        guard worker == nil else { return }
+        guard worker == nil, !stopped else { return }
         let id = UUID()
         generation = id
         worker = Task { await self.run(id) }
     }
-    public func stop() {
+    private var downloads: [UUID: Task<UUID, Error>] = [:]
+    private var stopped = false
+    public func stop() async {
+        stopped = true
+        let activeDownloads = Array(downloads.values)
+        activeDownloads.forEach { $0.cancel() }
         generation = UUID()
-        worker?.cancel()
+        let previous = worker
+        previous?.cancel()
         worker = nil
+        await previous?.value
+        for task in activeDownloads { _ = try? await task.value }
     }
     public func cancel(_ id: UUID) async throws {
         guard var batch = try await store.transfers(as: ChatUploadBatch.self).first(where: { $0.id == id }) else {
@@ -214,6 +222,19 @@ public actor ChatTransferQueue {
     }
     /// 逐段授权下载，重启后复用已认证分块；最终摘要通过后才允许明文租约。
     public func download(_ resource: ChatResource, message: String) async throws -> UUID {
+        guard !stopped else { throw CancellationError() }
+        let requestID = UUID()
+        let task = Task { try await self.performDownload(resource, message: message) }
+        downloads[requestID] = task
+        defer { downloads[requestID] = nil }
+        return try await withTaskCancellationHandler {
+            let value = try await task.value
+            try Task.checkCancellation()
+            guard !stopped else { throw CancellationError() }
+            return value
+        } onCancel: { task.cancel() }
+    }
+    private func performDownload(_ resource: ChatResource, message: String) async throws -> UUID {
         guard let id = UUID(uuidString: resource.id) else { throw APIClientError.invalidResponse }
         let input = ChatMediaInput(
             role: resource.role, filename: resource.filename, mime: resource.mime, bytes: resource.bytes,
@@ -227,10 +248,12 @@ public actor ChatTransferQueue {
             let offset = Int64(index) * Int64(ChatMediaStore.chunkBytes)
             let size = Int(min(Int64(ChatMediaStore.chunkBytes), resource.bytes - offset))
             let bytes = try await api.download(grant, offset: offset, count: size)
+            try Task.checkCancellation()
             try await media.write(bytes, id: id, index: index)
         }
         // 即使全部命中缓存，也重新检查当前消息权限，撤回不能通过本机旧授权重新打开。
         _ = try await api.authorize(resource.id, message: message)
+        try Task.checkCancellation()
         try await media.verify(id)
         return id
     }

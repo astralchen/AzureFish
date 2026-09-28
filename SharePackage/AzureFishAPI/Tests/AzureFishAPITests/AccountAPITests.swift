@@ -47,6 +47,35 @@ private func serviceResponse(_ code: String, status: Int) throws -> HTTPResponse
 
 @Suite("账号 API 适配")
 struct AccountAPITests {
+    @Test func deletionRecoveryPreservesBytesAndRejectsExpiredOrForeignTickets() async throws {
+        let proofToken = String(repeating: "p", count: 43)
+        let transport = MockHTTPTransport { request, _ in
+            if request.url.path == "/v1/auth/reauthenticate" {
+                var response = ReauthenticateResponse(); response.token = proofToken; response.expiresAtMs = 1_800_000_300_000
+                return HTTPResponse(statusCode: 200, headers: ["Content-Type": "application/protobuf"], body: try response.serializedData())
+            }
+            return HTTPResponse(statusCode: 202, headers: ["Content-Type": "application/protobuf"], body: Data())
+        }
+        let api = AccountAPI(environment: try environment(), transport: transport)
+        let current = try credentials(), now = Date(timeIntervalSince1970: 1_800_000_000)
+        let proof = try await api.execute(api.prepareReauthentication(operationID: UUID(), password: "Fictional-Password-123", action: .deleteAccount, using: current), using: current)
+        let operation = try api.prepareSecurityAction(operationID: UUID(), action: .deleteAccount, proof: proof, using: current)
+        let ticket = try api.deletionRecovery(for: operation, using: current, now: now)
+        let encoded = try JSONEncoder().encode(ticket)
+        #expect(!String(decoding: encoded, as: UTF8.self).contains(current.refreshToken.rawValue))
+        #expect(!String(reflecting: ticket).contains(proofToken))
+        let restored = try JSONDecoder().decode(AccountDeletionRecovery.self, from: encoded)
+        _ = try await api.execute(operation, using: current)
+        try await api.recoverDeletion(restored, now: now.addingTimeInterval(60))
+        let history = await transport.requests
+        #expect(history[1].body == history[2].body && history[1].headers["Authorization"] == history[2].headers["Authorization"])
+        let body = try AccountSecurityRequest(serializedBytes: #require(history[2].body))
+        #expect(body.newPassword.isEmpty)
+        await #expect(throws: APIClientError.invalidRequest) { try await api.recoverDeletion(restored, now: now.addingTimeInterval(601)) }
+        let other = AccountAPI(environment: try environment("other"), transport: transport)
+        await #expect(throws: APIClientError.operationEnvironmentMismatch) { try await other.recoverDeletion(restored, now: now) }
+        #expect(await transport.requests.count == 3)
+    }
     @Test func registrationSerializesOnceAndMapsDomainValues() async throws {
         let bytes = try authMessage().serializedData()
         let transport = MockHTTPTransport { _, attempt in

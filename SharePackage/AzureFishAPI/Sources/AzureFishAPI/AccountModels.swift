@@ -96,6 +96,8 @@ public struct UserProfile: Sendable, Equatable, CustomStringConvertible, CustomD
     public let createdAt: Date
     /// 由服务端 Unix 毫秒时间戳转换的资料更新时间，不用于替代版本冲突检查。
     public let updatedAt: Date
+    /// 不可变头像资源 ID；nil 表示默认头像。
+    public var avatarID: String? = nil
     /// 仅显示资料版本的脱敏说明，不包含用户标识、昵称或简介。
     public var description: String { "UserProfile(version: \(version), content redacted)" }
     /// 与 `description` 相同的脱敏调试说明。

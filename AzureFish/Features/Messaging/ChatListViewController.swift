@@ -17,6 +17,8 @@ struct LiveChatRow: Sendable, Equatable {
     var isPinned = false
     var manuallyUnread = false
     var isDraft = false
+    var avatarUser: String? = nil
+    var avatarAsset: String? = nil
 }
 /// 通讯录、会话和成员选择共享的原生列表，实体身份不随语言改变。
 class LiveChatListController: LocalizedQuickLayoutHostingController, UISearchResultsUpdating {
@@ -107,14 +109,20 @@ class LiveChatListController: LocalizedQuickLayoutHostingController, UISearchRes
                             c.secondaryAttributedText = text
                         }
                         let accessibilitySize = cell.traitCollection.preferredContentSizeCategory.isAccessibilityCategory
-                        c.image = accessibilitySize ? nil : UIImage(systemName: value.symbol)
+                        c.image = accessibilitySize || value.avatarUser != nil ? nil : UIImage(systemName: value.symbol)
                         c.imageProperties.tintColor = .systemBlue
                         cell.contentConfiguration = c
                         var background = UIBackgroundConfiguration.listPlainCell()
                         background.backgroundColor = value.isPinned ? .secondarySystemBackground : .systemBackground
                         cell.backgroundConfiguration = background
                         cell.accessories = [.disclosureIndicator()]
-                        if accessibilitySize {
+                        if let user = value.avatarUser.flatMap(UUID.init(uuidString:)) {
+                            let avatar = AccountAvatarView()
+                            avatar.configure(session: self.runtime.session, user: user, asset: value.avatarAsset)
+                            avatar.frame.size = CGSize(width: 36, height: 36)
+                            cell.accessories.append(.customView(configuration: .init(customView: avatar,
+                                placement: .leading(), reservedLayoutWidth: .actual, maintainsFixedSize: true)))
+                        } else if accessibilitySize {
                             // 原生内容视图的大字体环绕在混合 RTL 文本中可能与头像重叠，改由 accessory 保留独立宽度。
                             let avatar = UIImageView(image: UIImage(systemName: value.symbol))
                             avatar.tintColor = .systemBlue
@@ -382,7 +390,9 @@ final class ConversationListViewController: LiveChatListController {
                 markers: runtime.preference($0.id).isMuted ? ["bell.slash.fill"] : [],
                 isPinned: runtime.preference($0.id).isPinned,
                 manuallyUnread: runtime.listStates[$0.id]?.manuallyUnread == true,
-                isDraft: runtime.draftPreviews[$0.id] != nil)
+                isDraft: runtime.draftPreviews[$0.id] != nil,
+                avatarUser: $0.kind == "direct" ? $0.members.first { $0.id != runtime.userID }?.id : nil,
+                avatarAsset: $0.kind == "direct" ? $0.members.first { $0.id != runtime.userID }?.profile.avatarID : nil)
         }
         let state = ChatListContentState.resolve(
             hasSnapshot: runtime.hasSnapshot, synchronization: runtime.synchronization,

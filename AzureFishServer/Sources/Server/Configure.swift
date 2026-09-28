@@ -65,6 +65,7 @@ public func configure(_ app: Application, configuration: ServerConfiguration) as
     let crypto = try Cryptography(key: configuration.key, environment: configuration.environmentID)
     app.databases.use(.sqlite(.file(path)), as: .sqlite)
     app.migrations.add(CreateSchema())
+    app.migrations.add(CreateAccountSecuritySchema())
     app.migrations.add(CreateIMSchema())
     app.migrations.add(CreateContactsSchema())
     app.migrations.add(CreateMediaSchema())
@@ -113,6 +114,8 @@ public func configure(_ app: Application, configuration: ServerConfiguration) as
         try await marker.create(on: app.db)
     }
     let baseIM = IMService(accounts: service, epoch: epoch)
+    service.registerSecurity(on: v1, im: baseIM)
+    try await service.recoverDeletions(im: baseIM, db: app.db)
     v1.patch("me") { req async throws -> Response in
         try await service.update(req) { user, db in
             try await baseIM.publicProfileChanged(user, db: db)

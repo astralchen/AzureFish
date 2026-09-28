@@ -140,9 +140,10 @@ final class FriendViewController: ContactFormController {
     }
     override func reloadLocalizedContent() { super.reloadLocalizedContent(); if isViewLoaded { render() } }
     private func render() {
-        let avatar = UIImageView(image: ContactAvatar.image); avatar.contentMode = Localization.currentUIKitDirection == .rightToLeft ? .right : .left
+        let avatar = AccountAvatarView()
+        if let user = UUID(uuidString: contact.peer.id) { avatar.configure(session: runtime.session, user: user, asset: contact.peer.avatarID) }
         avatar.heightAnchor.constraint(equalToConstant: 64).isActive = true
-        fields = [avatar, text(contact.displayName, style: .title1)]
+        fields = [avatar, text(contact.peer.deleted == true ? Localization.text("account.deletedUser") : contact.displayName, style: .title1)]
         if !contact.remark.isEmpty { fields.append(text(contact.peer.nickname, style: .subheadline)) }
         if contact.isBlocked { fields.append(text(Localization.text("contacts.blockedHelp"), style: .footnote)) }
         if !contact.requestID.isEmpty {

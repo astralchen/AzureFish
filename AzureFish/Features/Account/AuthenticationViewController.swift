@@ -18,14 +18,7 @@ final class WelcomeViewController: AccountScreen {
         if session.service == nil { content.append(label("account.unavailable", style: .footnote, secondary: true)) }
         else if let notice = session.noticeKey { content.append(label(notice, style: .footnote, secondary: true)) }
         actions = [button("account.design.accountLogin", primary: true) { [weak self] in self?.open(register: false) },
-                   button("account.design.appleLogin") { [weak self] in self?.explainUnavailable() },
                    button("account.design.register") { [weak self] in self?.open(register: true) }]
-        if let apple = actions[1] as? UIButton {
-            apple.configuration?.background.backgroundColor = .label
-            apple.configuration?.baseForegroundColor = .systemBackground
-            apple.configuration?.image = UIImage(systemName: "apple.logo")
-            apple.configuration?.imagePadding = 8
-        }
         settingsMenus(); setNeedsQuickLayout()
     }
     override func reloadLocalizedContent() { super.reloadLocalizedContent(); settingsMenus() }

@@ -1,6 +1,6 @@
 # 数据安全与客户端加密设计
 
-> **状态：已增加 Keychain 会话包与 AES-GCM 资料快照，仅供虚构账号开发验证。** 更新日期：2026-09-26。SQLCipher 主机及模拟器可行性通过，完整 iOS／真机安全门槛尚未完成。见 [客户端实施记录](../Authentication/client-implementation.md)。
+> **状态：已增加 Keychain 会话包与 AES-GCM 资料快照，仅供虚构账号开发验证。** 更新日期：2026-09-28。头像使用独立 AES-GCM 缓存密钥，删除增加可恢复清理标记；见 [本轮证据](../Authentication/Implementation/2026-09-28-app-closure.md)。SQLCipher 主机及模拟器可行性通过，完整 iOS／真机安全门槛尚未完成。见 [客户端实施记录](../Authentication/client-implementation.md)。
 
 ## 1. 阅读与权威边界
 
@@ -19,6 +19,8 @@
 | 数据库、媒体密钥 | Keychain，按环境与账号隔离 | 从密码、user_id、设备号推导固定密钥 |
 | 明文系统预览文件 | 受保护临时目录＋租约，排除备份 | 放 Documents、共享无账号目录或长期持久缓存 |
 | 诊断 | request_id、错误分类、耗时 | token、JWT、密钥、昵称正文、图像、密码或原始响应 |
+
+删除申请发送前，将不含密码／刷新令牌的原删除请求和有限期访问令牌保存到独立 ThisDeviceOnly Keychain 项。它只能重放同一删除动作，十分钟后不再发送；确认受理后转为本机清理标记，清理成功删除恢复包。超出恢复窗口不推断成功或擅自删除数据。修改密码的请求仍只保存在流程内存。
 
 ## 3. 网络与缓存
 

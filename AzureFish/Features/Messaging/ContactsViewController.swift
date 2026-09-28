@@ -207,18 +207,19 @@ class ContactDirectoryController: LocalizedQuickLayoutHostingController, UISearc
     }
     private func configure(_ cell: UICollectionViewListCell, contact: ChatContact, locale: Locale) {
         var c = UIListContentConfiguration.subtitleCell()
-        c.text = contact.displayName
+        c.text = contact.peer.deleted == true ? Localization.text("account.deletedUser") : contact.displayName
         c.textProperties.numberOfLines = 0; c.secondaryTextProperties.numberOfLines = 0
         c.secondaryTextProperties.color = .secondaryLabel
-        c.image = ContactAvatar.image
+        c.image = nil
         c.imageProperties.maximumSize = CGSize(width: 44, height: 44)
         c.directionalLayoutMargins = .init(top: 12, leading: 20, bottom: 12, trailing: 20)
         if !contact.remark.isEmpty { c.secondaryText = contact.peer.nickname }
         let large = cell.traitCollection.preferredContentSizeCategory.isAccessibilityCategory
         if large { c.image = nil }
         cell.contentConfiguration = c; cell.accessories = [.disclosureIndicator()]
-        if large {
-            let avatar = UIImageView(image: ContactAvatar.image)
+        if let user = UUID(uuidString: contact.peer.id) {
+            let avatar = AccountAvatarView()
+            avatar.configure(session: runtime.session, user: user, asset: contact.peer.avatarID)
             avatar.frame.size = CGSize(width: 44, height: 44); avatar.contentMode = .scaleAspectFit
             avatar.isAccessibilityElement = false
             cell.accessories.append(.customView(configuration: .init(customView: avatar, placement: .leading(), reservedLayoutWidth: .actual, maintainsFixedSize: true)))

@@ -202,7 +202,7 @@ public struct AccountAPI: Sendable {
         return try await executeValidated(operation, headers: headers)
     }
 
-    private func executeValidated<Value>(_ operation: AccountOperation<Value>, headers: [String: String]) async throws -> Value {
+    func executeValidated<Value>(_ operation: AccountOperation<Value>, headers: [String: String]) async throws -> Value {
         let replay: HTTPReplayPolicy = operation.operationID.map { .idempotentWriteOnce(operationID: $0) } ?? .readOnce
         let request = HTTPRequest(url: environment.url(path: operation.path), method: operation.method, headers: headers,
                                   body: operation.body, maximumResponseBytes: operation.maximumResponseBytes, replayPolicy: replay)
@@ -262,7 +262,7 @@ public struct AccountAPI: Sendable {
     }
 
     /// 将协议消息编码一次并封装响应转换规则；编码结果超过 16 KiB 时拒绝创建操作。
-    private func operation<M: Message, Value: Sendable>(_ message: M, id: UUID, path: String, method: HTTPMethod = .post,
+    func operation<M: Message, Value: Sendable>(_ message: M, id: UUID, path: String, method: HTTPMethod = .post,
         status: Int = 200, authorization: SessionIdentity? = nil, decode: @escaping @Sendable (Data) throws -> Value) throws -> AccountOperation<Value> {
         let bytes: Data
         do { bytes = try message.serializedData() } catch { throw APIClientError.encodingFailed }
@@ -271,16 +271,16 @@ public struct AccountAPI: Sendable {
                                 expectedStatus: status, authorization: authorization, decode: decode)
     }
 
-    private func checkEnvironment(_ credentials: SessionCredentials) throws {
+    func checkEnvironment(_ credentials: SessionCredentials) throws {
         guard credentials.environmentID == environment.identifier else { throw APIClientError.credentialsMismatch }
     }
 
     /// 校验协议资料的必要字段并映射业务值，不在此处验证资料是否属于当前操作的用户。
-    private static func profile(_ message: AzureFishProtocol.UserProfile) throws -> UserProfile {
+    static func profile(_ message: AzureFishProtocol.UserProfile) throws -> UserProfile {
         guard let userID = UUID(uuidString: message.userID), !message.accountName.isEmpty, !message.nickname.isEmpty,
               message.profileVersion > 0, message.createdAtMs > 0, message.updatedAtMs > 0 else { throw APIClientError.invalidResponse }
         return UserProfile(userID: userID, accountName: message.accountName, nickname: message.nickname, bio: message.bio,
-            version: message.profileVersion, createdAt: date(message.createdAtMs), updatedAt: date(message.updatedAtMs))
+            version: message.profileVersion, createdAt: date(message.createdAtMs), updatedAt: date(message.updatedAtMs), avatarID: message.avatarID.isEmpty ? nil : message.avatarID)
     }
 
     /// 校验认证响应的环境、设备、身份关系和凭据格式，映射成对会话值与资料。

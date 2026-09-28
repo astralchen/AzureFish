@@ -21,13 +21,13 @@ struct AccountSecurityTests {
             await settle(controller)
             let list = controller.collectionView
             #expect(list.numberOfSections == 3)
-            for (section, count) in [2, 2, 1].enumerated() {
+            for (section, count) in [1, 2, 1].enumerated() {
                 #expect(list.numberOfItems(inSection: section) == count)
                 for item in 0..<count {
                     let path = IndexPath(item: item, section: section)
                     let cell = list.cellForItem(at: path) as? UICollectionViewListCell
                     #expect(cell != nil)
-                    #expect(cell?.accessories.isEmpty == true)
+                    #expect(cell?.accessories.isEmpty == (section == 0))
                     let frame = list.layoutAttributesForItem(at: path)?.frame ?? .zero
                     #expect(frame.width <= 600.5 && frame.minX >= 23.5 && frame.maxX <= width - 23.5)
                     #expect(frame.height >= 44)

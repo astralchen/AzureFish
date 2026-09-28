@@ -23,18 +23,15 @@ final class AccountFlowUITests: XCTestCase {
         XCTAssertTrue(password.waitForExistence(timeout: 5))
         password.tap()
         XCTAssertFalse(app.alerts.firstMatch.exists)
-        let actions = ["appleMethod", "changePassword", "signOutAll", "deleteAccount"]
+        let actions = ["changePassword", "signOutAll", "deleteAccount"]
         for action in actions {
             let row = app.cells["account.design." + action]
             XCTAssertTrue(row.isHittable)
             XCTAssertGreaterThanOrEqual(row.frame.height, 44)
-            let title = row.label
             row.tap()
-            XCTAssertTrue(app.alerts.firstMatch.waitForExistence(timeout: 3))
-            XCTAssertTrue(app.alerts.staticTexts[title].exists)
-            XCTAssertEqual(app.alerts.buttons.count, 1)
-            if action == "deleteAccount" { capture("security-unavailable") }
-            app.alerts.buttons.firstMatch.tap()
+            XCTAssertTrue(app.secureTextFields["security.password"].waitForExistence(timeout: 5))
+            capture("security-" + action)
+            back()
             XCTAssertTrue(app.tabBars.firstMatch.exists)
             XCTAssertTrue(password.exists)
         }
@@ -83,9 +80,7 @@ final class AccountFlowUITests: XCTestCase {
         let bottom = XCTAttachment(screenshot: app.screenshot())
         bottom.name = "security-large-bottom"; bottom.lifetime = .keepAlways; add(bottom)
         deletion.tap()
-        XCTAssertTrue(app.alerts.firstMatch.waitForExistence(timeout: 3))
-        app.alerts.buttons.firstMatch.tap()
-        XCTAssertTrue(deletion.isHittable)
+        XCTAssertTrue(app.secureTextFields["security.password"].waitForExistence(timeout: 5))
     }
     @MainActor func testSettingsFromProfileKeepsTabBar() {
         continueAfterFailure = false
@@ -251,7 +246,7 @@ final class AccountFlowUITests: XCTestCase {
         XCTAssertGreaterThan(bio.frame.height, 144)
         XCTAssertTrue(app.buttons["account.design.save"].isHittable)
     }
-    @MainActor func testWelcomeFourLanguagesAndUnavailableApple() {
+    @MainActor func testWelcomeFourLanguagesAndHiddenApple() {
         continueAfterFailure = false
         let app = XCUIApplication()
         app.launchArguments = ["-account-scenario", "welcome", "-azurefish.locale.identifier", "en"]
@@ -274,8 +269,7 @@ final class AccountFlowUITests: XCTestCase {
             XCTAssertTrue(app.buttons["account.design.accountLogin"].isHittable)
             let capture = XCTAttachment(screenshot: app.screenshot()); capture.name = "welcome-appearance-" + choice; capture.lifetime = .keepAlways; add(capture)
         }
-        app.buttons["account.design.appleLogin"].tap()
-        XCTAssertTrue(app.alerts.firstMatch.waitForExistence(timeout: 3))
+        XCTAssertFalse(app.buttons["account.design.appleLogin"].exists)
     }
     @MainActor func testPasswordVisibilityAndInputSurvivesMenuLanguageChange() {
         continueAfterFailure = false
@@ -301,7 +295,7 @@ final class AccountFlowUITests: XCTestCase {
     @MainActor private func dismissPasswordSuggestion(in app: XCUIApplication) {
         // 系统提示使用模拟器系统语言；应用语言不能控制 Password AutoFill 界面。
         let close = app.buttons.matching(NSPredicate(format: "label IN %@", ["Close", "关闭", "關閉", "إغلاق"])).firstMatch
-        if close.waitForExistence(timeout: 12) { close.tap() }
+        if close.waitForExistence(timeout: 2) { close.tap() }
     }
     @MainActor func testLocalFictionalRegistrationRestartEditAndLogout() throws {
         guard ProcessInfo.processInfo.environment["AZUREFISH_ACCOUNT_UI_LIVE"] == "1" else {
@@ -339,6 +333,8 @@ final class AccountFlowUITests: XCTestCase {
         for _ in 0..<3 where !nickname.isHittable { app.scrollViews.firstMatch.swipeUp() }
         nickname.tap(); nickname.typeText("Fictional UI")
         register.tap()
+        XCTAssertTrue(app.tabBars.buttons["Me"].waitForExistence(timeout: 20))
+        app.tabBars.buttons["Me"].tap()
         let edit = app.cells["account.design.editProfile"]
         XCTAssertTrue(edit.waitForExistence(timeout: 20))
         app.terminate(); app.launch()
@@ -347,7 +343,8 @@ final class AccountFlowUITests: XCTestCase {
         app.cells["account.design.security"].tap()
         XCTAssertTrue(app.cells["account.design.deleteAccount"].waitForExistence(timeout: 5))
         app.cells["account.design.deleteAccount"].tap()
-        XCTAssertTrue(app.alerts.firstMatch.waitForExistence(timeout: 3)); app.alerts.buttons["Done"].tap()
+        XCTAssertTrue(app.secureTextFields["security.password"].waitForExistence(timeout: 5))
+        app.navigationBars.buttons.firstMatch.tap()
         app.navigationBars.buttons.firstMatch.tap()
         app.cells["account.design.settings"].tap()
         XCTAssertTrue(app.cells["account.design.appearance"].waitForExistence(timeout: 5))
@@ -357,10 +354,126 @@ final class AccountFlowUITests: XCTestCase {
         let bio = app.textViews["account.profile.bio"]
         XCTAssertTrue(bio.waitForExistence(timeout: 5)); bio.tap(); bio.typeText("Fictional simulator profile")
         app.buttons["account.design.save"].tap()
-        XCTAssertTrue(app.staticTexts["Profile saved"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.cells["account.design.editProfile"].waitForExistence(timeout: 15))
         let attachment = XCTAttachment(screenshot: app.screenshot()); attachment.name = "profile-saved-live"; attachment.lifetime = .keepAlways; add(attachment)
-        app.navigationBars.buttons["Cancel"].tap()
         app.cells["account.design.signOut"].tap(); app.alerts.buttons["Sign out"].tap()
         XCTAssertTrue(app.buttons["account.design.accountLogin"].waitForExistence(timeout: 15))
+    }
+
+    @MainActor func testLivePasswordLogoutAllAndDeletion() throws {
+        guard ProcessInfo.processInfo.environment["AZUREFISH_ACCOUNT_UI_LIVE"] == "1" else { throw XCTSkip("Requires isolated fictional loopback service") }
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["-account-local-development", "-azurefish.locale.identifier", "en"]
+        app.launch()
+        if app.tabBars.buttons["Me"].waitForExistence(timeout: 3) {
+            app.tabBars.buttons["Me"].tap()
+            app.cells["account.design.signOut"].tap(); app.alerts.buttons["Sign out"].tap()
+        }
+        let username = "closure_" + UUID().uuidString.replacingOccurrences(of: "-", with: "").prefix(10)
+        let oldPassword = "fictionalpassword", newPassword = "fictionalnewpassword"
+        func type(_ id: String, _ value: String, secure: Bool = true) {
+            let field = secure ? app.secureTextFields[id] : app.textFields[id]
+            XCTAssertTrue(field.waitForExistence(timeout: 10))
+            let scroll = app.scrollViews["account.form.scroll"]
+            // XCTest 的 isHittable 可能接受位于裁剪区域外的输入框，需检查实际滚动窗口。
+            for _ in 0..<4 {
+                let visible = scroll.frame.insetBy(dx: 0, dy: 4)
+                if field.isHittable && visible.contains(field.frame) { break }
+                if field.frame.minY < visible.minY { scroll.swipeDown() } else { scroll.swipeUp() }
+            }
+            field.tap()
+            if secure { dismissPasswordSuggestion(in: app) }
+            field.typeText(value)
+        }
+        func capture(_ name: String) {
+            let item = XCTAttachment(screenshot: app.screenshot()); item.name = name; item.lifetime = .keepAlways; add(item)
+        }
+        func me() {
+            XCTAssertTrue(app.tabBars.buttons["Me"].waitForExistence(timeout: 20)); app.tabBars.buttons["Me"].tap()
+            XCTAssertTrue(app.cells["account.design.security"].waitForExistence(timeout: 10))
+        }
+        func login() {
+            XCTAssertTrue(app.buttons["account.design.accountLogin"].waitForExistence(timeout: 20)); app.buttons["account.design.accountLogin"].tap()
+            type("account.input.name", String(username), secure: false); type("account.input.password", newPassword)
+            app.buttons["account.design.signIn"].tap(); me()
+        }
+        XCTAssertTrue(app.buttons["account.design.register"].waitForExistence(timeout: 20)); app.buttons["account.design.register"].tap()
+        type("account.input.name", String(username), secure: false)
+        type("account.input.password", oldPassword); type("account.input.confirm", oldPassword)
+        type("account.input.nickname", "Fictional Closure", secure: false)
+        app.buttons["account.design.register"].tap(); me()
+        if ProcessInfo.processInfo.environment["AZUREFISH_AVATAR_UI_LIVE"] == "1" {
+            app.cells["account.design.editProfile"].tap()
+            type("account.profile.nickname", " draft", secure: false)
+            app.scrollViews["account.form.scroll"].swipeDown()
+            app.buttons["account.design.changePhoto"].tap()
+            app.buttons["Choose photo"].tap()
+            // 系统 Photos 选择器以可访问图片呈现网格，不暴露 UICollectionViewCell。
+            let photo = app.images.matching(identifier: "PXGGridLayout-Info").firstMatch
+            XCTAssertTrue(photo.waitForExistence(timeout: 15))
+            // Photos 的远程图片节点有正确 frame，但不声明可直接命中；按该节点中心选择。
+            photo.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+            XCTAssertTrue(app.buttons["account.avatar.use"].waitForExistence(timeout: 10))
+            capture("live-avatar-square-preview")
+            app.buttons["account.avatar.use"].tap()
+            let uploadFinished = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: app.buttons["account.avatar.use"])
+            XCTAssertEqual(XCTWaiter.wait(for: [uploadFinished], timeout: 20), .completed)
+            XCTAssertTrue(app.buttons["account.design.save"].waitForExistence(timeout: 15))
+            app.navigationBars.buttons["Cancel"].tap()
+            app.alerts.buttons["Discard edits"].tap()
+            app.cells["account.design.editProfile"].tap()
+            app.buttons["account.design.changePhoto"].tap()
+            XCTAssertTrue(app.buttons["Restore default avatar"].waitForExistence(timeout: 5))
+            app.buttons["Restore default avatar"].tap()
+            XCTAssertTrue(app.buttons["account.avatar.reset"].waitForExistence(timeout: 5))
+            app.buttons["account.avatar.reset"].tap()
+            let resetFinished = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: app.buttons["account.avatar.reset"])
+            XCTAssertEqual(XCTWaiter.wait(for: [resetFinished], timeout: 20), .completed)
+            XCTAssertTrue(app.buttons["account.design.save"].waitForExistence(timeout: 15))
+            app.navigationBars.buttons["Cancel"].tap()
+            capture("live-avatar-reset")
+        }
+        app.cells["account.design.security"].tap(); app.cells["account.design.changePassword"].tap()
+        type("security.password", oldPassword); type("security.newPassword", newPassword); type("security.confirm", newPassword)
+        capture("live-change-password")
+        app.buttons["account.design.changePassword"].tap(); app.alerts.buttons["Change password"].tap()
+        login()
+        app.cells["account.design.security"].tap(); app.cells["account.design.signOutAll"].tap()
+        type("security.password", newPassword)
+        app.buttons["account.design.signOutAll"].tap(); app.alerts.buttons["Sign out all devices"].tap()
+        login()
+        app.cells["account.design.security"].tap(); app.cells["account.design.deleteAccount"].tap()
+        type("security.password", newPassword)
+        capture("live-delete-confirmation")
+        app.buttons["account.design.deleteAccount"].tap(); app.alerts.buttons["Delete account"].tap()
+        XCTAssertTrue(app.buttons["account.design.accountLogin"].waitForExistence(timeout: 20))
+        capture("live-deletion-accepted")
+        app.terminate(); app.launch()
+        XCTAssertTrue(app.buttons["account.design.accountLogin"].waitForExistence(timeout: 20))
+    }
+
+    @MainActor func testAdaptiveProfilePreservesDraftAcrossRotationAndRTL() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        XCUIDevice.shared.orientation = .portrait
+        defer { XCUIDevice.shared.orientation = .portrait }
+        app.launchArguments = ["-account-scenario", "me", "-azurefish.locale.identifier", "en"]
+        app.launch()
+        let edit = app.cells["account.design.editProfile"]
+        XCTAssertTrue(edit.waitForExistence(timeout: 15)); edit.tap()
+        let nickname = app.textFields["account.profile.nickname"]
+        XCTAssertTrue(nickname.waitForExistence(timeout: 5)); nickname.tap(); nickname.typeText(" draft")
+        let value = nickname.value as? String
+        XCUIDevice.shared.orientation = .landscapeLeft
+        XCTAssertTrue(nickname.waitForExistence(timeout: 5)); XCTAssertEqual(nickname.value as? String, value)
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
+        let capture = XCTAttachment(screenshot: XCUIScreen.main.screenshot()); capture.name = "profile-wide-draft"; capture.lifetime = .keepAlways; add(capture)
+        app.buttons["demo.language.menu"].firstMatch.tap()
+        app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "العربية,")).firstMatch.tap()
+        XCTAssertEqual(nickname.value as? String, value)
+        XCUIDevice.shared.orientation = .portrait
+        XCTAssertTrue(nickname.waitForExistence(timeout: 5)); XCTAssertEqual(nickname.value as? String, value)
+        let rtl = XCTAttachment(screenshot: XCUIScreen.main.screenshot()); rtl.name = "profile-compact-rtl-draft"; rtl.lifetime = .keepAlways; add(rtl)
     }
 }

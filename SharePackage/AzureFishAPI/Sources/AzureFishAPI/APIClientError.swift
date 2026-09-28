@@ -64,6 +64,7 @@ public enum APIErrorCode: String, Sendable {
     case messageIdConflict = "MESSAGE_ID_CONFLICT"
     case revokeWindowExpired = "REVOKE_WINDOW_EXPIRED"
     case ownerRequired = "OWNER_REQUIRED"
+    case reauthRequired = "REAUTH_REQUIRED"
     case ownerTransferRequired = "OWNER_TRANSFER_REQUIRED"
     case membershipLimit = "MEMBERSHIP_LIMIT"
     case unknown

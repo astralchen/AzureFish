@@ -92,6 +92,8 @@ message EmptyResponse {}
 // 由 GET／PATCH /v1/me 或认证响应返回；持久化、界面更新和并发结果合并由客户端负责。
 // 未设置的标量读取为 Protobuf 默认值，客户端仍须校验成功响应的必要字段。
 message UserProfile {
+    // 当前头像的不可变资源 ID；空表示默认头像。
+    string avatar_id = 8;
     // 资料所属用户的小写 UUID，作为稳定账号身份；不能用昵称或账号名代替。
     string user_id = 1;
     // 服务端规范化后的唯一账号名，当前资料更新接口不允许修改。
@@ -161,6 +163,8 @@ message IMLookupUserRequest {
 }
 // 对外可见的最小用户资料。
 message IMPublicUser {
+    string avatar_id = 4; // 当前头像资源 ID。
+    bool deleted = 5; // 已注销身份；客户端本地化显示名。
     string user_id = 1; // 用户 UUID。
     string nickname = 2; // 昵称原文。
     int64 profile_version = 3; // 资料版本。
@@ -518,4 +522,37 @@ message ContactMutationRequest {
     string remark = 6; // remark 动作专用，允许清空，最多 64 Character。
     string request_message = 7; // request 动作专用，最多 200 Character。
     string request_id = 8; // accept、reject、cancel 的申请身份；expected_revision 同时校验。
+}
+
+// 密码再次认证，仅允许 change_password、logout_all、delete_account。
+message ReauthenticateRequest {
+    string operation_id = 1;
+    string password = 2;
+    string action = 3;
+}
+// 五分钟内、限当前会话与指定动作使用，不替代访问凭据。
+message ReauthenticateResponse {
+    string token = 1;
+    int64 expires_at_ms = 2;
+}
+// 敏感动作按原 operation_id 和原字节恢复结果；new_password 仅改密使用。
+message AccountSecurityRequest {
+    string operation_id = 1;
+    string reauth_token = 2;
+    string new_password = 3;
+}
+message AccountSecurityStatus {
+    bool password_configured = 1;
+    repeated IMConversation owned_groups = 2;
+}
+// JPEG 限 256 KiB、512×512；空数据表示恢复默认。资料更新使用版本冲突检查。
+message UpdateAvatarRequest {
+    string operation_id = 1;
+    int64 expected_profile_version = 2;
+    bytes jpeg = 3;
+}
+// 仅当前头像可读；需本人、联系人或有共同群聊历史的账号授权。
+message AvatarResponse {
+    string avatar_id = 1;
+    bytes jpeg = 2;
 }

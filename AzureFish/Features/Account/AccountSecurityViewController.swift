@@ -1,18 +1,20 @@
 import UIKit
+import AzureFishAPI
 import QuickLayout
 import QuickLayoutKit
 import ListKit
 import AppLocalization
 
-/// 展示当前密码登录状态和未开放的管理入口，不提交账号操作。
+/// 展示密码登录方式并进入需再次认证的账号安全操作。
 final class AccountSecurityViewController: LocalizedQuickLayoutHostingController {
     let collectionView = UICollectionView(frame: .zero, collectionViewLayout: UICollectionViewFlowLayout())
     private lazy var adapter = CollectionListAdapter<String>(collectionView: collectionView)
     private var ready = false
     private var layoutWidth: CGFloat = 0
 
-    // 保持调用入口兼容；当前列表不读取或修改会话。
-    init(session: SessionCoordinator) { super.init(nibName: nil, bundle: nil) }
+    private let session: SessionCoordinator
+    private let runtime: ChatRuntime?
+    init(session: SessionCoordinator, runtime: ChatRuntime? = nil) { self.session = session; self.runtime = runtime; super.init(nibName: nil, bundle: nil) }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
     override var localizedTitleKey: String? { "account.design.security" }
     override var body: Layout { collectionView.resizable().safeAreaPadding(.all, 0) }
@@ -69,10 +71,6 @@ final class AccountSecurityViewController: LocalizedQuickLayoutHostingController
                 Row("password", model: "account.security.password", cell: UICollectionViewListCell.self) { cell, key, _ in
                     Self.configure(cell, key: key, readOnly: true, stackValue: stackValue)
                 }.selectionDisabled()
-                Row("apple", model: "account.design.appleMethod", cell: UICollectionViewListCell.self) { cell, key, _ in
-                    Self.configure(cell, key: key, stackValue: stackValue)
-                }
-                .onSelect { [weak self] key, _ in self?.explainUnavailable(key) }
             }.header(UICollectionViewListCell.self, id: "methods-title") { header, _ in
                 Self.configureHeader(header, key: "account.design.methods")
             }.footer(SettingsFooterView.self, id: "methods-help") { footer, _ in
@@ -83,7 +81,7 @@ final class AccountSecurityViewController: LocalizedQuickLayoutHostingController
                     Row(action, model: "account.design." + action, cell: UICollectionViewListCell.self) { cell, key, _ in
                         Self.configure(cell, key: key, stackValue: stackValue)
                     }
-                    .onSelect { [weak self] key, _ in self?.explainUnavailable(key) }
+                    .onSelect { [weak self] key, _ in self?.open(key) }
                 }
             }.header(UICollectionViewListCell.self, id: "operations-title") { header, _ in
                 Self.configureHeader(header, key: "account.security.operations")
@@ -92,7 +90,7 @@ final class AccountSecurityViewController: LocalizedQuickLayoutHostingController
                 Row("delete", model: "account.design.deleteAccount", cell: UICollectionViewListCell.self) { cell, key, _ in
                     Self.configure(cell, key: key, destructive: true, stackValue: stackValue)
                 }
-                .onSelect { [weak self] key, _ in self?.explainUnavailable(key) }
+                .onSelect { [weak self] key, _ in self?.open(key) }
             }.layout(Self.sectionLayout(id: "deletion"))
         }
     }
@@ -108,14 +106,14 @@ final class AccountSecurityViewController: LocalizedQuickLayoutHostingController
     private static func configure(_ cell: UICollectionViewListCell, key: String, readOnly: Bool = false, destructive: Bool = false, stackValue: Bool) {
         var content = stackValue ? UIListContentConfiguration.cell() : UIListContentConfiguration.valueCell()
         content.text = Localization.text(key)
-        content.secondaryText = Localization.text(readOnly ? "account.security.configured" : "account.security.unavailable")
+        content.secondaryText = readOnly ? Localization.text("account.security.configured") : nil
         content.textProperties.numberOfLines = 0
         content.textProperties.color = destructive ? .systemRed : .label
         content.secondaryTextProperties.numberOfLines = 0
         content.secondaryTextProperties.color = .secondaryLabel
         content.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 16, leading: 16, bottom: 16, trailing: 16)
         cell.contentConfiguration = content
-        cell.accessories = []
+        cell.accessories = readOnly ? [] : [.disclosureIndicator()]
         cell.isAccessibilityElement = true
         cell.accessibilityIdentifier = key
         cell.accessibilityLabel = content.text
@@ -134,12 +132,10 @@ final class AccountSecurityViewController: LocalizedQuickLayoutHostingController
             return section
         }
     }
-    private func explainUnavailable(_ key: String) {
+    private func open(_ key: String) {
         collectionView.indexPathsForSelectedItems?.forEach { collectionView.deselectItem(at: $0, animated: false) }
-        guard presentedViewController == nil else { return }
-        let alert = UIAlertController(title: Localization.text(key), message: Localization.text("account.unavailable.feature"), preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: Localization.text("account.design.done"), style: .default))
-        present(alert, animated: true)
+        let action: AccountSecurityAction = key.hasSuffix("changePassword") ? .changePassword : key.hasSuffix("signOutAll") ? .logoutAll : .deleteAccount
+        navigationController?.pushViewController(AccountSecurityActionViewController(session: session, runtime: runtime, action: action), animated: true)
     }
 }
 

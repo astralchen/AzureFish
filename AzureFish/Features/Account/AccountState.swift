@@ -8,9 +8,10 @@ struct AccountProfile: Codable, Equatable, Sendable {
     var nickname: String
     var bio: String
     let version: Int64
+    var avatarID: String? = nil
     init(_ profile: UserProfile) {
         userID = profile.userID; accountName = profile.accountName
-        nickname = profile.nickname; bio = profile.bio; version = profile.version
+        nickname = profile.nickname; bio = profile.bio; version = profile.version; avatarID = profile.avatarID
     }
     init(userID: UUID, accountName: String, nickname: String, bio: String, version: Int64) {
         self.userID = userID; self.accountName = accountName; self.nickname = nickname; self.bio = bio; self.version = version
@@ -62,6 +63,8 @@ enum AccountFailure: Error, Equatable {
             case .network: return Self.offline.key
             case .service(let failure):
                 switch failure.code {
+                case .reauthRequired: return "account.security.reauthenticate"
+                case .ownerTransferRequired: return "account.security.ownedGroups"
                 case .invalidCredentials: return "account.credentials.invalid"
                 case .accountTaken: return "account.taken"
                 case .profileVersionConflict: return Self.conflict.key

@@ -215,7 +215,17 @@ final class ChatRuntime {
             }
         }
     }
+    private var stopping: Task<Void, Error>?
+    /// 等待所有运行时释放该账号的存储访问；失败时禁止继续删除文件或密钥。
+    static func stopAccount(user: UUID, environment: String) async throws {
+        let targets = instances.compactMap(\.value).filter {
+            $0.session.profile?.userID == user && $0.session.store.environmentID == environment
+        }
+        for runtime in targets { runtime.stop() }
+        for runtime in targets { try await runtime.stopping?.value }
+    }
     func stop() {
+        guard stopping == nil else { return }
         generation = UUID()
         incomingTask?.cancel(); incomingTask = nil
         preferences = [:]
@@ -223,6 +233,7 @@ final class ChatRuntime {
         draftPreviews = [:]
         pinnedConversationsCollapsed = false
         listRefresh = UUID()
+        let starting = task
         task?.cancel()
         task = nil
         let old = engine
@@ -241,12 +252,13 @@ final class ChatRuntime {
         synchronization = .idle
         failure = nil
         publish()
-        Task {
+        stopping = Task {
+            await starting?.value
             await transfers?.stop()
             await old?.stop()
-            try? await media?.clearLeases()
-            if let pages { try? FileManager.default.removeItem(at: pages) }
-            try? await old?.store.close()
+            try await media?.clearLeases()
+            if let pages, FileManager.default.fileExists(atPath: pages.path) { try FileManager.default.removeItem(at: pages) }
+            try await old?.store.close()
         }
     }
     func setForeground(_ enabled: Bool) {
@@ -347,10 +359,11 @@ final class ChatRuntime {
     }
     func displayName(user id: String, fallback: ChatUser? = nil) -> String {
         let contact = contacts.first { $0.peer.id == id }
-        if let remark = contact?.remark, !remark.isEmpty { return remark }
         var profile = profileIndex[id] ?? fallback
         if let fallback, profile == nil || fallback.version > profile!.version { profile = fallback }
         if id == userID, let own = session.profile, own.version >= (profile?.version ?? 0) { return own.nickname }
+        if profile?.deleted == true { return Localization.text("account.deletedUser") }
+        if let remark = contact?.remark, !remark.isEmpty { return remark }
         return profile?.nickname ?? Localization.text("chat.live.groupMember")
     }
     func memberName(_ member: ChatMember) -> String { displayName(user: member.id, fallback: member.profile) }

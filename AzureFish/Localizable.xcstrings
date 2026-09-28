@@ -1,6 +1,585 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "account.security.resultUnknown": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The deletion result could not be recovered. Local encrypted data has been kept. Sign in to check the account status."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法恢复删除结果，已保留本机加密数据。请登录确认账号状态。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無法復原刪除結果，已保留本機加密資料。請登入確認帳號狀態。"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تعذّر استعادة نتيجة الحذف. تم الاحتفاظ بالبيانات المحلية المشفرة. سجّل الدخول للتحقق من حالة الحساب."
+          }
+        }
+      }
+    },
+    "chat.permission.microphone": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请在系统设置中允许麦克风访问，然后重新录音。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "請在系統設定中允許麥克風存取，然後重新錄音。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allow microphone access in Settings, then try recording again."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اسمح بالوصول إلى الميكروفون في الإعدادات ثم حاول التسجيل مجددًا."
+          }
+        }
+      }
+    },
+    "chat.permission.settings": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "打开设置"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "開啟設定"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open Settings"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "فتح الإعدادات"
+          }
+        }
+      }
+    },
+    "chat.media.export": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存或分享附件"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "儲存或分享附件"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save or share attachments"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "حفظ المرفقات أو مشاركتها"
+          }
+        }
+      }
+    },
+    "account.deletedUser": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已注销用户"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已註銷使用者"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deleted user"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مستخدم محذوف"
+          }
+        }
+      }
+    },
+    "account.deletion.accepted": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "删除申请已受理。服务端清理可能仍在进行，其他成员已接收的历史记录会保留。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "刪除申請已受理。伺服器清理可能仍在進行，其他成員已接收的歷史記錄會保留。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deletion accepted. Server cleanup may still be in progress. History already received by other members is retained."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تم قبول طلب الحذف. قد يستمر التنظيف على الخادم. يحتفظ الأعضاء الآخرون بالسجل الذي استلموه."
+          }
+        }
+      }
+    },
+    "account.security.completed": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "操作成功，请重新登录。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "操作成功，請重新登入。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Done. Please sign in again."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تمت العملية. يرجى تسجيل الدخول مجددًا."
+          }
+        }
+      }
+    },
+    "account.security.reauthenticate": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "身份确认已过期，请重新输入当前密码再试。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "身分確認已過期，請重新輸入目前密碼再試。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verification expired. Enter your current password and try again."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "انتهت صلاحية التحقق. أدخل كلمة المرور الحالية وحاول مجددًا."
+          }
+        }
+      }
+    },
+    "account.security.currentPassword": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "当前密码"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "目前密碼"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Current password"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "كلمة المرور الحالية"
+          }
+        }
+      }
+    },
+    "account.security.newPassword": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新密码"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新密碼"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New password"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "كلمة المرور الجديدة"
+          }
+        }
+      }
+    },
+    "account.security.logoutHelp": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此操作成功后，所有设备（包括当前设备）都会退出登录。本机加密聊天记录会保留。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此操作成功後，所有裝置（包括目前裝置）都會登出。本機加密聊天記錄會保留。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "All devices, including this one, will be signed out. Encrypted chat history on this device is retained."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "سيتم تسجيل الخروج من جميع الأجهزة، بما فيها هذا الجهاز. سيُحتفظ بسجل المحادثات المشفر على هذا الجهاز."
+          }
+        }
+      }
+    },
+    "account.security.deleteHelp": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "删除后账号将停用，个人资料、头像和本机数据将清除。其他成员保留已接收的历史记录。此操作不可撤销，请先处理你管理的群聊。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "刪除後帳號將停用，個人資料、頭像和本機資料將清除。其他成員保留已接收的歷史記錄。此操作無法復原，請先處理你管理的群組。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your account will be disabled and your profile, avatar and local data removed. Other members retain received history. This cannot be undone. Transfer or dissolve groups you own first."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "سيُعطّل حسابك وتُحذف معلوماتك وصورتك وبياناتك المحلية. يحتفظ الآخرون بالسجل المستلم. لا يمكن التراجع. انقل ملكية مجموعاتك أو حلّها أولًا."
+          }
+        }
+      }
+    },
+    "account.security.ownedGroups": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请先转让或解散以下群聊，再返回删除账号。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "請先轉讓或解散以下群組，再返回刪除帳號。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transfer or dissolve these groups before deleting your account."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "انقل ملكية هذه المجموعات أو حلّها قبل حذف حسابك."
+          }
+        }
+      }
+    },
+    "account.avatar.help": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "头像确认后立即更新，取消文字编辑不会撤销头像修改。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "確認頭像後立即更新，取消文字編輯不會復原頭像修改。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your avatar updates after confirmation. Cancelling text edits does not undo an avatar change."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تُحدّث الصورة بعد التأكيد. إلغاء تعديلات النص لا يلغي تغيير الصورة."
+          }
+        }
+      }
+    },
+    "account.avatar.choose": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择照片"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選擇照片"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose photo"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اختيار صورة"
+          }
+        }
+      }
+    },
+    "account.avatar.reset": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "恢复默认头像"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "恢復預設頭像"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restore default avatar"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "استعادة الصورة الافتراضية"
+          }
+        }
+      }
+    },
+    "account.avatar.use": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用此头像"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用此頭像"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use this avatar"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "استخدام هذه الصورة"
+          }
+        }
+      }
+    },
+    "account.avatar.preview": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "头像预览"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "頭像預覽"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Avatar preview"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "معاينة الصورة"
+          }
+        }
+      }
+    },
+    "account.avatar.invalid": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法读取这张照片，请选择其他照片。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無法讀取這張照片，請選擇其他照片。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This photo could not be read. Choose another photo."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تعذّر قراءة هذه الصورة. اختر صورة أخرى."
+          }
+        }
+      }
+    },
+    "chat.draft.saveFailed": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "草稿尚未保存，请重试。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "草稿尚未儲存，請重試。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Draft not saved. Please retry."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لم تُحفظ المسودة. يرجى المحاولة مجددًا."
+          }
+        }
+      }
+    },
     "chat.list.draftMarker": {
       "extractionState": "manual",
       "localizations": {
@@ -7982,25 +8561,25 @@
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "الدخول باستخدام Apple غير متاح بعد. يمكنك تسجيل الدخول باستخدام كلمة مرور حسابك."
+            "value" : "سجّل الدخول بكلمة المرور الحالية. تتطلب إجراءات الأمان التحقق من كلمة المرور."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Apple sign-in is not available yet. You can sign in with your account password."
+            "value" : "Sign in with your current password. Security actions require password verification."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Apple 登录暂未开放，当前可使用账号密码登录。"
+            "value" : "使用当前密码登录。安全操作需要再次确认密码。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Apple 登入暫未開放，目前可使用帳號密碼登入。"
+            "value" : "使用目前密碼登入。安全操作需要再次確認密碼。"
           }
         }
       }

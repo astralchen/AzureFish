@@ -77,6 +77,7 @@ class AccountScreen: LocalizedQuickLayoutHostingController {
         quickLayoutKeyboardSafeAreaBehavior = .docked()
         view.backgroundColor = grouped ? .systemGroupedBackground : .systemBackground
         scroll.keyboardDismissMode = .interactive
+        scroll.accessibilityIdentifier = "account.form.scroll"
         scroll.quickLayoutSemanticDirectionBehavior = .followEnclosingContainer
         for name in [UITextField.textDidBeginEditingNotification, UITextView.textDidBeginEditingNotification,
                      UITextView.textDidChangeNotification,
@@ -123,8 +124,8 @@ class AccountScreen: LocalizedQuickLayoutHostingController {
         var configuration = primary ? UIButton.Configuration.filled() : .plain()
         configuration.cornerStyle = .large
         configuration.contentInsets = NSDirectionalEdgeInsets(top: 14, leading: 16, bottom: 14, trailing: 16)
-        configuration.baseBackgroundColor = .systemBlue
-        if destructive { configuration.baseForegroundColor = .systemRed }
+        configuration.baseBackgroundColor = primary && destructive ? .systemRed : .systemBlue
+        if destructive && !primary { configuration.baseForegroundColor = .systemRed }
         button.configuration = configuration
         button.titleLabel?.numberOfLines = 0; button.titleLabel?.adjustsFontForContentSizeCategory = true
         button.accessibilityIdentifier = key

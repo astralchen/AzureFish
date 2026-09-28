@@ -36,7 +36,7 @@ struct APIMiddleware: AsyncMiddleware {
             let download = (request.method == .GET || request.method == .HEAD) && request.url.path.hasPrefix("/v1/media/resources/") && request.url.path.hasSuffix("/content")
             let transfer = upload || download
             try await limiter.check((transfer ? "media-ip:" : "ip:") + (request.remoteAddress?.ipAddress ?? "local"), limit: transfer ? 600 : 120)
-            let maxBody = upload ? MediaLimits.chunk : request.url.path == "/v1/im/messages/send" ? 256 * 1024 : 16 * 1024
+            let maxBody = request.url.path == "/v1/me/avatar" ? 260 * 1024 : upload ? MediaLimits.chunk : request.url.path == "/v1/im/messages/send" ? 256 * 1024 : 16 * 1024
             if let size = request.body.data?.readableBytes, size > maxBody {
                 throw APIError(.payloadTooLarge, "PAYLOAD_TOO_LARGE")
             }

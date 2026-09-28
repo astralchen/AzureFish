@@ -141,6 +141,8 @@ final class IMService: Sendable {
             if let userRow = try await UserRecord.find(value.user, on: db) {
                 m.profile.userID = m.userID; m.profile.nickname = try accounts.payload(userRow).nickname
                 m.profile.profileVersion = userRow.version
+                m.profile.avatarID = try accounts.payload(userRow).avatarID ?? ""
+                m.profile.deleted = try accounts.payload(userRow).deleted == true
             }
             result.members.append(m)
         }

@@ -202,9 +202,18 @@ final class LiveMediaCoordinator: NSObject, PHPickerViewControllerDelegate, UIDo
         AVAudioSession.sharedInstance().requestRecordPermission { [weak self] allowed in
             Task { @MainActor in
                 guard let self else { return }
-                if allowed { await self.beginRecording() } else { self.controller?.showFailure() }
+                if allowed { await self.beginRecording() } else { self.showMicrophonePermission() }
             }
         }
+    }
+    private func showMicrophonePermission() {
+        guard let controller else { return }
+        let alert = UIAlertController(title: Localization.text("chat.permission.microphone"), message: nil, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: Localization.text("account.design.cancel"), style: .cancel))
+        alert.addAction(UIAlertAction(title: Localization.text("chat.permission.settings"), style: .default) { _ in
+            if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
+        })
+        controller.present(alert, animated: true)
     }
     private func beginRecording() async {
         guard let media = controller?.runtime.media else { return }
@@ -309,6 +318,34 @@ final class LiveMediaCoordinator: NSObject, PHPickerViewControllerDelegate, UIDo
             controller.present(sheet, animated: true)
         }
     }
+    /// 导出期间保留受保护租约，系统分享结束后释放所有临时明文。
+    func export(_ message: ChatMessage) {
+        guard let controller, let queue = controller.runtime.transfers, let media = controller.runtime.media, task == nil else { return }
+        task = Task { [weak self] in
+            guard let self else { return }
+            var urls: [URL] = []
+            do {
+                for resource in message.assets.flatMap(\.resources).filter({ $0.role == "original" }) {
+                    let id = try await queue.download(resource, message: message.id)
+                    try Task.checkCancellation()
+                    urls.append(try await media.lease(id))
+                }
+                guard !urls.isEmpty else { throw ChatMediaStoreError.unavailable }
+                let sheet = UIActivityViewController(activityItems: urls, applicationActivities: nil)
+                let leases = urls
+                sheet.completionWithItemsHandler = { _, _, _, _ in
+                    Task { for url in leases { try? await media.release(url) } }
+                }
+                sheet.popoverPresentationController?.sourceView = controller.list
+                sheet.popoverPresentationController?.sourceRect = controller.list.bounds.intersection(controller.view.bounds)
+                controller.present(sheet, animated: true)
+            } catch {
+                for url in urls { try? await media.release(url) }
+                if !(error is CancellationError) { controller.showFailure() }
+            }
+            task = nil
+        }
+    }
     private func download(_ resource: ChatResource, message: String) {
         guard let controller, let queue = controller.runtime.transfers, let media = controller.runtime.media else {
             return
@@ -324,6 +361,7 @@ final class LiveMediaCoordinator: NSObject, PHPickerViewControllerDelegate, UIDo
                 preview.delegate = self
                 controller.present(preview, animated: true)
             } catch { controller.showFailure() }
+            task = nil
         }
     }
     func numberOfPreviewItems(in controller: QLPreviewController) -> Int { lease == nil ? 0 : 1 }

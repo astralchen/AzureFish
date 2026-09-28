@@ -21,6 +21,9 @@ struct UserPayload: Codable, Sendable {
     var bio: String
     var createdAt: Int64
     var updatedAt: Int64
+    var deleted: Bool? = nil
+    var avatarID: String? = nil
+    var avatarJPEG: Data? = nil
 }
 
 final class SessionRecord: Model, @unchecked Sendable {

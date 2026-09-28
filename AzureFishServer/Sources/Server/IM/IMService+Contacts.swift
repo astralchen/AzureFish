@@ -25,6 +25,7 @@ extension IMService {
         return state
     }
     func requireFriend(_ user: UUID, _ peer: UUID, db: any Database) async throws {
+        guard let target = try await UserRecord.find(peer, on: db), try accounts.payload(target).deleted != true else { throw APIError(.forbidden, "CONTACT_UNAVAILABLE") }
         guard let row = try await contactRecord(user, peer, db: db) else { throw APIError(.forbidden, "FRIEND_REQUIRED") }
         let state = try contactState(row)
         guard let own = state.sides?[user.uuidString], let other = state.sides?[peer.uuidString] else {
@@ -44,6 +45,8 @@ extension IMService {
         result.peer.userID = peer.uuidString.lowercased()
         result.peer.nickname = try accounts.payload(profile).nickname
         result.peer.profileVersion = profile.version
+        result.peer.avatarID = try accounts.payload(profile).avatarID ?? ""
+        result.peer.deleted = try accounts.payload(profile).deleted == true
         result.state = "none"
         result.semanticsVersion = 2
         result.availableActions = user == peer ? [] : ["request", "block"]
@@ -73,6 +76,7 @@ extension IMService {
                 else { actions.append("request") }
             }
             result.availableActions = actions
+            if try accounts.payload(profile).deleted == true { result.availableActions = own.retained ? ["delete"] : [] }
         }
         return result
     }
@@ -96,7 +100,7 @@ extension IMService {
         return try await write(req, operation: input.operationID, bytes: bytes, name: "contact") { session, db in
             let user = session.userID
             guard peer != user else { throw APIError(.badRequest, "SELF_CONTACT") }
-            guard try await UserRecord.find(peer, on: db) != nil else { throw APIError(.notFound, "USER_NOT_FOUND") }
+            guard let target = try await UserRecord.find(peer, on: db), try self.accounts.payload(target).deleted != true || input.action == "delete" else { throw APIError(.notFound, "USER_NOT_FOUND") }
             let existing = try await self.contactRecord(user, peer, db: db)
             let row = existing ?? ContactRecord()
             var state = try existing.map(self.contactState)

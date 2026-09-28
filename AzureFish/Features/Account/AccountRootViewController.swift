@@ -43,8 +43,8 @@ final class AccountRootViewController: LocalizedViewController, UITabBarControll
             let runtime = ChatRuntime(session: session); chatRuntime = runtime
             let chat = ChatSplitViewController(runtime: runtime)
             let contacts = ContactsSplitViewController(runtime: runtime)
-            let me = ProfileViewController(session: session, runtime: runtime)
-            tabs.viewControllers = [chat, contacts, UINavigationController(rootViewController: me)]
+            let me = ProfileSplitViewController(session: session, runtime: runtime)
+            tabs.viewControllers = [chat, contacts, me]
             runtime.openConversation = { [weak tabs, weak chat] conversation in
                 tabs?.selectedIndex = 0; chat?.open(conversation)
             }

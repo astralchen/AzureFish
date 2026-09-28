@@ -4,6 +4,8 @@ import QuickLayoutKit
 
 /// 个人中心按容器宽度展开双列，窄屏保留同一资料状态。
 final class ProfileViewController: AccountScreen {
+    var openDetail: ((UIViewController) -> Void)?
+    var showsMenu = true
     private let runtime: ChatRuntime?
     private var observation: UUID?
     private let session: SessionCoordinator
@@ -11,7 +13,7 @@ final class ProfileViewController: AccountScreen {
     private let account = UILabel()
     private let bio = UILabel()
     private let notice = UILabel()
-    private let avatar = UIImageView(image: UIImage(systemName: "person.crop.circle.fill"))
+    private let avatar = AccountAvatarView()
     private let menu = ProfileMenuView()
     override var localizedTitleKey: String? { "account.design.me" }
     init(session: SessionCoordinator, runtime: ChatRuntime? = nil) { self.runtime = runtime; self.session = session; super.init(nibName: nil, bundle: nil); grouped = true; maximumWidth = 600 }
@@ -33,7 +35,7 @@ final class ProfileViewController: AccountScreen {
             switch key {
             case "account.design.editProfile": self.edit()
             case "account.design.security": self.openSecurity()
-            case "account.design.settings": self.navigationController?.pushViewController(AccountSettingsViewController(runtime: self.runtime), animated: true)
+            case "account.design.settings": self.open(AccountSettingsViewController(runtime: self.runtime))
             case "account.design.reload": self.reloadProfile()
             case "account.design.signOut": self.confirmLogout()
             default: break
@@ -45,17 +47,10 @@ final class ProfileViewController: AccountScreen {
     }
     override var body: Layout {
         ScrollView(scroll) {
-            if traitCollection.horizontalSizeClass == .regular && view.bounds.inset(by: view.safeAreaInsets).width >= 840 {
-                HStack(alignment: .top, spacing: 32) {
-                    summary.frame(width: 320)
-                    menu.resizable(axis: .horizontal).frame(maxWidth: 600)
-                }.padding(24)
-            } else {
-                VStack(alignment: .leading, spacing: 24) {
-                    summary
-                    menu.resizable(axis: .horizontal)
-                }.frame(width: min(600, max(0, view.bounds.width - 48))).padding(.vertical, 16)
-            }
+            VStack(alignment: .leading, spacing: 24) {
+                summary
+                if showsMenu { menu.resizable(axis: .horizontal) }
+            }.frame(width: min(600, max(0, view.bounds.width - 48))).padding(.vertical, 16)
         }.frame(maxWidth: .infinity, maxHeight: .infinity).safeAreaPadding(.all, 0)
     }
     private var summary: Layout {
@@ -84,7 +79,7 @@ final class ProfileViewController: AccountScreen {
         account.text = session.profile.map { "@" + $0.accountName }
         bio.text = session.profile?.bio
         notice.text = session.readOnly ? Localization.text("account.design.offlineProfile") : session.noticeKey.map { Localization.text($0) } ?? ((session.profile?.bio.isEmpty == true) ? Localization.text("account.design.incomplete") : nil)
-        avatar.accessibilityLabel = Localization.text("account.default.avatar")
+        if let profile = session.profile { avatar.configure(session: session, user: profile.userID, asset: profile.avatarID) }
         for label in [name, account, bio, notice] {
             label.textAlignment = Localization.currentUIKitDirection == .rightToLeft ? .right : .left
         }
@@ -93,13 +88,17 @@ final class ProfileViewController: AccountScreen {
     }
     private func edit() {
         guard let profile = session.profile else { return }
-        navigationController?.pushViewController(EditProfileViewController(session: session, profile: profile), animated: true)
+        open(EditProfileViewController(session: session, profile: profile))
     }
     deinit {
         if let observation, let runtime { Task { @MainActor in runtime.remove(observation) } }
     }
+    private func open(_ controller: UIViewController) {
+        if let openDetail { openDetail(controller) }
+        else { navigationController?.pushViewController(controller, animated: true) }
+    }
     private func openSecurity() {
-        navigationController?.pushViewController(AccountSecurityViewController(session: session), animated: true)
+        open(AccountSecurityViewController(session: session, runtime: runtime))
     }
     private func confirmLogout() {
         let alert = UIAlertController(title: Localization.text("account.design.signOut"), message: Localization.text("account.design.logoutHelp"), preferredStyle: .alert)
@@ -124,10 +123,14 @@ final class ProfileViewController: AccountScreen {
 
 /// 版本化资料草稿；冲突时保留编辑，展示最新资料后由用户确认新的版本依据。
 final class EditProfileViewController: AccountScreen {
+    var didFinish: (() -> Void)?
+    private func finish() { if let didFinish { didFinish() } else { navigationController?.popViewController(animated: true) } }
     private let session: SessionCoordinator
     private var base: AccountProfile
     private let nickname = AccountField(key: "account.design.nickname", identifier: "account.profile.nickname")
     private let bio = ProfileBioTextView()
+    private var avatarEditor: AvatarEditorCoordinator?
+    private weak var avatarButton: UIButton?
     private var save: UIButton!
     private let feedback = UILabel()
     private var feedbackKey: String?
@@ -147,13 +150,24 @@ final class EditProfileViewController: AccountScreen {
         bio.isScrollEnabled = false; bio.accessibilityIdentifier = "account.profile.bio"
         feedback.numberOfLines = 0; feedback.font = .preferredFont(forTextStyle: .footnote); feedback.adjustsFontForContentSizeCategory = true
         let bioHost = QuickLayoutView { [bio] in bio.resizable(axis: .horizontal).frame(minHeight: 144) }
-        let avatar = UIImageView(image: UIImage(systemName: "person.crop.circle.fill"))
+        let avatar = AccountAvatarView()
+        avatar.configure(session: session, user: base.userID, asset: session.profile?.avatarID)
         avatar.tintColor = .label; avatar.contentMode = .scaleAspectFit
-        avatar.isAccessibilityElement = true; avatar.accessibilityLabel = Localization.text("account.default.avatar")
-        let photoButton = button("account.design.changePhoto") { [weak self] in self?.explainUnavailable() }
+        avatar.isAccessibilityElement = true
+        let photoButton = button("account.design.changePhoto") { [weak self, weak avatar] in
+            guard let self else { return }
+            let editor = AvatarEditorCoordinator(host: self, session: session) { [weak self, weak avatar] in
+                guard let self, let profile = session.profile else { return }
+                // 头像独立提交只推进版本依据，不覆盖未提交的文字草稿。
+                base = profile
+                avatar?.configure(session: session, user: profile.userID, asset: profile.avatarID)
+            }
+            avatarEditor = editor; editor.choose(from: avatarButton ?? view)
+        }
+        avatarButton = photoButton
         let photoRow = QuickLayoutView { HStack(spacing: 16) { avatar.resizable().frame(width: 72, height: 72); photoButton } }
         content = [photoRow,
-                   label("account.unavailable.feature", style: .footnote, secondary: true), nickname,
+                   label("account.avatar.help", style: .footnote, secondary: true), nickname,
                    label("account.design.nicknameRule", style: .footnote, secondary: true),
                    label("account.design.bio", style: .footnote, secondary: true), bioHost,
                    label("account.design.bioRule", style: .footnote, secondary: true), feedback]
@@ -188,7 +202,8 @@ final class EditProfileViewController: AccountScreen {
             do {
                 try await session.saveProfile(base: base, nickname: name, bio: text)
                 if let latest = session.profile { base = latest }
-                setFeedback(session.noticeKey ?? "account.design.saved")
+                if let notice = session.noticeKey { setFeedback(notice) }
+                else { finish() }
             } catch AccountFailure.conflict { reviewConflict() }
             catch { setFeedback(AccountFailure.key(for: error)) }
         }
@@ -209,10 +224,10 @@ final class EditProfileViewController: AccountScreen {
     }
     private func cancel() {
         guard task == nil else { return }
-        guard nickname.input.text != base.nickname || bio.text != base.bio else { navigationController?.popViewController(animated: true); return }
+        guard nickname.input.text != base.nickname || bio.text != base.bio else { finish(); return }
         let alert = UIAlertController(title: Localization.text("account.design.discard"), message: Localization.text("account.design.discardHelp"), preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: Localization.text("account.design.keepEditing"), style: .cancel))
-        alert.addAction(UIAlertAction(title: Localization.text("account.design.discard"), style: .destructive) { [weak self] _ in self?.navigationController?.popViewController(animated: true) })
+        alert.addAction(UIAlertAction(title: Localization.text("account.design.discard"), style: .destructive) { [weak self] _ in self?.finish() })
         present(alert, animated: true)
     }
 }

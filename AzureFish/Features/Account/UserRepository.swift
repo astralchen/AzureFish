@@ -68,6 +68,11 @@ final class UserRepository {
             return profile
         } catch { throw AccountFailure.damagedCache }
     }
+    func deleteFiles(user: UUID) throws {
+        let url = fileURL(for: user)
+        if FileManager.default.fileExists(atPath: url.path) { try FileManager.default.removeItem(at: url) }
+    }
+    func deleteKey(user: UUID) throws { try keys.remove("profile-key.\(identifier(user))") }
     func save(_ profile: AccountProfile) throws {
         guard environment == "local-development" else { throw AccountFailure.unavailable }
         // 先验证已有快照，损坏时保留原件并交由明确恢复流程处理。

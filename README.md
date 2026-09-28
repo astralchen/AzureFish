@@ -7,9 +7,10 @@
 打开 `AzureFish.xcworkspace`，选择共享 scheme `AzureFish`。首次构建需要下载远程 Swift Package 依赖。
 
 - 最低部署版本保持 **iOS 15.0**，支持 iPhone 和 iPad。
-- **iOS 26+**：正常启动直接进入现有液态玻璃聊天页。
-- **iOS 15～25**：显示基础适配入口；完整聊天 UI 后续在 `AzureFish/App/LegacyChatViewController.swift` 接入。此迁移尚未实现旧系统聊天界面。
-- 消息发送、自动回复、初始历史及历史分页使用原有本地样例和模拟实现，尚未连接真实账号、会话服务或后端。
+- 正常启动进入会话恢复或欢迎页；登录后使用“聊天／通讯录／我”三标签。
+- iOS 26+ 复用完整聊天组件；iOS 15～25 使用真实 IM 兼容页面及系统非玻璃外观。
+- 客户端与独立服务端支持本机虚构账号、好友、私聊／群聊和媒体；原演示入口保持独立。
+- 头像及账号安全实现、适配边界和本次验证见 [全 App 闭环记录](Documentation/Authentication/Implementation/2026-09-28-app-closure.md)。当前不开放生产或真实账号环境。
 
 ## 代码与资源
 
@@ -17,7 +18,7 @@
 - `AzureFish/Support/Concurrency/`：聊天使用的异步任务工具。
 - `AzureFish/App/`：本地化支持、旧系统适配入口和 Debug UI 测试导航入口。
 - `AzureFish/Resources/AttachmentPreviewResources.bundle`：完整样例及测试媒体资源，约 108 MB。
-- `AzureFish/Localizable.xcstrings`：聊天、通用操作和语言菜单所需的中/英/阿拉伯语文案。
+- `AzureFish/Localizable.xcstrings`：聊天、通用操作和语言菜单所需的简中／繁中／英文／阿拉伯语文案。
 - `AzureFish/InfoPlist.xcstrings`：应用名称及麦克风、相册、语音识别权限文案。
 - `Scripts/media-benchmark/`：媒体性能测试工具；`ChatRegression` 和 `MediaBenchmark` 共享 scheme 已同步迁移。
 - `AzureFishTests/Chat/`、`AzureFishUITests/Chat/`：迁移的单元、组件和 UI 测试；测试模块已改为 `AzureFish`。

@@ -202,6 +202,7 @@ struct AccountDebugScenario {
         if id == "index" { root = AccountScenarioIndexController() }
         else if let scenario = all.first(where: { $0.id == id }) { root = scenario.makeController() }
         else { return nil }
+        if root is ProfileSplitViewController { return root }
         return UINavigationController(rootViewController: root)
     }
     @MainActor
@@ -219,7 +220,7 @@ struct AccountDebugScenario {
         if id.hasPrefix("me") || id == "edit" {
             session.installDebugProfile(long: id == "me.long", offline: id == "me.offline")
             if id == "edit", let profile = session.profile { return EditProfileViewController(session: session, profile: profile) }
-            return ProfileViewController(session: session)
+            return ProfileSplitViewController(session: session, runtime: ChatRuntime(session: session))
         }
         if id == "security.password" { return AccountSecurityViewController(session: session) }
         if id.hasPrefix("appearance.") || id.hasPrefix("language.") || id == "settings" { return AccountSettingsViewController() }

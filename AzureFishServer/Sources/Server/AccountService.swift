@@ -64,7 +64,7 @@ final class AccountService: Sendable {
                 let user = try await UserRecord.query(on: db).filter(\.$accountDigest == index).first()
                 let hash = try user.map { try self.payload($0).passwordHash } ?? self.dummyHash
                 let verified = try await req.password.async.verify(input.password, created: hash)
-                guard verified, let user else { throw APIError(.unauthorized, "INVALID_CREDENTIALS") }
+                guard verified, let user, try self.payload(user).deleted != true else { throw APIError(.unauthorized, "INVALID_CREDENTIALS") }
                 let session = self.newSession(userID: try user.requireID(), device: device)
                 let auth = try self.issue(session, user: user)
                 try await session.create(on: db)
@@ -169,11 +169,11 @@ final class AccountService: Sendable {
         return raw(data)
     }
 
-    func authenticate(_ req: Request, db: any Database, allowRevoked: Bool = false) async throws -> SessionRecord {
+    func authenticate(_ req: Request, db: any Database, allowRevoked: Bool = false, allowExpired: Bool = false) async throws -> SessionRecord {
         guard let token = req.headers.bearerAuthorization?.token, token.utf8.count == 43 else { throw APIError(.unauthorized, "UNAUTHENTICATED") }
         let digest = crypto.digest(Data(token.utf8), purpose: "access")
         guard let session = try await SessionRecord.query(on: db).filter(\.$accessDigest == digest).first(),
-              session.accessExpiry > now, session.refreshExpiry > now, allowRevoked || !session.revoked else {
+              (allowExpired || session.accessExpiry > now), session.refreshExpiry > now, allowRevoked || !session.revoked else {
             throw APIError(.unauthorized, "UNAUTHENTICATED")
         }
         return session
@@ -203,13 +203,14 @@ final class AccountService: Sendable {
     func payload(_ user: UserRecord) throws -> UserPayload {
         try JSONDecoder().decode(UserPayload.self, from: crypto.open(user.payload, context: "user:" + user.requireID().uuidString))
     }
-    private func encrypt(_ payload: UserPayload, id: UUID) throws -> String {
+    func encrypt(_ payload: UserPayload, id: UUID) throws -> String {
         try crypto.seal(JSONEncoder().encode(payload), context: "user:" + id.uuidString)
     }
-    private func profile(_ user: UserRecord) throws -> UserProfile {
+    func profile(_ user: UserRecord) throws -> UserProfile {
         let payload = try payload(user)
         var profile = UserProfile()
         profile.userID = try user.requireID().uuidString.lowercased(); profile.accountName = payload.accountName
+        profile.avatarID = payload.avatarID ?? ""
         profile.nickname = payload.nickname; profile.bio = payload.bio; profile.profileVersion = user.version
         profile.createdAtMs = payload.createdAt; profile.updatedAtMs = payload.updatedAt
         return profile
@@ -239,7 +240,7 @@ final class AccountService: Sendable {
         try await op.create(on: db)
     }
 
-    private func raw(_ bytes: Data, status: HTTPResponseStatus = .ok) -> Response {
+    func raw(_ bytes: Data, status: HTTPResponseStatus = .ok) -> Response {
         Response(status: status, headers: ["Content-Type": "application/protobuf", "Cache-Control": "no-store"], body: .init(data: bytes))
     }
 }
