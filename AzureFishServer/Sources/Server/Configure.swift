@@ -68,6 +68,7 @@ public func configure(_ app: Application, configuration: ServerConfiguration) as
     app.migrations.add(CreateIMSchema())
     app.migrations.add(CreateContactsSchema())
     app.migrations.add(CreateMediaSchema())
+    app.migrations.add(UpgradeContactSides(crypto: crypto))
     if existing {
         // 在迁移或业务写入前验证原库的环境和密钥，错误时保留原文件。
         guard let marker = try await MetadataRecord.find("key-check-v1", on: app.db),
@@ -101,7 +102,6 @@ public func configure(_ app: Application, configuration: ServerConfiguration) as
     v1.post("auth", "refresh", use: service.refresh)
     v1.post("auth", "logout", use: service.logout)
     v1.get("me", use: service.me)
-    v1.patch("me", use: service.update)
     let epochKey = "im-epoch-v1"
     let epoch: String
     if let marker = try await MetadataRecord.find(epochKey, on: app.db) {
@@ -113,6 +113,11 @@ public func configure(_ app: Application, configuration: ServerConfiguration) as
         try await marker.create(on: app.db)
     }
     let baseIM = IMService(accounts: service, epoch: epoch)
+    v1.patch("me") { req async throws -> Response in
+        try await service.update(req) { user, db in
+            try await baseIM.publicProfileChanged(user, db: db)
+        }
+    }
     let directory = URL(fileURLWithPath: configuration.directory)
     let blobs = LocalMediaBlobStore(root: directory.appendingPathComponent("media"), work: directory.appendingPathComponent("media-work"), environment: configuration.environmentID, app: app)
     try await blobs.initialize()

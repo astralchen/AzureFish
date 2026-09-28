@@ -25,6 +25,11 @@ struct IndependentIMRealtimeTests {
         await client.start()
         try await poll { await seen.values.contains { $0.hint != nil && $0.session.refreshGeneration == 1 } }
         #expect(await client.currentState == .connected)
+        _ = try await manager.authorized { credentials in
+            let operation = try api.prepareProfileUpdate(operationID: UUID(), changes: .init(expectedVersion: session.profile.version, nickname: "更新后的实时昵称"), using: credentials)
+            return try await api.execute(operation, using: credentials)
+        }
+        try await poll { await seen.values.contains { ($0.hint?.ownProfileVersion ?? 0) > session.profile.version } }
         let renewed = try await manager.refresh()
         #expect(renewed.refreshGeneration == 2)
         try await poll { await seen.values.contains { $0.hint != nil && $0.session.refreshGeneration == 2 } }

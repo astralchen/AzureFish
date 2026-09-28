@@ -201,9 +201,7 @@ final class LiveChatSession: ChatSessionProviding {
             result.canRevoke = Date().timeIntervalSince1970 * 1000 <= Double(message.createdAt + 120000)
         }
         if conversation.kind == "group" && !outgoing {
-            result.senderName = runtime.contacts.first { $0.peer.id == message.senderID }?.peer.nickname
-                ?? conversation.members.first { $0.id == message.senderID }?.profile.nickname
-                ?? Localization.text("chat.live.groupMember")
+            result.senderName = runtime.displayName(user: message.senderID, fallback: conversation.members.first { $0.id == message.senderID }?.profile)
         }
         if mediaFailures.contains(message.id) { result.canRetryMedia = true; result.statusText = Localization.text("chat.live.failed") }
         if message.revoked {

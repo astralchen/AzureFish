@@ -104,7 +104,12 @@ final class LiveConversationViewController: LocalizedQuickLayoutHostingControlle
             let value = attachments
             let store = runtime.engine?.store
             let id = conversation.id
-            Task { try? await store?.setMeta(value, id: "attachments:" + id) }
+            Task { [weak self] in
+                do {
+                    try await store?.saveDraftAttachments(value, conversation: id)
+                    if self?.runtime.engine?.store === store { try await self?.runtime.refreshListStates() }
+                } catch { /* 保存失败时保留编辑器内容。 */ }
+            }
             attachmentButton.accessibilityValue = String(value.count)
         }
     }
@@ -220,6 +225,7 @@ final class LiveConversationViewController: LocalizedQuickLayoutHostingControlle
             do {
                 try await Task.sleep(nanoseconds: 200_000_000)
                 try await store?.saveDraft(.init(text: value), conversation: id)
+                if runtime.engine?.store === store { try await runtime.refreshListStates() }
             } catch {}
         }
     }
@@ -263,11 +269,7 @@ final class LiveConversationViewController: LocalizedQuickLayoutHostingControlle
                         let outgoing = message.senderID == runtime.userID
                         let sender =
                             conversation.kind == "group" && !outgoing
-                            ? runtime.contacts.first(where: { $0.peer.id == message.senderID })?
-                                .peer.nickname
-                                ?? conversation.members.first(where: { $0.id == message.senderID })?
-                                .profile.nickname
-                                ?? Localization.text("chat.live.groupMember") : ""
+                            ? runtime.displayName(user: message.senderID, fallback: conversation.members.first { $0.id == message.senderID }?.profile) : ""
                         let state =
                             message.receipt.read == message.receipt.expected
                                 && message.receipt.expected > 0
@@ -623,9 +625,7 @@ final class LiveConversationViewController: LocalizedQuickLayoutHostingControlle
             return Localization.text("chat.live.revokedOther")
         }
         let name =
-            runtime.contacts.first(where: { $0.peer.id == message.senderID })?.peer.nickname
-            ?? conversation.members.first(where: { $0.id == message.senderID })?.profile.nickname
-            ?? Localization.text("chat.live.groupMember")
+            runtime.displayName(user: message.senderID, fallback: conversation.members.first { $0.id == message.senderID }?.profile)
         return Localization.text("chat.live.revokedMember", name.isEmpty ? Localization.text("chat.live.groupMember") : name)
     }
     private func scheduleReeditExpiry(_ deadline: Date?) {

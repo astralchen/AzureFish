@@ -110,11 +110,45 @@ def receive_frame(stream):
     return first & 0x0f, receive_exact(stream, count)
 
 
+# 通讯录 v2 独立双账号闭环，身份和凭据仅保留在内存。
+c, d = new_user(), new_user()
+def contact(owner, peer):
+    return protobuf("ContactRelationship", call("POST", "/v1/im/contacts/get", "ContactGetRequest",
+                    dict(peer_user_id=peer["user_id"]), token=owner["access_token"]), decode=True)
+def mutate(owner, peer, action, **extra):
+    previous = contact(owner, peer)
+    fields = dict(operation_id=str(uuid.uuid4()), peer_user_id=peer["user_id"], action=action,
+                  semantics_version=2, expected_revision=number(previous, "revision"))
+    fields.update(extra)
+    body = call("POST", "/v1/im/contacts/mutate", "ContactMutationRequest", fields, token=owner["access_token"])
+    # 重放原字节模拟第一次响应丢失，不创建替代申请或重复接受。
+    replay = call("POST", "/v1/im/contacts/mutate", "ContactMutationRequest", fields, token=owner["access_token"])
+    assert body == replay
+    return protobuf("ContactRelationship", body, decode=True)
+request = mutate(c, d, "request", request_message="Fictional introduction")
+assert b'Fictional introduction' in contact(d, c)
+mutate(d, c, "accept", request_id=field(request, "request_id"))
+assert b'is_contact: true' in contact(c, d)
+mutate(c, d, "remark", remark="Private note")
+assert b'Private note' in contact(c, d) and b'Private note' not in contact(d, c)
+mutate(c, d, "delete")
+assert b'is_contact: true' not in contact(c, d) and b'is_contact: true' in contact(d, c)
+assert b'available_actions: "send"' not in contact(d, c)
+mutate(c, d, "restore")
+assert b'available_actions: "send"' in contact(c, d)
+mutate(c, d, "block")
+assert b'is_blocked: true' in contact(c, d) and b'is_blocked: true' not in contact(d, c)
+assert b'available_actions: "send"' not in contact(d, c)
+mutate(c, d, "unblock")
+assert b'available_actions: "send"' in contact(c, d)
+print("PASS: contacts v2 request message, accept, private remark, unilateral delete, restore, block, unblock and response-loss replay")
+
 a, b = new_user(), new_user()
+friend_request_id = str(uuid.uuid4())
 call("POST", "/v1/im/contacts/mutate", "ContactMutationRequest",
-     dict(operation_id=str(uuid.uuid4()), peer_user_id=b["user_id"], action="request"), token=a["access_token"])
+     dict(operation_id=friend_request_id, peer_user_id=b["user_id"], semantics_version=2, action="request"), token=a["access_token"])
 call("POST", "/v1/im/contacts/mutate", "ContactMutationRequest",
-     dict(operation_id=str(uuid.uuid4()), peer_user_id=a["user_id"], expected_revision=1, action="accept"), token=b["access_token"])
+     dict(operation_id=str(uuid.uuid4()), peer_user_id=a["user_id"], expected_revision=1, semantics_version=2, action="accept", request_id=friend_request_id), token=b["access_token"])
 resolve = dict(operation_id=str(uuid.uuid4()), peer_user_id=b["user_id"])
 conversation = protobuf("IMConversation", call("POST", "/v1/im/conversations/resolve", "IMResolveRequest", resolve, token=a["access_token"]), decode=True)
 conversation_id = field(conversation, "conversation_id")

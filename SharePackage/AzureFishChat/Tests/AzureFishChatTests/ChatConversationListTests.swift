@@ -41,10 +41,10 @@ struct ChatConversationListTests {
         let root = try folder(); defer { try? FileManager.default.removeItem(at: root) }
         let store = try store(root)
         try await store.save(conversation())
-        try await store.saveDraft(.init(text: "草稿"), conversation: "chat")
         try await store.save(message(1, system: true))
         #expect(try await store.conversationListStates()["chat"]?.isVisible != true)
         try await store.save(message(2))
+        try await store.saveDraft(.init(text: "草稿"), conversation: "chat")
         try await store.setManuallyUnread(true, conversation: "chat")
         let before = try #require(await store.conversationListStates()["chat"])
         #expect(before.isVisible && before.manuallyUnread)
@@ -162,6 +162,67 @@ struct ChatConversationListTests {
         pending.state = "failed"
         try await store.update(pending)
         #expect(try await store.conversationListStates()["chat"]?.isVisible == true)
+        try await store.close()
+    }
+
+    @Test func draftRestoresOnlyOnContentChangeAndDoesNotReorder() async throws {
+        let root = try folder(); defer { try? FileManager.default.removeItem(at: root) }
+        let store = try store(root)
+        try await store.save(conversation())
+        try await store.saveDraft(.init(text: "未发送"), conversation: "chat")
+        var snapshot = try await store.conversationListSnapshot()
+        #expect(snapshot.states["chat"]?.isVisible == true)
+        #expect(snapshot.states["chat"]?.activityAt == 0)
+        #expect(snapshot.drafts["chat"]?.text == "未发送")
+        try await store.save(message(1))
+        try await store.hideConversation("chat")
+        try await store.saveDraft(.init(text: "未发送"), conversation: "chat")
+        #expect(try await store.conversationListStates()["chat"]?.isVisible == false)
+        try await store.saveDraft(.init(text: "继续编辑"), conversation: "chat")
+        snapshot = try await store.conversationListSnapshot()
+        #expect(snapshot.states["chat"]?.isVisible == true)
+        #expect(snapshot.states["chat"]?.activityAt == 1000)
+        try await store.saveDraft(.init(), conversation: "chat")
+        snapshot = try await store.conversationListSnapshot()
+        #expect(snapshot.drafts.isEmpty)
+        #expect(snapshot.states["chat"]?.isVisible == true)
+        try await store.setPinnedConversationsCollapsed(true)
+        try await store.close()
+        let reopened = try self.store(root)
+        #expect(try await reopened.conversationListSnapshot().pinnedCollapsed)
+        #expect(try await reopened.conversationListStates()["chat"]?.activityAt == 1000)
+        try await reopened.close()
+    }
+
+    @Test func attachmentDraftHydrationAtomicSendAndRollback() async throws {
+        let root = try folder(); defer { try? FileManager.default.removeItem(at: root) }
+        let store = try store(root)
+        try await store.save(conversation())
+        let attachment = ChatUploadItem(kind: "image", resources: [])
+        try await store.saveDraftAttachments([attachment], conversation: "chat")
+        #expect(try await store.conversationListSnapshot().drafts["chat"]?.hasAttachments == true)
+        #expect(try await store.conversationListStates()["chat"]?.isVisible == true)
+        try await store.hideConversation("chat")
+        try await store.saveDraftAttachments([attachment], conversation: "chat")
+        #expect(try await store.conversationListStates()["chat"]?.isVisible == false)
+        struct Rich: Codable, Sendable { var documents: [ChatUploadItem]; var revision: Int }
+        try await store.saveEditorDraft(Rich(documents: [attachment], revision: 0), text: "", conversation: "chat")
+        #expect(try await store.conversationListStates()["chat"]?.isVisible == false)
+        try await store.saveEditorDraft(Rich(documents: [attachment], revision: 1), text: "", conversation: "chat")
+        #expect(try await store.conversationListStates()["chat"]?.isVisible == false)
+        let database = await store.db
+        try await database.write { db in
+            try db.execute(sql: "CREATE TRIGGER reject_draft_list BEFORE INSERT ON conversation_list BEGIN SELECT RAISE(ABORT, 'test'); END")
+        }
+        do { try await store.saveDraft(.init(text: "不能提交"), conversation: "chat"); Issue.record("Write must fail") } catch {}
+        #expect(try await store.draft("chat").text.isEmpty)
+        #expect(try await store.conversationListSnapshot().drafts["chat"]?.hasAttachments == true)
+        try await database.write { try $0.execute(sql: "DROP TRIGGER reject_draft_list") }
+        try await store.enqueueComposition([.message(.init(conversationID: "chat", deviceID: UUID(), kind: "text", text: "发送", assets: []))], conversation: "chat")
+        let snapshot = try await store.conversationListSnapshot()
+        #expect(snapshot.drafts.isEmpty)
+        #expect(snapshot.states["chat"]?.isVisible == true)
+        #expect(try await store.pending().count == 1)
         try await store.close()
     }
 

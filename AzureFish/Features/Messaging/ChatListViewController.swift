@@ -1,3 +1,4 @@
+import AppLocalization
 import AzureFishAPI
 import AzureFishChat
 import ListKit
@@ -15,6 +16,7 @@ struct LiveChatRow: Sendable, Equatable {
     var highlight: String? = nil
     var isPinned = false
     var manuallyUnread = false
+    var isDraft = false
 }
 /// 通讯录、会话和成员选择共享的原生列表，实体身份不随语言改变。
 class LiveChatListController: LocalizedQuickLayoutHostingController, UISearchResultsUpdating {
@@ -95,6 +97,15 @@ class LiveChatListController: LocalizedQuickLayoutHostingController, UISearchRes
                         c.textProperties.numberOfLines = 0
                         c.secondaryTextProperties.numberOfLines = 2
                         c.secondaryTextProperties.color = .secondaryLabel
+                        if value.isDraft {
+                            let text = NSMutableAttributedString(string: value.subtitle)
+                            let marker = Localization.text("chat.list.draftMarker")
+                            if let range = value.subtitle.range(of: marker) {
+                                text.addAttribute(.foregroundColor, value: UIColor.systemRed,
+                                                  range: NSRange(range, in: value.subtitle))
+                            }
+                            c.secondaryAttributedText = text
+                        }
                         let accessibilitySize = cell.traitCollection.preferredContentSizeCategory.isAccessibilityCategory
                         c.image = accessibilitySize ? nil : UIImage(systemName: value.symbol)
                         c.imageProperties.tintColor = .systemBlue
@@ -173,83 +184,31 @@ class LiveChatListController: LocalizedQuickLayoutHostingController, UISearchRes
         }
     }
 }
-final class ContactsViewController: LiveChatListController {
-    override var localizedTitleKey: String? { "chat.live.contacts" }
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        navigationController?.navigationBar.prefersLargeTitles = true
-        navigationItem.rightBarButtonItem = UIBarButtonItem(
-            image: UIImage(systemName: "person.badge.plus"),
-            primaryAction: UIAction { [weak self] _ in
-                guard let self else { return }
-                navigationController?.pushViewController(AddFriendViewController(runtime: runtime), animated: true)
-            })
-        selected = { [weak self] id in
-            guard let self else { return }
-            if id == "requests" {
-                navigationController?.pushViewController(FriendRequestsViewController(runtime: runtime), animated: true)
-            } else if let contact = runtime.contacts.first(where: { $0.peer.id == id }) {
-                navigationController?.pushViewController(
-                    FriendViewController(runtime: runtime, contact: contact), animated: true)
-            }
-        }
-    }
-    override func reloadRows() {
-        let pending = runtime.contacts.filter { $0.state == "pending" && $0.requesterID != runtime.userID }.count
-        tabBarItem.badgeValue = pending > 99 ? "99+" : pending > 0 ? String(pending) : nil
-        tabBarItem.badgeColor = .systemRed
-        navigationController?.tabBarItem.badgeValue = tabBarItem.badgeValue
-        navigationController?.tabBarItem.badgeColor = .systemRed
-        let matches = runtime.contacts.filter {
-            $0.state == "friend" && (query.isEmpty || $0.peer.nickname.localizedStandardContains(query))
-        }.sorted { $0.peer.nickname.localizedStandardCompare($1.peer.nickname) == .orderedAscending }
-        rows =
-            [
-                LiveChatRow(
-                    id: "requests", title: Localization.text("chat.live.newFriends"),
-                    subtitle: pending > 0 ? String(pending) + " · " + Localization.text("chat.live.pending") : "",
-                    symbol: "person.badge.plus", badge: pending > 99 ? "99+" : pending > 0 ? String(pending) : "")
-            ] + matches.map { LiveChatRow(id: $0.peer.id, title: $0.peer.nickname) }
-        if matches.isEmpty {
-            rows.append(
-                LiveChatRow(
-                    id: "empty", title: Localization.text("chat.live.emptyContacts"),
-                    subtitle: Localization.text(runtime.online ? "chat.live.addHelp" : "chat.live.offline"),
-                    symbol: "person.2"))
-        }
-    }
-}
-final class FriendRequestsViewController: LiveChatListController {
-    override var localizedTitleKey: String? { "chat.live.newFriends" }
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        selected = { [weak self] id in
-            guard let self, let c = runtime.contacts.first(where: { $0.peer.id == id }) else { return }
-            navigationController?.pushViewController(FriendViewController(runtime: runtime, contact: c), animated: true)
-        }
-    }
-    override func reloadRows() {
-        rows = runtime.contacts.filter { $0.state != "friend" && $0.state != "deleted" }.sorted {
-            $0.updatedAt > $1.updatedAt
-        }.map {
-            LiveChatRow(
-                id: $0.peer.id, title: $0.peer.nickname,
-                subtitle: Localization.text(
-                    $0.requesterID == runtime.userID ? "chat.live.outgoing" : "chat.live.incoming") + " · "
-                    + Localization.text("chat.live." + $0.state))
-        }
-    }
-}
 final class ConversationListViewController: LiveChatListController {
     var openConversation: ((ChatConversation) -> Void)?
     private let stateView = ChatListStateView(frame: .zero)
     private var renderGeneration = UUID()
     private var keyboardFrame: CGRect?
+    let pinnedToggle = UIButton(type: .system)
+    private var showsPinnedToggle = false
+    private var savingPinnedToggle = false
+    override var body: Layout {
+        if showsPinnedToggle {
+            VStack(spacing: 0) {
+                pinnedToggle.resizable(axis: .horizontal).frame(minHeight: 44).padding(.horizontal, 16)
+                list.resizable().frame(maxWidth: .infinity, maxHeight: .infinity)
+            }.safeAreaPadding(.top, 0)
+        } else {
+            list.resizable().frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
     override var localizedTitleKey: String? { "account.design.chat" }
     override var showsSeparators: Bool { false }
     override func viewDidLoad() {
         quickLayoutKeyboardSafeAreaBehavior = .disabled
         super.viewDidLoad()
+        pinnedToggle.accessibilityIdentifier = "chat.list.pinnedToggle"
+        pinnedToggle.addAction(UIAction { [weak self] _ in self?.togglePinned() }, for: .touchUpInside)
         stateView.content.retry = { [weak self] in self?.runtime.refresh() }
         NotificationCenter.default.addObserver(self, selector: #selector(keyboardChanged(_:)),
                                                name: UIResponder.keyboardWillChangeFrameNotification, object: nil)
@@ -265,6 +224,12 @@ final class ConversationListViewController: LiveChatListController {
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         updateViewport()
+    }
+    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+        if isViewLoaded, previousTraitCollection?.preferredContentSizeCategory != traitCollection.preferredContentSizeCategory {
+            reloadRows()
+        }
     }
     @objc private func keyboardChanged(_ notification: Notification) {
         keyboardFrame = notification.name == UIResponder.keyboardWillHideNotification ? nil
@@ -351,24 +316,73 @@ final class ConversationListViewController: LiveChatListController {
         configuration.performsFirstActionWithFullSwipe = false
         return configuration
     }
+    private func togglePinned() {
+        guard !savingPinnedToggle else { return }
+        savingPinnedToggle = true
+        pinnedToggle.isEnabled = false
+        Task { [weak self] in
+            guard let self else { return }
+            defer { savingPinnedToggle = false; pinnedToggle.isEnabled = true }
+            do { try await runtime.setPinnedConversationsCollapsed(!runtime.pinnedConversationsCollapsed) }
+            catch { showError(error) }
+        }
+    }
+    private func configurePinnedToggle(_ pinned: [ChatConversation]) {
+        let visible = query.isEmpty && !pinned.isEmpty && runtime.failure == nil
+        if showsPinnedToggle != visible { showsPinnedToggle = visible; setNeedsQuickLayout() }
+        let collapsed = runtime.pinnedConversationsCollapsed
+        var config = UIButton.Configuration.plain()
+        config.title = Localization.text(collapsed ? "chat.list.expandPinned" : "chat.list.collapsePinned")
+        let locale = Locale(identifier: Localization.localizationController.currentLocale.identifier)
+        let unread = pinned.filter { $0.readState.unread > 0 || runtime.listStates[$0.id]?.manuallyUnread == true }.count
+        config.subtitle = String(format: Localization.text("chat.list.pinnedSummary"), locale: locale,
+                                 pinned.count.formatted(.number.locale(locale)), unread.formatted(.number.locale(locale)))
+        config.image = UIImage(systemName: collapsed ? "chevron.down" : "chevron.up")
+        config.imagePlacement = .trailing
+        config.imagePadding = 8
+        config.titleLineBreakMode = .byWordWrapping
+        config.subtitleLineBreakMode = .byWordWrapping
+        let titleFont = UIFont.preferredFont(forTextStyle: .subheadline, compatibleWith: traitCollection)
+        let subtitleFont = UIFont.preferredFont(forTextStyle: .footnote, compatibleWith: traitCollection)
+        config.preferredSymbolConfigurationForImage = UIImage.SymbolConfiguration(font: titleFont, scale: .small)
+        config.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer {
+            var value = $0; value.font = titleFont; return value
+        }
+        config.subtitleTextAttributesTransformer = UIConfigurationTextAttributesTransformer {
+            var value = $0; value.font = subtitleFont; return value
+        }
+        pinnedToggle.configuration = config
+        pinnedToggle.accessibilityLabel = config.title
+        pinnedToggle.accessibilityValue = config.subtitle
+        setNeedsQuickLayout()
+    }
+    private func draftSubtitle(_ draft: ConversationDraftPreview) -> String {
+        let text = String(draft.text.prefix(256)).replacingOccurrences(of: "\n", with: " ")
+        return String(format: Localization.text("chat.list.draftPreview"),
+                      locale: Locale(identifier: Localization.localizationController.currentLocale.identifier),
+                      text.isEmpty && draft.hasAttachments ? Localization.text("chat.list.draftAttachments") : text)
+    }
     override func reloadRows() {
         let generation = UUID()
         renderGeneration = generation
         let matches = runtime.visibleSortedConversations.filter {
             query.isEmpty || runtime.title($0).localizedStandardContains(query)
         }
-        rows = matches.map {
+        configurePinnedToggle(matches.filter { runtime.preference($0.id).isPinned })
+        let displayed = matches.filter { !query.isEmpty || !runtime.pinnedConversationsCollapsed || !runtime.preference($0.id).isPinned }
+        rows = displayed.map {
             LiveChatRow(
                 id: $0.id, title: runtime.title($0),
-                subtitle: $0.closed
+                subtitle: runtime.draftPreviews[$0.id].map(draftSubtitle) ?? ($0.closed
                     ? Localization.text("chat.live.closed")
                     : ($0.readState.unread > 0
-                        ? String($0.readState.unread) + " · " + Localization.text("chat.live.unread") : ""),
+                        ? String($0.readState.unread) + " · " + Localization.text("chat.live.unread") : "")),
                 symbol: $0.kind == "group" ? "person.3.fill" : "person.crop.circle.fill",
                 badge: $0.readState.unread > 99 ? "99+" : $0.readState.unread > 0 ? String($0.readState.unread) : "",
                 markers: runtime.preference($0.id).isMuted ? ["bell.slash.fill"] : [],
                 isPinned: runtime.preference($0.id).isPinned,
-                manuallyUnread: runtime.listStates[$0.id]?.manuallyUnread == true)
+                manuallyUnread: runtime.listStates[$0.id]?.manuallyUnread == true,
+                isDraft: runtime.draftPreviews[$0.id] != nil)
         }
         let state = ChatListContentState.resolve(
             hasSnapshot: runtime.hasSnapshot, synchronization: runtime.synchronization,
@@ -391,6 +405,7 @@ final class ConversationListViewController: LiveChatListController {
             guard let self, let store = runtime.engine?.store else { return }
             var values = rows
             for i in values.indices {
+                guard !values[i].isDraft else { continue }
                 if let message = try? await store.latestVisibleMessage(values[i].id) {
                     values[i].subtitle =
                         message.revoked
@@ -399,7 +414,7 @@ final class ConversationListViewController: LiveChatListController {
                         : message.kind == "text" ? message.text : Localization.text("chat.live." + message.kind)
                 }
             }
-            guard renderGeneration == generation else { return }
+            guard renderGeneration == generation, runtime.engine?.store === store else { return }
             rows = values
         }
     }
@@ -413,9 +428,14 @@ final class ConversationListViewController: LiveChatListController {
     let controller = LiveChatListController(runtime: ChatRuntime(session: .configured()))
     controller.loadViewIfNeeded()
     controller.rows = [
-        LiveChatRow(id: "pinned", title: "周末去海边", subtitle: "我们周六见", isPinned: true, manuallyUnread: true),
+        LiveChatRow(id: "pinned", title: "周末去海边", subtitle: "[草稿] 我们周六见", isPinned: true, manuallyUnread: true, isDraft: true),
         LiveChatRow(id: "ordinary", title: "林沐", subtitle: "照片", badge: "3")
     ]
     return controller
+}
+@available(iOS 17.0, *)
+#Preview("会话列表 · 折叠置顶") {
+    UINavigationController(rootViewController: ConversationListViewController(
+        runtime: ConversationPreviewData.conversationListRuntime(collapsed: true)))
 }
 #endif

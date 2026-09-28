@@ -47,7 +47,7 @@ HTTP 路由统一要求 Bearer 与 `Accept: application/protobuf`，POST 正文 
 
 events limit 默认 100、最大 200；响应至多 4 MiB，实际内容预算 3 MiB 预留封装。base_cursor 对应请求起点，next_cursor 对应已返回最后事件，has_more 表示还存在后续位置。空 cursor 从位置 0 开始，空 epoch 仅用于首次请求。游标签名绑定账号、资源、epoch 和位置；无效／跨账号游标拒绝，不跳到最新位置。相同事件的实体在读取时按当前权威状态物化，因此早期消息事件在撤回后也只有占位。
 
-快照首次空 token／cursor，建立包含所有历史会话关系的固定数据和同步基线；后续携带相同 token 与返回的 cursor。快照 token 绑定账号与资源，10 分钟有效；新快照创建时清理过期快照，已清理 token 返回 `SNAPSHOT_NOT_FOUND`，尚未清理的过期 token 返回 `SNAPSHOT_EXPIRED`。limit 默认 50、最大 100，结束页才返回 baseline_cursor。`CURSOR_EXPIRED` 后客户端请求新的空 token 快照；错误本身不携带 token。保留本地草稿、outbox 和删除标记，完成后按基线补增量再补历史。快照只含 IM 会话／成员／阅读状态，不含联系人或全部正文。
+快照首次空 token／cursor，建立包含所有历史会话关系的固定数据和同步基线；后续携带相同 token 与返回的 cursor。快照 token 绑定账号与资源，10 分钟有效；新快照创建时清理过期快照，已清理 token 返回 `SNAPSHOT_NOT_FOUND`，尚未清理的过期 token 返回 `SNAPSHOT_EXPIRED`。limit 默认 50、最大 100，结束页才返回 baseline_cursor。`CURSOR_EXPIRED` 后客户端请求新的空 token 快照；错误本身不携带 token。保留本地草稿、outbox 和删除标记，完成后按基线补增量再补历史。快照包含 IM 会话／成员／阅读状态及联系人当前投影，不含全部消息正文。
 
 回执分母固定为接受消息时的活跃成员减发送者。满足 `read_count ≤ delivered_count ≤ expected_count`；退群和重入不改变旧分母。仅消息发送者可查明细，首次空 token，分页时固定 token／cursor，不把旧明细与新摘要混合。收到 read／receipt 会话事件后按需刷新可见消息的回执。
 
@@ -83,3 +83,21 @@ events limit 默认 100、最大 200；响应至多 4 MiB，实际内容预算 3
 `IMMessage.system_event = 18` 保存 `friendship_accepted`、关系 ID／版本、申请人及接受人。系统消息由服务端生成身份，无用户发送者、设备、client_message_id、文本正文或回执；客户端发送接口不支持此类型，撤回返回 `REVOKE_FORBIDDEN`，回执明细返回 `RECEIPT_FORBIDDEN`。
 
 `IMConversation.latest_message = 11` 返回权限范围内最后消息，适用于快照及增量摘要；不表示历史覆盖。客户端按结构化事件本地化，未知类型保持消息身份并显示占位。旧客户端仍可同步消息信封。没有新增 HTTP 路由或数据库表。
+
+## 通讯录语义 v2（未发版统一升级）
+
+`/v1/im/contacts/get` 返回当前账号投影；`/v1/im/contacts/mutate` 必须声明 `semantics_version=2`。动作包含 request、accept、reject、cancel、delete、restore、remark、block、unblock，写操作继续使用 operation_id 和 expected_revision。请求／响应新增字段以权威 proto 为准，不复用已有编号。
+
+`is_contact` 为自己的保留标记，`remark` 和 `is_blocked` 只属于本人。`request_id`、`request_state`、`request_message`、`request_updated_at_ms` 为最近申请；accept／reject／cancel 必须同时提供当前投影版本和相同 request_id；缺失或不匹配均拒绝。`available_actions` 包含有效动作及 send。`state` 是当前账号的派生显示状态，不再作为双方发送权限来源。
+
+删除仅移除本人条目；双方保留且均未拉黑才允许私聊、私聊媒体创建和互相邀请入群。一方保留时另一方可 restore；双方移除则 request。待处理申请必须先处理，不绕过申请直接 restore。block 结束当前 pending 申请，不删除关系或历史；unblock 不恢复申请。既有群内发消息不受联系人删除或拉黑影响。
+
+备注最多 64 Character，申请留言最多 200 Character，可为空，其他文本校验沿用 Validation.text。备注修改只提升本人投影版本并产生本人同步事件；关系与申请变化提升双方投影并产生双方事件。接受仍与系统消息同事务；直接 restore 不新增系统消息。旧重试返回当前投影，禁止重放出已被删除的旧状态。
+
+新错误：CONTACT_CLIENT_UPDATE_REQUIRED（409，升级客户端／服务端）、CONTACT_UNAVAILABLE（403，中性不可用提示，不暴露对方私有设置）。原 CONTACT_VERSION_CONFLICT、CONTACT_ACTION_UNAVAILABLE 继续触发读取权威关系并保留输入。旧加密 payload 通过 UpgradeContactSides 迁移，保留 ID 和历史，新增单调版本及同步事件；不可无损降级。
+
+### 公共资料同步
+
+昵称保存与联系人、会话资料投影推进在同一事务内完成。联系人只推进看见此人新昵称的另一方投影，不改写备注或申请时间；群资料向仍可读取实时投影的成员发送更新，已冻结的离群快照保持原样。公共资料缓存独立比较 `profile_version`，旧关系或会话响应不得覆盖较新资料。
+
+`IMSyncHint.own_profile_version` 唤醒同账号在线设备，`IMEventsResponse.own_profile_version` 提供 HTTP 对账值；设备发现版本上升后读取 `/me`，包括没有联系人和会话的账号。WebSocket 只提供提示，不提交客户端游标。`own_profile_version` 仅表示本账号版本，其他人的公开昵称及 `profile_version` 仍通过原有权限投影返回。

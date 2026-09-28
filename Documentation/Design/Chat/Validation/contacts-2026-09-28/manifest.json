@@ -1,0 +1,130 @@
+[
+  {
+    "file": "iPhone-通讯录-黑名单.png",
+    "device": "iPhone 17 Pro",
+    "test": "ChatContactsUITests/testContactsProfileRemarkAndBlackListNavigation()",
+    "sourceResult": "AzureFish-Contacts-iPhone-verified.xcresult"
+  },
+  {
+    "file": "iPhone-通讯录-单向删除确认.png",
+    "device": "iPhone 17 Pro",
+    "test": "ChatContactsUITests/testContactsProfileRemarkAndBlackListNavigation()",
+    "sourceResult": "AzureFish-Contacts-iPhone-verified.xcresult"
+  },
+  {
+    "file": "iPhone-通讯录-好友资料.png",
+    "device": "iPhone 17 Pro",
+    "test": "ChatContactsUITests/testContactsProfileRemarkAndBlackListNavigation()",
+    "sourceResult": "AzureFish-Contacts-iPhone-verified.xcresult"
+  },
+  {
+    "file": "iPhone-新的朋友-ar.png",
+    "device": "iPhone 17 Pro",
+    "test": "ChatContactsUITests/testFourLanguagesRequestsAndSearch()",
+    "sourceResult": "AzureFish-Contacts-iPhone-verified.xcresult"
+  },
+  {
+    "file": "iPhone-通讯录-ar.png",
+    "device": "iPhone 17 Pro",
+    "test": "ChatContactsUITests/testFourLanguagesRequestsAndSearch()",
+    "sourceResult": "AzureFish-Contacts-iPhone-verified.xcresult"
+  },
+  {
+    "file": "iPhone-新的朋友-en.png",
+    "device": "iPhone 17 Pro",
+    "test": "ChatContactsUITests/testFourLanguagesRequestsAndSearch()",
+    "sourceResult": "AzureFish-Contacts-iPhone-verified.xcresult"
+  },
+  {
+    "file": "iPhone-通讯录-en.png",
+    "device": "iPhone 17 Pro",
+    "test": "ChatContactsUITests/testFourLanguagesRequestsAndSearch()",
+    "sourceResult": "AzureFish-Contacts-iPhone-verified.xcresult"
+  },
+  {
+    "file": "iPhone-新的朋友-zh-Hant.png",
+    "device": "iPhone 17 Pro",
+    "test": "ChatContactsUITests/testFourLanguagesRequestsAndSearch()",
+    "sourceResult": "AzureFish-Contacts-iPhone-verified.xcresult"
+  },
+  {
+    "file": "iPhone-通讯录-zh-Hant.png",
+    "device": "iPhone 17 Pro",
+    "test": "ChatContactsUITests/testFourLanguagesRequestsAndSearch()",
+    "sourceResult": "AzureFish-Contacts-iPhone-verified.xcresult"
+  },
+  {
+    "file": "iPhone-新的朋友-zh-Hans.png",
+    "device": "iPhone 17 Pro",
+    "test": "ChatContactsUITests/testFourLanguagesRequestsAndSearch()",
+    "sourceResult": "AzureFish-Contacts-iPhone-verified.xcresult"
+  },
+  {
+    "file": "iPhone-通讯录-zh-Hans.png",
+    "device": "iPhone 17 Pro",
+    "test": "ChatContactsUITests/testFourLanguagesRequestsAndSearch()",
+    "sourceResult": "AzureFish-Contacts-iPhone-verified.xcresult"
+  },
+  {
+    "file": "iPad-新的朋友-ar.png",
+    "device": "iPad Pro 11-inch (M5)",
+    "test": "ChatContactsUITests/testFourLanguagesRequestsAndSearch()",
+    "sourceResult": "AzureFish-Contacts-iPad-complete.xcresult"
+  },
+  {
+    "file": "iPad-通讯录-ar.png",
+    "device": "iPad Pro 11-inch (M5)",
+    "test": "ChatContactsUITests/testFourLanguagesRequestsAndSearch()",
+    "sourceResult": "AzureFish-Contacts-iPad-complete.xcresult"
+  },
+  {
+    "file": "iPad-新的朋友-en.png",
+    "device": "iPad Pro 11-inch (M5)",
+    "test": "ChatContactsUITests/testFourLanguagesRequestsAndSearch()",
+    "sourceResult": "AzureFish-Contacts-iPad-complete.xcresult"
+  },
+  {
+    "file": "iPad-通讯录-en.png",
+    "device": "iPad Pro 11-inch (M5)",
+    "test": "ChatContactsUITests/testFourLanguagesRequestsAndSearch()",
+    "sourceResult": "AzureFish-Contacts-iPad-complete.xcresult"
+  },
+  {
+    "file": "iPad-新的朋友-zh-Hant.png",
+    "device": "iPad Pro 11-inch (M5)",
+    "test": "ChatContactsUITests/testFourLanguagesRequestsAndSearch()",
+    "sourceResult": "AzureFish-Contacts-iPad-complete.xcresult"
+  },
+  {
+    "file": "iPad-通讯录-zh-Hant.png",
+    "device": "iPad Pro 11-inch (M5)",
+    "test": "ChatContactsUITests/testFourLanguagesRequestsAndSearch()",
+    "sourceResult": "AzureFish-Contacts-iPad-complete.xcresult"
+  },
+  {
+    "file": "iPad-新的朋友-zh-Hans.png",
+    "device": "iPad Pro 11-inch (M5)",
+    "test": "ChatContactsUITests/testFourLanguagesRequestsAndSearch()",
+    "sourceResult": "AzureFish-Contacts-iPad-complete.xcresult"
+  },
+  {
+    "file": "iPad-通讯录-zh-Hans.png",
+    "device": "iPad Pro 11-inch (M5)",
+    "test": "ChatContactsUITests/testFourLanguagesRequestsAndSearch()",
+    "sourceResult": "AzureFish-Contacts-iPad-complete.xcresult"
+  },
+  {
+    "file": "iPad-窄屏编辑保留.png",
+    "device": "iPad Pro 11-inch (M5)",
+    "test": "ChatContactsUITests/testRemarkInputSurvivesCompactWideRotation()",
+    "sourceResult": "AzureFish-Contacts-iPad-screen.xcresult",
+    "visualStatus": "已检查"
+  },
+  {
+    "file": "iPad-横屏截图诊断.png",
+    "device": "iPad Pro 11-inch (M5)",
+    "test": "ChatContactsUITests/testRemarkInputSurvivesCompactWideRotation()",
+    "sourceResult": "AzureFish-Contacts-iPad-screen.xcresult",
+    "visualStatus": "未通过视觉验收：截图黑边与裁切，未修改原始图像"
+  }
+]

@@ -45,6 +45,36 @@ struct ChatConversationListPresentationTests {
         #expect(list.rows.first?.isPinned == true)
         #expect(list.rows.first?.markers.contains("pin.fill") == false)
         #expect(list.rows.first { $0.id == direct.id }?.badge == "12")
+        let order = runtime.visibleSortedConversations.map(\.id)
+        let drafts = try #require(runtime.originalDraftStore)
+        var snapshot = ChatDraftSnapshot(conversationID: direct.id)
+        snapshot.segments = [.text("明天见")]
+        try await drafts.save(snapshot).value
+        #expect(other.draftPreviews[direct.id]?.text == "明天见")
+        #expect(list.rows.first { $0.id == direct.id }?.isDraft == true)
+        #expect(list.rows.first { $0.id == direct.id }?.subtitle.contains("明天见") == true)
+        #expect(runtime.visibleSortedConversations.map(\.id) == order)
+        try await runtime.setPinnedConversationsCollapsed(true)
+        #expect(other.pinnedConversationsCollapsed)
+        #expect(list.rows.map(\.id) == [direct.id])
+        #expect(list.list.backgroundView == nil)
+        try await runtime.updatePreference(conversation: direct.id, isPinned: true)
+        #expect(list.rows.isEmpty)
+        #expect(list.list.backgroundView == nil)
+        try await runtime.updatePreference(conversation: direct.id, isPinned: false)
+        let search = try #require(list.navigationItem.searchController)
+        search.searchBar.text = runtime.title(group)
+        list.updateSearchResults(for: search)
+        #expect(list.rows.map(\.id) == [group.id])
+        #expect(runtime.pinnedConversationsCollapsed)
+        search.searchBar.text = ""
+        list.updateSearchResults(for: search)
+        #expect(list.rows.map(\.id) == [direct.id])
+        try await runtime.setPinnedConversationsCollapsed(false)
+        #expect(list.rows.map(\.id) == order)
+        try await drafts.remove(conversationID: direct.id).value
+        #expect(other.draftPreviews[direct.id] == nil)
+        #expect(list.rows.first { $0.id == direct.id }?.isDraft == false)
         try await runtime.markConversationUnread(direct.id)
         #expect(list.rows.first { $0.id == direct.id }?.badge == "12")
         #expect(list.rows.first { $0.id == direct.id }?.manuallyUnread == true)
@@ -68,6 +98,8 @@ struct ChatConversationListPresentationTests {
         try await store.close()
         do { try await runtime.markConversationUnread(group.id); Issue.record("Closed store must fail") } catch {}
         #expect(list.rows.isEmpty)
+        do { try await runtime.setPinnedConversationsCollapsed(true); Issue.record("Closed store must fail") } catch {}
+        #expect(!runtime.pinnedConversationsCollapsed)
     }
 
     @Test func dotAndReusedRowBackground() async throws {
@@ -101,8 +133,14 @@ struct ChatConversationListPresentationTests {
             Localization.setLocale(identifier: locale)
             controller.reloadLayoutDirection(Localization.currentUIKitDirection)
             controller.reloadLocalizedContent()
-            try await Task.sleep(for: .milliseconds(100))
-            controller.list.layoutIfNeeded()
+            // 本地化通知与 diffable 重配异步完成，不依赖机器负载下的固定 100 ms 延时。
+            for _ in 0..<100 {
+                controller.list.layoutIfNeeded()
+                let label = controller.list.cellForItem(at: .init(item: 0, section: 0))?.accessibilityLabel ?? ""
+                if label.contains(Localization.text("chat.details.pinned")),
+                   label.contains(Localization.text("chat.list.manuallyUnread")) { break }
+                try await Task.sleep(for: .milliseconds(20))
+            }
             let localized = try #require(controller.list.cellForItem(at: .init(item: 0, section: 0)))
             #expect(localized.accessibilityLabel?.contains(Localization.text("chat.details.pinned")) == true)
             #expect(localized.accessibilityLabel?.contains(Localization.text("chat.list.manuallyUnread")) == true)

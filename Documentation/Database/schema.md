@@ -1,6 +1,6 @@
 # 表结构与字段字典
 
-> **状态：设计阶段，尚未接入应用。** 本文只描述目标结构，不提供可执行建表或迁移脚本。字段、枚举与约束需在后续 GRDB 实施中逐项落实。返回 [文档入口](README.md)。
+> **状态：目标结构与部分实现并存。** 联系人、会话、消息、资料版本和待恢复操作已通过 `AzureFishChat/ChatStore` 的账号 SQLCipher entity／meta 存储接入；本文其他目标表不代表均已实施。当前联系人模型及运行证据见 [好友管理](../Design/Chat/contact-management.md)。返回 [文档入口](README.md)。
 
 ## 通用规则
 
@@ -19,7 +19,7 @@
 
 | 状态领域 | 合法流转及合并规则 |
 | --- | --- |
-| 联系人 relationship | none → friend → deleted；重新添加可回 friend，必须是更高服务端版本；is_blocked 独立 |
+| 联系人 relationship | 每账号独立保留／移除；对方保留时可直接恢复，否则重新申请；is_blocked 独立；以单向联系人投影版本合并 |
 | 会话 availability | active → left/closed；重入可由更高版本回 active，closed 是否允许恢复由服务端明确事件决定 |
 | 群成员 role／区间 | role 由服务端版本决定；退出填写 left_seq，重入新建 membership_id，不复用已退出关系 |
 | message.send_state | queued → uploading（可跳过）→ sending → accepted；永久失败／预算耗尽 → failed；显式重试 failed → queued；未确认可 cancelled；他人消息 received；迟到权威 ACK 可将 cancelled 合并为 accepted，但 tombstone 继续隐藏 |

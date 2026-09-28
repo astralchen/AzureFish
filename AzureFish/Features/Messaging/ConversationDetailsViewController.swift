@@ -105,7 +105,7 @@ final class ConversationDetailsViewController: LocalizedQuickLayoutHostingContro
                     Row(member.id, model: runtime.memberName(member), cell: ConversationMemberCell.self) { cell, name, _ in
                         cell.configure(name: name, owner: member.id == ownerID)
                         cell.accessibilityIdentifier = "chat.details.member." + member.id
-                    }.refreshID(ownerID + locale).onSelect { [weak self] _, _ in self?.openMember(member) }
+                    }.refreshID([ownerID, locale, runtime.memberName(member), traitCollection.preferredContentSizeCategory.rawValue]).onSelect { [weak self] _, _ in self?.openMember(member) }
                 }
             }.background {
                 ListBackgroundDecoration(view: ConversationMembersBackground.self, contentInsets: .init(leading: backgroundInset, trailing: backgroundInset))
@@ -252,7 +252,7 @@ final class ConversationDetailsViewController: LocalizedQuickLayoutHostingContro
     private func openMember(_ member: ChatMember) {
         list.indexPathsForSelectedItems?.forEach { list.deselectItem(at: $0, animated: false) }
         if member.id == runtime.userID {
-            navigationController?.pushViewController(ProfileViewController(session: runtime.session), animated: true)
+            navigationController?.pushViewController(ProfileViewController(session: runtime.session, runtime: runtime), animated: true)
             return
         }
         if conversation.kind != "group", let contact = runtime.contacts.first(where: { $0.peer.id == member.id }) {
@@ -272,9 +272,9 @@ final class ConversationDetailsViewController: LocalizedQuickLayoutHostingContro
         let chooser = LiveChatListController(runtime: runtime)
         chooser.title = Localization.text("chat.live.addMembers")
         chooser.rows = runtime.contacts.filter { contact in
-            contact.state == "friend"
+            contact.canSend
                 && !conversation.members.contains(where: { $0.id == contact.peer.id && $0.active })
-        }.map { LiveChatRow(id: $0.peer.id, title: $0.peer.nickname) }
+        }.map { LiveChatRow(id: $0.peer.id, title: $0.displayName) }
         chooser.selected = { [weak self, weak chooser] id in
             self?.change(.add, member: id) { success in
                 if success { chooser?.navigationController?.popViewController(animated: true) }
@@ -399,11 +399,14 @@ final class ConversationMemberViewController: AccountScreen {
         setNeedsQuickLayout()
     }
     private func openProfile() {
-        guard let api = runtime.api else { return }
+        guard !busy, let api = runtime.api, let engine = runtime.engine else { return }
+        busy = true
         Task { [weak self] in
             guard let self else { return }
+            defer { busy = false }
             do {
                 let contact = try await api.contact(peer: member.id)
+                guard runtime.engine === engine, navigationController?.topViewController === self else { return }
                 navigationController?.pushViewController(FriendViewController(runtime: runtime, contact: contact), animated: true)
             } catch { showMessage("chat.live.failed") }
         }

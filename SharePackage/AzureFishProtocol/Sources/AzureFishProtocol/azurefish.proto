@@ -330,6 +330,7 @@ message IMEventsResponse {
     string next_cursor = 3; // 客户端事务提交后才保存。
     string epoch = 4;
     bool has_more = 5;
+    int64 own_profile_version = 6; // 本账号资料版本；变化时通过 /me 取权威资料，不含他人私有字段。
 }
 // 固定会话快照；空 token 创建，后续必须原样携带 token 与 cursor。
 message IMSnapshotRequest {
@@ -370,6 +371,7 @@ message IMReceiptsResponse {
 message IMSyncHint {
     string epoch = 1;
     string latest_cursor = 2; // 仅提示，不能直接替代客户端 checkpoint。
+    int64 own_profile_version = 3; // 无联系人或会话时，资料更新也能唤醒自己的其他在线设备。
 }
 
 
@@ -494,6 +496,15 @@ message ContactRelationship {
     string requester_user_id = 4;
     int64 revision = 5;
     int64 updated_at_ms = 6;
+    int32 semantics_version = 7; // 2：单向联系人及私有设置；0 表示旧服务。
+    bool is_contact = 8; // 当前账号是否保留对方，与申请及拉黑独立。
+    string remark = 9; // 仅返回当前账号自己的备注。
+    bool is_blocked = 10; // 仅返回当前账号自己的拉黑设置。
+    string request_id = 11; // 最近一次申请身份；旧申请迁移后保持稳定。
+    string request_state = 12; // pending、accepted、rejected、cancelled；无申请为空。
+    string request_message = 13; // 最近申请留言，不是聊天正文。
+    int64 request_updated_at_ms = 14;
+    repeated string available_actions = 15; // 当前可执行动作，包含 send；不公开对方私有设置。
 }
 // 查询对方当前关系；无记录时返回 state=none、revision=0。
 message ContactGetRequest { string peer_user_id = 1; }
@@ -503,4 +514,8 @@ message ContactMutationRequest {
     string peer_user_id = 2;
     int64 expected_revision = 3;
     string action = 4; // request、accept、reject、cancel、delete。
+    int32 semantics_version = 5; // 必须为 2；旧客户端写操作返回 CONTACT_CLIENT_UPDATE_REQUIRED。
+    string remark = 6; // remark 动作专用，允许清空，最多 64 Character。
+    string request_message = 7; // request 动作专用，最多 200 Character。
+    string request_id = 8; // accept、reject、cancel 的申请身份；expected_revision 同时校验。
 }

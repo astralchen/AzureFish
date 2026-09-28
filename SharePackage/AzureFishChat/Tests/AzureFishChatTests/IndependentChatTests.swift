@@ -39,11 +39,15 @@
             await #expect(throws: (any Error).self) {
                 try await first.resolve(peer: bID.uuidString, operationID: UUID())
             }
-            let request = try await first.mutateContact(
-                peer: bID.uuidString, action: .request, revision: 0, operationID: UUID())
-            let accepted = try await second.mutateContact(
+            let bProfile = try await b.authorized { try await api.profile(using: $0) }
+            #expect(try await first.lookup(account: bProfile.accountName).id == bID.uuidString.lowercased())
+            let requestBytes = try IMAPI.contactMutation(peer: bID.uuidString, action: .request, revision: 0, operationID: UUID(), message: "见面认识的朋友")
+            let request = try await first.mutateContact(bytes: requestBytes)
+            #expect(try await first.mutateContact(bytes: requestBytes).requestID == request.requestID)
+            #expect(request.requestMessage == "见面认识的朋友")
+            _ = try await second.mutateContact(
                 peer: aID.uuidString, action: .accept, revision: request.revision,
-                operationID: UUID())
+                operationID: UUID(), requestID: request.requestID)
             let conversation = try await first.resolve(peer: bID.uuidString, operationID: UUID())
             let root = FileManager.default.temporaryDirectory.appendingPathComponent(
                 UUID().uuidString)
@@ -64,6 +68,16 @@
                     try await store.contacts().contains {
                         $0.state == "friend" && $0.peer.id == bID.uuidString.lowercased()
                     })
+                let relationship = try await first.contact(peer: bID.uuidString)
+                _ = try await first.mutateContact(peer: bID.uuidString, action: .remark, revision: relationship.revision, operationID: UUID(), remark: "我的同事")
+                _ = try await b.authorized { credentials in
+                    let operation = try api.prepareProfileUpdate(operationID: UUID(), changes: .init(expectedVersion: bProfile.version, nickname: "新的公开昵称"), using: credentials)
+                    return try await api.execute(operation, using: credentials)
+                }
+                try await engine.synchronize()
+                let updated = try #require(try await store.contacts().first { $0.peer.id == bID.uuidString.lowercased() })
+                #expect(updated.displayName == "我的同事" && updated.peer.nickname == "新的公开昵称")
+                #expect(try await second.contact(peer: aID.uuidString).remark.isEmpty)
                 try await store.setConversationPreferences(.init(isPinned: true, isMuted: true), conversation: conversation.id)
                 #expect(try await store.conversationPreferences(conversation.id).isPinned)
                 var incoming = await engine.incomingMessages().makeAsyncIterator()
@@ -144,8 +158,9 @@
                 let lease = try await media.lease(cached)
                 #expect(try Data(contentsOf: lease) == data)
                 try await media.release(lease)
+                try await store.saveDraft(.init(text: "关系变更保留草稿"), conversation: conversation.id)
                 _ = try await first.mutateContact(
-                    peer: bID.uuidString, action: .delete, revision: accepted.revision,
+                    peer: bID.uuidString, action: .delete, revision: first.contact(peer: bID.uuidString).revision,
                     operationID: UUID())
                 _ = try await queue.download(resource, message: sent.id)
                 _ = try await first.revoke(
@@ -153,6 +168,18 @@
                 await #expect(throws: (any Error).self) {
                     _ = try await queue.download(resource, message: sent.id)
                 }
+                let deleted = try await first.contact(peer: bID.uuidString)
+                #expect(!deleted.isContact && deleted.remark == "我的同事")
+                #expect(try await second.contact(peer: aID.uuidString).isContact)
+                await #expect(throws: (any Error).self) { try await second.send(.init(conversationID: conversation.id, deviceID: bDevice, text: "暂停联系")) }
+                let restoredContact = try await first.mutateContact(peer: bID.uuidString, action: .restore, revision: deleted.revision, operationID: UUID())
+                #expect(restoredContact.canSend)
+                let blocked = try await first.mutateContact(peer: bID.uuidString, action: .block, revision: restoredContact.revision, operationID: UUID())
+                #expect(blocked.isBlocked && !blocked.canSend)
+                let unblocked = try await first.mutateContact(peer: bID.uuidString, action: .unblock, revision: blocked.revision, operationID: UUID())
+                #expect(unblocked.canSend && unblocked.remark == "我的同事")
+                try await engine.synchronize()
+                #expect(try await store.draft(conversation.id).text == "关系变更保留草稿")
                 await queue.stop()
                 await engine.stop()
                 try await store.close()

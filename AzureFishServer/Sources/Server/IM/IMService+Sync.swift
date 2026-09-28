@@ -20,6 +20,7 @@ extension IMService {
             let messageRows = Dictionary(uniqueKeysWithValues: rows.map { ($0.position, $0) })
             let relationshipRows = Dictionary(uniqueKeysWithValues: contactRows.map { ($0.position, $0) })
             var result = IMEventsResponse(); result.epoch = self.epoch
+            result.ownProfileVersion = try await UserRecord.find(session.userID, on: db)?.version ?? 0
             result.baseCursor = try self.cursor(user: session.userID, resource: "events", position: position)
             var next = position
             var cache: [UUID: (IMConversationState, IMConversation)] = [:]

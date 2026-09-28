@@ -7,6 +7,7 @@ import Foundation
 final class AccountChatDraftStore: ChatDraftStoring {
     let store: ChatStore
     let media: ChatMediaStore
+    var didSave: (() async -> Void)?
     private var tail: Task<Void, Never>?
     var legacyLoaders: [URL: ([ChatUploadItem]) async throws -> [Attachment]] = [:]
     private var imported: [URL: (Date?, Int64, UUID)] = [:]
@@ -47,6 +48,7 @@ final class AccountChatDraftStore: ChatDraftStoring {
                 switch segment { case .text(let text): text; case .richText(let text): text.text; case .attachment: "" }
             }.joined()
             try await store.saveEditorDraft(value, text: text, conversation: snapshot.conversationID)
+            await didSave?()
         }
     }
     func saveReedited(_ snapshot: ChatDraftSnapshot, message: String, original: String) -> Task<Void, Error> {
@@ -54,11 +56,13 @@ final class AccountChatDraftStore: ChatDraftStoring {
             let value = try await encrypt(snapshot)
             try await store.saveEditorDraft(value, text: original, conversation: snapshot.conversationID,
                 reediting: message, expectedText: original)
+            await didSave?()
         }
     }
     func remove(conversationID: String) -> Task<Void, Error> {
         enqueue { [self] in
             try await store.saveEditorDraft(ChatDraftSnapshot(conversationID: conversationID), text: "", conversation: conversationID)
+            await didSave?()
         }
     }
     func encrypt(_ snapshot: ChatDraftSnapshot, reuseResources: Bool = true) async throws -> ChatDraftSnapshot {

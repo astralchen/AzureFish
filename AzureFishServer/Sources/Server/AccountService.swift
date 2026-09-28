@@ -139,7 +139,7 @@ final class AccountService: Sendable {
         return raw(data)
     }
 
-    func update(_ req: Request) async throws -> Response {
+    func update(_ req: Request, publicProfileChanged: @escaping @Sendable (UUID, any Database) async throws -> Void) async throws -> Response {
         let (input, bytes) = try requestMessage(UpdateProfileRequest.self, from: req)
         let operation = try Validation.uuid(input.operationID, field: "operation_id")
         guard input.expectedProfileVersion > 0 else { throw APIError(.badRequest, "VALIDATION_FAILED", field: "expected_profile_version") }
@@ -160,6 +160,7 @@ final class AccountService: Sendable {
                 user.version += 1
                 user.payload = try self.encrypt(payload, id: user.requireID())
                 try await user.update(on: db)
+                if input.hasNickname { try await publicProfileChanged(session.userID, db) }
                 let result = try self.profile(user).serializedData()
                 try await self.record(operation, scope: scope, bytes: bytes, result: result, session: session, db: db)
                 return result

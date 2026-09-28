@@ -12,12 +12,26 @@ extension IMService {
         try await ContactRecord.query(on: db).filter(\.$pairKey == contactKey(user, peer)).first()
     }
     func contactState(_ row: ContactRecord) throws -> ContactState {
-        try decrypt(row.payload, context: "contact:" + row.requireID().uuidString)
+        var state: ContactState = try decrypt(row.payload, context: "contact:" + row.requireID().uuidString)
+        if state.sides == nil {
+            state.sides = Dictionary(uniqueKeysWithValues: [row.firstUser, row.secondUser].map {
+                ($0.uuidString, ContactSide(retained: state.status == "friend", revision: state.revision, updated: state.updated))
+            })
+            state.requestID = try row.requireID().uuidString.lowercased()
+            state.requestStatus = state.status == "friend" || state.status == "deleted" ? "accepted" : state.status
+            state.requestMessage = ""
+            state.requestUpdated = state.updated
+        }
+        return state
     }
     func requireFriend(_ user: UUID, _ peer: UUID, db: any Database) async throws {
-        guard let row = try await contactRecord(user, peer, db: db), try contactState(row).status == "friend" else {
+        guard let row = try await contactRecord(user, peer, db: db) else { throw APIError(.forbidden, "FRIEND_REQUIRED") }
+        let state = try contactState(row)
+        guard let own = state.sides?[user.uuidString], let other = state.sides?[peer.uuidString] else {
             throw APIError(.forbidden, "FRIEND_REQUIRED")
         }
+        guard !own.blocked && !other.blocked else { throw APIError(.forbidden, "CONTACT_UNAVAILABLE") }
+        guard own.retained && other.retained else { throw APIError(.forbidden, "FRIEND_REQUIRED") }
     }
     func requireSending(user: UUID, state: IMConversationState, db: any Database) async throws {
         if state.kind == "direct", let peer = state.members.first(where: { $0.user != user }) {
@@ -31,94 +45,137 @@ extension IMService {
         result.peer.nickname = try accounts.payload(profile).nickname
         result.peer.profileVersion = profile.version
         result.state = "none"
+        result.semanticsVersion = 2
+        result.availableActions = user == peer ? [] : ["request", "block"]
         if let row = try await contactRecord(user, peer, db: db) {
             let value = try contactState(row)
+            let own = value.sides![user.uuidString]!
+            let other = value.sides![peer.uuidString]!
             result.relationshipID = try row.requireID().uuidString.lowercased()
-            result.state = value.status
+            result.state = own.retained ? "friend" : value.requestStatus == "pending" ? "pending" : "deleted"
             result.requesterUserID = value.requester.uuidString.lowercased()
-            result.revision = value.revision
-            result.updatedAtMs = value.updated
+            result.revision = own.revision
+            result.updatedAtMs = own.updated ?? value.updated
+            result.isContact = own.retained
+            result.remark = own.remark
+            result.isBlocked = own.blocked
+            result.requestID = value.requestID ?? ""
+            result.requestState = value.requestStatus ?? ""
+            result.requestMessage = value.requestMessage ?? ""
+            result.requestUpdatedAtMs = value.requestUpdated ?? 0
+            var actions = ["remark", own.blocked ? "unblock" : "block"]
+            if own.retained { actions.append("delete") }
+            if !own.blocked && !other.blocked {
+                if own.retained && other.retained { actions.append("send") }
+                else if value.requestStatus == "pending" {
+                    actions += value.requester == user ? ["cancel"] : ["accept", "reject"]
+                } else if !own.retained && other.retained { actions.append("restore") }
+                else { actions.append("request") }
+            }
+            result.availableActions = actions
         }
         return result
     }
     func contactGet(_ req: Request) async throws -> Response {
         let (input, _) = try requestMessage(ContactGetRequest.self, from: req)
         let peer = try Validation.uuid(input.peerUserID, field: "peer_user_id")
-        return try await read(req) { session, db in try await self.contactView(user: session.userID, peer: peer, db: db)
-        }
+        return try await read(req) { session, db in try await self.contactView(user: session.userID, peer: peer, db: db) }
     }
     func contactMutate(_ req: Request) async throws -> Response {
         let (input, bytes) = try requestMessage(ContactMutationRequest.self, from: req)
+        guard input.semanticsVersion == 2 else { throw APIError(.conflict, "CONTACT_CLIENT_UPDATE_REQUIRED") }
         let peer = try Validation.uuid(input.peerUserID, field: "peer_user_id")
-        guard ["request", "accept", "reject", "cancel", "delete"].contains(input.action), input.expectedRevision >= 0
-        else {
+        guard ["request", "accept", "reject", "cancel", "delete", "restore", "remark", "block", "unblock"].contains(input.action),
+              input.expectedRevision >= 0 else { throw APIError(.badRequest, "VALIDATION_FAILED", field: "action") }
+        guard input.action == "remark" || input.remark.isEmpty,
+              input.action == "request" || input.requestMessage.isEmpty else {
             throw APIError(.badRequest, "VALIDATION_FAILED", field: "action")
         }
+        if !input.remark.isEmpty { try Validation.text(input.remark, field: "remark", max: 64) }
+        if !input.requestMessage.isEmpty { try Validation.text(input.requestMessage, field: "request_message", max: 200) }
         return try await write(req, operation: input.operationID, bytes: bytes, name: "contact") { session, db in
-            guard peer != session.userID else { throw APIError(.badRequest, "SELF_CONTACT") }
+            let user = session.userID
+            guard peer != user else { throw APIError(.badRequest, "SELF_CONTACT") }
             guard try await UserRecord.find(peer, on: db) != nil else { throw APIError(.notFound, "USER_NOT_FOUND") }
-            let existing = try await self.contactRecord(session.userID, peer, db: db)
+            let existing = try await self.contactRecord(user, peer, db: db)
             let row = existing ?? ContactRecord()
-            var state =
-                try existing.map(self.contactState)
-                ?? ContactState(status: "none", requester: session.userID, revision: 0, updated: 0)
-            // 交叉申请只展示现有申请，不自动接受，也不改写原申请人。
-            if input.action == "request", ["pending", "friend"].contains(state.status) {
-                return try await self.contactView(user: session.userID, peer: peer, db: db)
+            var state = try existing.map(self.contactState)
+                ?? ContactState(status: "none", requester: user, revision: 0, updated: 0,
+                                sides: [user.uuidString: ContactSide(retained: false, revision: 0),
+                                        peer.uuidString: ContactSide(retained: false, revision: 0)])
+            var own = state.sides![user.uuidString]!
+            var other = state.sides![peer.uuidString]!
+            // 交叉／重复申请只返回当前申请，不覆盖留言、申请身份或自动接受。
+            if input.action == "request", !own.blocked && !other.blocked,
+               state.requestStatus == "pending" || (own.retained && other.retained) {
+                return try await self.contactView(user: user, peer: peer, db: db)
             }
-            guard input.expectedRevision == state.revision else {
-                throw APIError(.conflict, "CONTACT_VERSION_CONFLICT")
+            guard input.expectedRevision == own.revision else { throw APIError(.conflict, "CONTACT_VERSION_CONFLICT") }
+            if ["request", "restore", "accept"].contains(input.action), own.blocked || other.blocked {
+                throw APIError(.forbidden, "CONTACT_UNAVAILABLE")
+            }
+            if ["accept", "reject", "cancel"].contains(input.action),
+               input.requestID != state.requestID { throw APIError(.conflict, "CONTACT_VERSION_CONFLICT") }
+            if existing == nil {
+                for member in [user, peer] {
+                    let count = try await ContactRecord.query(on: db).group(.or) {
+                        $0.filter(\.$firstUser == member).filter(\.$secondUser == member)
+                    }.count()
+                    guard count < 500 else { throw APIError(.conflict, "CONTACT_LIMIT") }
+                }
+                row.id = UUID(); row.pairKey = self.contactKey(user, peer)
+                row.firstUser = user; row.secondUser = peer
             }
             switch input.action {
             case "request":
-                try await self.accounts.limiter.check(
-                    "contact-request:" + session.userID.uuidString, limit: 20, now: self.accounts.clock())
-                for user in [session.userID, peer] {
-                    let count = try await ContactRecord.query(on: db).group(.or) {
-                        $0.filter(\.$firstUser == user).filter(\.$secondUser == user)
-                    }.count()
-                    guard existing != nil || count < 500 else { throw APIError(.conflict, "CONTACT_LIMIT") }
-                }
-                state.status = "pending"
-                state.requester = session.userID
+                try await self.accounts.limiter.check("contact-request:" + user.uuidString, limit: 20, now: self.accounts.clock())
+                guard !other.retained else { throw APIError(.conflict, "CONTACT_ACTION_UNAVAILABLE") }
+                state.requester = user
+                state.requestID = input.operationID.lowercased()
+                state.requestStatus = "pending"
+                state.requestMessage = input.requestMessage
+                state.requestUpdated = self.accounts.now
             case "accept", "reject":
-                guard state.status == "pending", state.requester == peer else {
-                    throw APIError(.conflict, "CONTACT_ACTION_UNAVAILABLE")
-                }
-                state.status = input.action == "accept" ? "friend" : "rejected"
+                guard state.requestStatus == "pending", state.requester == peer else { throw APIError(.conflict, "CONTACT_ACTION_UNAVAILABLE") }
+                state.requestStatus = input.action == "accept" ? "accepted" : "rejected"
+                state.requestUpdated = self.accounts.now
+                if input.action == "accept" { own.retained = true; other.retained = true }
             case "cancel":
-                guard state.status == "pending", state.requester == session.userID else {
-                    throw APIError(.conflict, "CONTACT_ACTION_UNAVAILABLE")
-                }
-                state.status = "cancelled"
+                guard state.requestStatus == "pending", state.requester == user else { throw APIError(.conflict, "CONTACT_ACTION_UNAVAILABLE") }
+                state.requestStatus = "cancelled"; state.requestUpdated = self.accounts.now
             case "delete":
-                guard state.status == "friend" else { throw APIError(.conflict, "CONTACT_ACTION_UNAVAILABLE") }
-                state.status = "deleted"
+                guard own.retained else { throw APIError(.conflict, "CONTACT_ACTION_UNAVAILABLE") }
+                own.retained = false
+            case "restore":
+                guard !own.retained, other.retained, state.requestStatus != "pending" else { throw APIError(.conflict, "CONTACT_ACTION_UNAVAILABLE") }
+                own.retained = true
+            case "remark": own.remark = input.remark
+            case "block", "unblock":
+                own.blocked = input.action == "block"
+                if own.blocked, state.requestStatus == "pending" {
+                    state.requestStatus = "cancelled"; state.requestUpdated = self.accounts.now
+                }
             default: throw APIError(.badRequest, "VALIDATION_FAILED")
             }
-            if existing == nil {
-                row.id = UUID()
-                row.pairKey = self.contactKey(session.userID, peer)
-                row.firstUser = session.userID
-                row.secondUser = peer
-            }
             state.revision += 1
+            own.revision = state.revision; own.updated = self.accounts.now
+            if input.action != "remark" { other.revision = state.revision; other.updated = self.accounts.now }
+            state.sides = [user.uuidString: own, peer.uuidString: other]
+            state.status = own.retained && other.retained ? "friend" : state.requestStatus == "pending" ? "pending" : "deleted"
             state.updated = self.accounts.now
             row.payload = try self.encrypt(state, context: "contact:" + row.requireID().uuidString)
             try await row.save(on: db)
             if input.action == "accept" {
                 try await self.appendFriendshipNotice(relationship: row.requireID(), revision: state.revision,
-                    requester: peer, accepter: session.userID, db: db)
+                    requester: peer, accepter: user, db: db)
             }
-            for (user, other) in [(session.userID, peer), (peer, session.userID)] {
-                let event = ContactEventRecord()
-                event.id = UUID()
-                event.userID = user
-                event.peerID = other
-                event.position = try await self.tail(user, db: db) + 1
+            let recipients = input.action == "remark" ? [(user, peer)] : [(user, peer), (peer, user)]
+            for (recipient, otherID) in recipients {
+                let event = ContactEventRecord(); event.id = UUID(); event.userID = recipient; event.peerID = otherID
+                event.position = try await self.tail(recipient, db: db) + 1
                 try await event.create(on: db)
             }
-            return try await self.contactView(user: session.userID, peer: peer, db: db)
+            return try await self.contactView(user: user, peer: peer, db: db)
         }
     }
     /// 与好友关系同事务提交系统提示；唯一键隔离每次重新添加关系。

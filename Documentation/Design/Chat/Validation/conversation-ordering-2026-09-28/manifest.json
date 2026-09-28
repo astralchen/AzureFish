@@ -1,0 +1,362 @@
+[
+  {
+    "file": "iphone-search-ar.png",
+    "sha256": "ab7a915c9a24583f649b52c0d54d19db3d2042330c0903a6feeaf25773871148",
+    "attachment": {
+      "configurationName": "Test Scheme Action",
+      "deviceId": "505FE0AF-BD0B-4257-A44A-A3BA1364CF5C",
+      "deviceName": "iPhone 17 Pro",
+      "exportedFileName": "58FF99D5-E641-4BCB-996B-DB1938A10191.png",
+      "isAssociatedWithFailure": false,
+      "suggestedHumanReadableName": "折叠后搜索-ar_0_9A1890B4-C95F-442A-9E62-566D2046782E.png",
+      "timestamp": 1790596538.005
+    },
+    "test": "ChatConversationListUITests/testPinnedFoldDraftAndSearch()",
+    "resultBundle": "/tmp/AzureFish-List-Alignment-Font-iPhone.xcresult"
+  },
+  {
+    "file": "iphone-folded-ar.png",
+    "sha256": "6af6ce22537af9f18987594197bdffdcf0d0e77e2f3a0585f196064327bf64d4",
+    "attachment": {
+      "configurationName": "Test Scheme Action",
+      "deviceId": "505FE0AF-BD0B-4257-A44A-A3BA1364CF5C",
+      "deviceName": "iPhone 17 Pro",
+      "exportedFileName": "2B083685-DEEE-49B7-B085-F024AC0D9104.png",
+      "isAssociatedWithFailure": false,
+      "suggestedHumanReadableName": "折叠置顶-ar_0_F392C07C-DA02-499C-80FF-E1D4CDE86ACA.png",
+      "timestamp": 1790596532.386
+    },
+    "test": "ChatConversationListUITests/testPinnedFoldDraftAndSearch()",
+    "resultBundle": "/tmp/AzureFish-List-Alignment-Font-iPhone.xcresult"
+  },
+  {
+    "file": "iphone-expanded-ar.png",
+    "sha256": "5740980c70ba01e3460df8dee8342a67408b0cbafec59689cc89b0615c26a4d9",
+    "attachment": {
+      "configurationName": "Test Scheme Action",
+      "deviceId": "505FE0AF-BD0B-4257-A44A-A3BA1364CF5C",
+      "deviceName": "iPhone 17 Pro",
+      "exportedFileName": "A57F6EFE-06AB-4700-8461-017401234081.png",
+      "isAssociatedWithFailure": false,
+      "suggestedHumanReadableName": "草稿与置顶-ar_0_44E57C52-C516-4770-B0BB-EA9345B10413.png",
+      "timestamp": 1790596530.374
+    },
+    "test": "ChatConversationListUITests/testPinnedFoldDraftAndSearch()",
+    "resultBundle": "/tmp/AzureFish-List-Alignment-Font-iPhone.xcresult"
+  },
+  {
+    "file": "iphone-search-en.png",
+    "sha256": "146506fc567dcce57decf73f5197663d98a73aee68f8684594450191df5275e2",
+    "attachment": {
+      "configurationName": "Test Scheme Action",
+      "deviceId": "505FE0AF-BD0B-4257-A44A-A3BA1364CF5C",
+      "deviceName": "iPhone 17 Pro",
+      "exportedFileName": "D7BD8B21-9BB3-49C5-B3E7-56CF2B54CB86.png",
+      "isAssociatedWithFailure": false,
+      "suggestedHumanReadableName": "折叠后搜索-en_0_3FE955C3-3D68-46B6-9F7A-B3844200CB72.png",
+      "timestamp": 1790596521.087
+    },
+    "test": "ChatConversationListUITests/testPinnedFoldDraftAndSearch()",
+    "resultBundle": "/tmp/AzureFish-List-Alignment-Font-iPhone.xcresult"
+  },
+  {
+    "file": "iphone-folded-en.png",
+    "sha256": "2cb7f22300ff4c65237b890546229c7f47268fbc8b30c8e13db23e87a094aecf",
+    "attachment": {
+      "configurationName": "Test Scheme Action",
+      "deviceId": "505FE0AF-BD0B-4257-A44A-A3BA1364CF5C",
+      "deviceName": "iPhone 17 Pro",
+      "exportedFileName": "629C07DC-5E1D-43AB-B06A-539CDA21B257.png",
+      "isAssociatedWithFailure": false,
+      "suggestedHumanReadableName": "折叠置顶-en_0_24923872-E775-42CF-B56A-CEBC9C907930.png",
+      "timestamp": 1790596515.83
+    },
+    "test": "ChatConversationListUITests/testPinnedFoldDraftAndSearch()",
+    "resultBundle": "/tmp/AzureFish-List-Alignment-Font-iPhone.xcresult"
+  },
+  {
+    "file": "iphone-expanded-en.png",
+    "sha256": "a95ca0da49fbc200d020618dfe7740de8fa9f8bc44186335b5cddd7fb02d814d",
+    "attachment": {
+      "configurationName": "Test Scheme Action",
+      "deviceId": "505FE0AF-BD0B-4257-A44A-A3BA1364CF5C",
+      "deviceName": "iPhone 17 Pro",
+      "exportedFileName": "C4155A48-51AC-45D1-A803-9BBE7F86718E.png",
+      "isAssociatedWithFailure": false,
+      "suggestedHumanReadableName": "草稿与置顶-en_0_D34F23D4-ED35-4E1D-9A30-A71A1401978B.png",
+      "timestamp": 1790596513.962
+    },
+    "test": "ChatConversationListUITests/testPinnedFoldDraftAndSearch()",
+    "resultBundle": "/tmp/AzureFish-List-Alignment-Font-iPhone.xcresult"
+  },
+  {
+    "file": "iphone-search-zh-Hant.png",
+    "sha256": "02eec63be1ec25f852e4db358e9da614f9a52c9d4e9ffaa3b8f393ebb9614b7c",
+    "attachment": {
+      "configurationName": "Test Scheme Action",
+      "deviceId": "505FE0AF-BD0B-4257-A44A-A3BA1364CF5C",
+      "deviceName": "iPhone 17 Pro",
+      "exportedFileName": "420D5734-FB80-45C5-AE9B-6DE5800A6043.png",
+      "isAssociatedWithFailure": false,
+      "suggestedHumanReadableName": "折叠后搜索-zh-Hant_0_E6B91DBB-B171-4F73-A0D8-9A9F5561A569.png",
+      "timestamp": 1790596504.738
+    },
+    "test": "ChatConversationListUITests/testPinnedFoldDraftAndSearch()",
+    "resultBundle": "/tmp/AzureFish-List-Alignment-Font-iPhone.xcresult"
+  },
+  {
+    "file": "iphone-folded-zh-Hant.png",
+    "sha256": "e84ddfd95fdb0da2d9c879d4e4972a1026c7eb96bdc45ddb23262ae34843a4b6",
+    "attachment": {
+      "configurationName": "Test Scheme Action",
+      "deviceId": "505FE0AF-BD0B-4257-A44A-A3BA1364CF5C",
+      "deviceName": "iPhone 17 Pro",
+      "exportedFileName": "03DF2F97-37BE-467E-B57D-F244D02E54A4.png",
+      "isAssociatedWithFailure": false,
+      "suggestedHumanReadableName": "折叠置顶-zh-Hant_0_0C03B43D-D8FD-4171-BB3F-81999F88DAC1.png",
+      "timestamp": 1790596499.437
+    },
+    "test": "ChatConversationListUITests/testPinnedFoldDraftAndSearch()",
+    "resultBundle": "/tmp/AzureFish-List-Alignment-Font-iPhone.xcresult"
+  },
+  {
+    "file": "iphone-expanded-zh-Hant.png",
+    "sha256": "fe29cb5a748779f9562009fa5a38c793513d585a8560ee7d6b693a7470731224",
+    "attachment": {
+      "configurationName": "Test Scheme Action",
+      "deviceId": "505FE0AF-BD0B-4257-A44A-A3BA1364CF5C",
+      "deviceName": "iPhone 17 Pro",
+      "exportedFileName": "3CD05058-86B6-48FC-B9FA-C86175CBBB30.png",
+      "isAssociatedWithFailure": false,
+      "suggestedHumanReadableName": "草稿与置顶-zh-Hant_0_5B3B2B6F-8298-449C-BD14-C244EF7E4E23.png",
+      "timestamp": 1790596497.522
+    },
+    "test": "ChatConversationListUITests/testPinnedFoldDraftAndSearch()",
+    "resultBundle": "/tmp/AzureFish-List-Alignment-Font-iPhone.xcresult"
+  },
+  {
+    "file": "iphone-search-zh-Hans.png",
+    "sha256": "e906ecf62587c6f585071af2d06d55a48100b739fd8c34d050347060e939bc0c",
+    "attachment": {
+      "configurationName": "Test Scheme Action",
+      "deviceId": "505FE0AF-BD0B-4257-A44A-A3BA1364CF5C",
+      "deviceName": "iPhone 17 Pro",
+      "exportedFileName": "0B9E1F93-ED0E-4226-8A7E-8BF35A0E2402.png",
+      "isAssociatedWithFailure": false,
+      "suggestedHumanReadableName": "折叠后搜索-zh-Hans_0_2F0410F2-B492-424D-A612-4FDE9A5A29E9.png",
+      "timestamp": 1790596487.728
+    },
+    "test": "ChatConversationListUITests/testPinnedFoldDraftAndSearch()",
+    "resultBundle": "/tmp/AzureFish-List-Alignment-Font-iPhone.xcresult"
+  },
+  {
+    "file": "iphone-folded-zh-Hans.png",
+    "sha256": "57dfefa47e89ab5239c1f771cd78ff1457976305bf9eca1d46c7665e68c85a3b",
+    "attachment": {
+      "configurationName": "Test Scheme Action",
+      "deviceId": "505FE0AF-BD0B-4257-A44A-A3BA1364CF5C",
+      "deviceName": "iPhone 17 Pro",
+      "exportedFileName": "31707908-554C-480E-BEBA-36E09B38E8A1.png",
+      "isAssociatedWithFailure": false,
+      "suggestedHumanReadableName": "折叠置顶-zh-Hans_0_67F242B3-A2B5-476D-AC41-59FE30650F73.png",
+      "timestamp": 1790596482.578
+    },
+    "test": "ChatConversationListUITests/testPinnedFoldDraftAndSearch()",
+    "resultBundle": "/tmp/AzureFish-List-Alignment-Font-iPhone.xcresult"
+  },
+  {
+    "file": "iphone-expanded-zh-Hans.png",
+    "sha256": "de373d871caa9e06e98f8e2443146f90158cbe7a6b1b351bbd40b02a02a096a9",
+    "attachment": {
+      "configurationName": "Test Scheme Action",
+      "deviceId": "505FE0AF-BD0B-4257-A44A-A3BA1364CF5C",
+      "deviceName": "iPhone 17 Pro",
+      "exportedFileName": "588D3099-EF70-4D8B-9183-6C55083DF4E5.png",
+      "isAssociatedWithFailure": false,
+      "suggestedHumanReadableName": "草稿与置顶-zh-Hans_0_4E36C07A-DD86-441F-87CC-863EBB153FAD.png",
+      "timestamp": 1790596480.614
+    },
+    "test": "ChatConversationListUITests/testPinnedFoldDraftAndSearch()",
+    "resultBundle": "/tmp/AzureFish-List-Alignment-Font-iPhone.xcresult"
+  },
+  {
+    "file": "ipad-search-ar.png",
+    "sha256": "5ef7bc9384dcbd7be91b8548b9188a9ea40c8bddc3ab8a182a454d2290646761",
+    "attachment": {
+      "configurationName": "Test Scheme Action",
+      "deviceId": "2F4EB999-E9C3-4F90-967D-47A952E5B55A",
+      "deviceName": "iPad Pro 11-inch (M5)",
+      "exportedFileName": "AC49D013-8557-45F9-A71C-03491CA26734.png",
+      "isAssociatedWithFailure": false,
+      "suggestedHumanReadableName": "折叠后搜索-ar_0_87E3F17E-45F2-4F15-9A1E-2D45D2A9ECE4.png",
+      "timestamp": 1790596633.759
+    },
+    "test": "ChatConversationListUITests/testPinnedFoldDraftAndSearch()",
+    "resultBundle": "/tmp/AzureFish-List-Alignment-Font-iPad.xcresult"
+  },
+  {
+    "file": "ipad-folded-ar.png",
+    "sha256": "dc412ded3bc7e5af9771549ce54bc6081471ad1046a9eb1bd7d348b564c31f10",
+    "attachment": {
+      "configurationName": "Test Scheme Action",
+      "deviceId": "2F4EB999-E9C3-4F90-967D-47A952E5B55A",
+      "deviceName": "iPad Pro 11-inch (M5)",
+      "exportedFileName": "3C6F5744-C014-40D3-8303-97CC62DFF06D.png",
+      "isAssociatedWithFailure": false,
+      "suggestedHumanReadableName": "折叠置顶-ar_0_D89B1D52-3D26-4C78-8F3B-503327305520.png",
+      "timestamp": 1790596628.399
+    },
+    "test": "ChatConversationListUITests/testPinnedFoldDraftAndSearch()",
+    "resultBundle": "/tmp/AzureFish-List-Alignment-Font-iPad.xcresult"
+  },
+  {
+    "file": "ipad-expanded-ar.png",
+    "sha256": "94ec08947c064ccd0aa879288cedac00c28bc41452198cb93da649d211a11734",
+    "attachment": {
+      "configurationName": "Test Scheme Action",
+      "deviceId": "2F4EB999-E9C3-4F90-967D-47A952E5B55A",
+      "deviceName": "iPad Pro 11-inch (M5)",
+      "exportedFileName": "5E06BA11-AAC8-4CE8-A0FC-EF042ADD342F.png",
+      "isAssociatedWithFailure": false,
+      "suggestedHumanReadableName": "草稿与置顶-ar_0_80C08897-AB74-449B-AE71-76A1B05E70C6.png",
+      "timestamp": 1790596626.12
+    },
+    "test": "ChatConversationListUITests/testPinnedFoldDraftAndSearch()",
+    "resultBundle": "/tmp/AzureFish-List-Alignment-Font-iPad.xcresult"
+  },
+  {
+    "file": "ipad-search-en.png",
+    "sha256": "63946ebda8fbb935820ea117ada5a2ac908e322baf3b6029181432ff993a7006",
+    "attachment": {
+      "configurationName": "Test Scheme Action",
+      "deviceId": "2F4EB999-E9C3-4F90-967D-47A952E5B55A",
+      "deviceName": "iPad Pro 11-inch (M5)",
+      "exportedFileName": "AD055292-A3DC-4A48-BF3D-BBD84D6E6DF2.png",
+      "isAssociatedWithFailure": false,
+      "suggestedHumanReadableName": "折叠后搜索-en_0_90832A66-C8CC-4269-82D2-2CADB7E33B94.png",
+      "timestamp": 1790596616.509
+    },
+    "test": "ChatConversationListUITests/testPinnedFoldDraftAndSearch()",
+    "resultBundle": "/tmp/AzureFish-List-Alignment-Font-iPad.xcresult"
+  },
+  {
+    "file": "ipad-folded-en.png",
+    "sha256": "876f62142d8284a3976857f8a8a0c8f9c2fa06cb959beb1c2f8386e7b168a55c",
+    "attachment": {
+      "configurationName": "Test Scheme Action",
+      "deviceId": "2F4EB999-E9C3-4F90-967D-47A952E5B55A",
+      "deviceName": "iPad Pro 11-inch (M5)",
+      "exportedFileName": "952A3824-3ADE-47B7-BE94-CE5EBB66B59E.png",
+      "isAssociatedWithFailure": false,
+      "suggestedHumanReadableName": "折叠置顶-en_0_C99378AD-3D69-4DDD-B980-C13037296DE5.png",
+      "timestamp": 1790596610.836
+    },
+    "test": "ChatConversationListUITests/testPinnedFoldDraftAndSearch()",
+    "resultBundle": "/tmp/AzureFish-List-Alignment-Font-iPad.xcresult"
+  },
+  {
+    "file": "ipad-expanded-en.png",
+    "sha256": "d873c6629a421d84b21afaa4e64892b6a21025e9ca262ca3bc22bbf880926142",
+    "attachment": {
+      "configurationName": "Test Scheme Action",
+      "deviceId": "2F4EB999-E9C3-4F90-967D-47A952E5B55A",
+      "deviceName": "iPad Pro 11-inch (M5)",
+      "exportedFileName": "06A33462-9DC2-41CA-B7EC-57DBF115A4FD.png",
+      "isAssociatedWithFailure": false,
+      "suggestedHumanReadableName": "草稿与置顶-en_0_F0508027-DC57-473B-BDD9-1EDA023E6089.png",
+      "timestamp": 1790596608.73
+    },
+    "test": "ChatConversationListUITests/testPinnedFoldDraftAndSearch()",
+    "resultBundle": "/tmp/AzureFish-List-Alignment-Font-iPad.xcresult"
+  },
+  {
+    "file": "ipad-search-zh-Hant.png",
+    "sha256": "89050d2c424a0c7abf4a9fd547bf96edb362161f733d0310c06afdcc5b37a3f8",
+    "attachment": {
+      "configurationName": "Test Scheme Action",
+      "deviceId": "2F4EB999-E9C3-4F90-967D-47A952E5B55A",
+      "deviceName": "iPad Pro 11-inch (M5)",
+      "exportedFileName": "CB3E3D72-83F8-4CD3-AD71-6724BF1584CC.png",
+      "isAssociatedWithFailure": false,
+      "suggestedHumanReadableName": "折叠后搜索-zh-Hant_0_DFFD609C-FF94-44A5-A2AD-A305D3658F34.png",
+      "timestamp": 1790596598.621
+    },
+    "test": "ChatConversationListUITests/testPinnedFoldDraftAndSearch()",
+    "resultBundle": "/tmp/AzureFish-List-Alignment-Font-iPad.xcresult"
+  },
+  {
+    "file": "ipad-folded-zh-Hant.png",
+    "sha256": "10f0656ddb37e5016d731afdb4d2372fa60f82c8f4c09ba1366501e5b18cf27d",
+    "attachment": {
+      "configurationName": "Test Scheme Action",
+      "deviceId": "2F4EB999-E9C3-4F90-967D-47A952E5B55A",
+      "deviceName": "iPad Pro 11-inch (M5)",
+      "exportedFileName": "535C2DFC-AAED-493C-8AD2-830AB189919C.png",
+      "isAssociatedWithFailure": false,
+      "suggestedHumanReadableName": "折叠置顶-zh-Hant_0_AFE2D3E2-1A71-43EC-B0A5-AAD4A8615AC3.png",
+      "timestamp": 1790596593.301
+    },
+    "test": "ChatConversationListUITests/testPinnedFoldDraftAndSearch()",
+    "resultBundle": "/tmp/AzureFish-List-Alignment-Font-iPad.xcresult"
+  },
+  {
+    "file": "ipad-expanded-zh-Hant.png",
+    "sha256": "4632b2b6a89d6812d3c0c75e7d0ae314867fe4476fa5cb6817e293c2578619d4",
+    "attachment": {
+      "configurationName": "Test Scheme Action",
+      "deviceId": "2F4EB999-E9C3-4F90-967D-47A952E5B55A",
+      "deviceName": "iPad Pro 11-inch (M5)",
+      "exportedFileName": "41A1AA90-974C-4855-BBF0-415DCFE38A2E.png",
+      "isAssociatedWithFailure": false,
+      "suggestedHumanReadableName": "草稿与置顶-zh-Hant_0_1C1B0BB0-549D-472B-BFC5-F94EB0EC9658.png",
+      "timestamp": 1790596591.193
+    },
+    "test": "ChatConversationListUITests/testPinnedFoldDraftAndSearch()",
+    "resultBundle": "/tmp/AzureFish-List-Alignment-Font-iPad.xcresult"
+  },
+  {
+    "file": "ipad-search-zh-Hans.png",
+    "sha256": "64dd76bab09ba6f456086a3bba3ce84708601e4ae9d3603f29637e575349aec7",
+    "attachment": {
+      "configurationName": "Test Scheme Action",
+      "deviceId": "2F4EB999-E9C3-4F90-967D-47A952E5B55A",
+      "deviceName": "iPad Pro 11-inch (M5)",
+      "exportedFileName": "772E341D-8EE3-45EC-8665-05CC0EF54FA5.png",
+      "isAssociatedWithFailure": false,
+      "suggestedHumanReadableName": "折叠后搜索-zh-Hans_0_ABF015DB-A938-4B8E-80E1-6AB063550A35.png",
+      "timestamp": 1790596581.798
+    },
+    "test": "ChatConversationListUITests/testPinnedFoldDraftAndSearch()",
+    "resultBundle": "/tmp/AzureFish-List-Alignment-Font-iPad.xcresult"
+  },
+  {
+    "file": "ipad-folded-zh-Hans.png",
+    "sha256": "b9cff61af05bd5950a031651dfea1cadf00a3727cdd1c8b92c183643374a3e0b",
+    "attachment": {
+      "configurationName": "Test Scheme Action",
+      "deviceId": "2F4EB999-E9C3-4F90-967D-47A952E5B55A",
+      "deviceName": "iPad Pro 11-inch (M5)",
+      "exportedFileName": "550FD074-1A4D-4BD5-A1F2-ECCD927CF2A7.png",
+      "isAssociatedWithFailure": false,
+      "suggestedHumanReadableName": "折叠置顶-zh-Hans_0_DCEE20AD-2C84-4DE3-9C8A-FAC571101672.png",
+      "timestamp": 1790596576.569
+    },
+    "test": "ChatConversationListUITests/testPinnedFoldDraftAndSearch()",
+    "resultBundle": "/tmp/AzureFish-List-Alignment-Font-iPad.xcresult"
+  },
+  {
+    "file": "ipad-expanded-zh-Hans.png",
+    "sha256": "72f244373274d1951de541470e14dbabc33e438baf1b25f98ac69c012196e608",
+    "attachment": {
+      "configurationName": "Test Scheme Action",
+      "deviceId": "2F4EB999-E9C3-4F90-967D-47A952E5B55A",
+      "deviceName": "iPad Pro 11-inch (M5)",
+      "exportedFileName": "F22A959E-675E-41EC-9A71-894AE0A75113.png",
+      "isAssociatedWithFailure": false,
+      "suggestedHumanReadableName": "草稿与置顶-zh-Hans_0_ECE9DCE8-52EF-4725-9267-D703182ACAB7.png",
+      "timestamp": 1790596574.474
+    },
+    "test": "ChatConversationListUITests/testPinnedFoldDraftAndSearch()",
+    "resultBundle": "/tmp/AzureFish-List-Alignment-Font-iPad.xcresult"
+  }
+]

@@ -27,6 +27,7 @@ final class AccountRootViewController: LocalizedViewController, UITabBarControll
     }
     private func render() {
         guard renderedPhase != session.phase || renderedIdentity != session.sessionIdentity else {
+            chatRuntime?.publish()
             (current as? UINavigationController)?.viewControllers.compactMap { $0 as? AccountRecoveryViewController }.forEach { $0.reloadLocalizedContent() }
             return
         }
@@ -41,9 +42,12 @@ final class AccountRootViewController: LocalizedViewController, UITabBarControll
             let tabs = UITabBarController()
             let runtime = ChatRuntime(session: session); chatRuntime = runtime
             let chat = ChatSplitViewController(runtime: runtime)
-            let contacts = ContactsViewController(runtime: runtime)
-            let me = ProfileViewController(session: session)
-            tabs.viewControllers = [chat, UINavigationController(rootViewController: contacts), UINavigationController(rootViewController: me)]
+            let contacts = ContactsSplitViewController(runtime: runtime)
+            let me = ProfileViewController(session: session, runtime: runtime)
+            tabs.viewControllers = [chat, contacts, UINavigationController(rootViewController: me)]
+            runtime.openConversation = { [weak tabs, weak chat] conversation in
+                tabs?.selectedIndex = 0; chat?.open(conversation)
+            }
             tabs.selectedIndex = 0; tabs.delegate = self
             _ = runtime.observe { [weak self, weak runtime] in
                 guard let self, let runtime, chatRuntime === runtime else { return }
@@ -86,7 +90,7 @@ final class AccountRootViewController: LocalizedViewController, UITabBarControll
         let unread = runtime.conversations.reduce(Int64(0)) { total, conversation in
             min(100, total + min(100, max(0, conversation.readState.unread)))
         }
-        let pending = runtime.contacts.filter { $0.state == "pending" && $0.requesterID != runtime.userID }.count
+        let pending = runtime.contacts.filter { $0.requestState == "pending" && $0.requesterID != runtime.userID && !$0.isBlocked }.count
         for (index, count) in [(0, unread), (1, Int64(pending))] {
             controllers[index].tabBarItem.badgeValue = count == 0 ? nil : count > 99 ? "99+" : String(count)
             controllers[index].tabBarItem.badgeColor = .systemRed

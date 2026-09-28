@@ -128,3 +128,11 @@ AZUREFISH_RUN_MEDIA_CAPACITY=1 AZUREFISH_RUN_HTTP_SMOKE=1 PROTOC=/绝对路径/p
 `AZUREFISH_RUN_HTTP_SMOKE=1 swift test -j 4` 本轮发现 48 项测试，实际通过 45 项，3 项显式启用的客户端 harness／大文件测试跳过。新增回归覆盖双方未读、独立已读、重复接受、删除后重加、旧操作重试、事务失败回滚、会话容量限制、重启及系统消息发送／撤回／回执权限。
 
 随机回环端口 HTTP smoke 通过：双方固定快照及历史包含同一系统提示，申请人阅读后接受方仍未读；原消息、群聊、实时提示与退出流程继续通过。记录为 `/tmp/azurefish-friend-server-final.log`。没有修改或重启既有 8080 服务，没有为旧好友补历史提示。客户端、设计与各类运行验证边界见[双向提醒交付记录](../../Documentation/Design/Chat/friendship-notice.md)。
+
+## 2026-09-28 单向联系人管理
+
+本轮最终服务端全量 `AZUREFISH_RUN_HTTP_SMOKE=1 swift test -j 4` 发现 53 项，50 项通过、3 项需单独启用的客户端 harness／大文件测试跳过。随机回环端口双账号 HTTP 验证留言、接受、私有备注、单向删除、直接恢复、拉黑／解除及响应丢失原请求重放；未修改现有 8080 服务。
+
+覆盖加密 payload 迁移、备注隔离、双向拉黑、申请身份、幂等及并发版本、昵称投影与自身资料版本提示、私聊文本／媒体和群邀请权限。已有群消息继续可发送。原始日志为 `/tmp/azurefish-contacts-final-server-tests-2.log`。客户端独立联调、UI 和其他系统验收见[好友管理](../../Documentation/Design/Chat/contact-management.md)。
+
+最终另行显式运行 `AZUREFISH_RUN_CLIENT_CHAT=1 AZUREFISH_RUN_CLIENT_REALTIME=1 swift test -j 4 --filter 'Client(Chat|Realtime)HarnessTests'`，两个 harness 通过；客户端 `friendMessageMediaAndRevocation` 与 `hintsRefreshAndLogout` 实际执行成功。覆盖昵称更新及自身资料实时提示、私有备注保持、单向关系行为、草稿保持和原请求重放。日志为 `/tmp/azurefish-contacts-client-e2e-final.log`。

@@ -1,3 +1,5 @@
+import AzureFishAPI
+import AzureFishProtocol
 //
 //  ConversationPreviewData.swift
 //  Demo
@@ -230,12 +232,43 @@ extension ConversationPreviewData {
             "readState": ["read": 0, "delivered": 0, "unread": 0, "through": 0, "revision": 1]]
         return try! JSONDecoder().decode(ChatConversation.self, from: JSONSerialization.data(withJSONObject: value))
     }
+    static func conversationListRuntime(collapsed: Bool) -> ChatRuntime {
+        let group = detailsConversation()
+        var other = group; other.id = "preview-other"; other.title = "工作交流"; other.readState.unread = 3
+        return ChatRuntime(previewConversations: [group, other], pinned: [group.id, other.id], collapsed: collapsed)
+    }
     static func detailsRuntime() -> ChatRuntime {
         let keys = KeychainValueStore()
         let session = SessionCoordinator(service: nil, store: CredentialStore(values: keys, environmentID: "details-preview"),
             repository: UserRepository(root: FileManager.default.temporaryDirectory.appendingPathComponent("DetailsPreview"), keys: keys, environment: "details-preview"))
         session.installDebugProfile()
         return ChatRuntime(session: session)
+    }
+}
+#endif
+
+#if DEBUG
+@available(iOS 16.0, *)
+extension ConversationPreviewData {
+    static var contacts: [ChatContact] {
+        var second = contact; second.peer.id = "fixture-alex"; second.peer.nickname = "Alex"; second.remark = ""
+        var incoming = contact; incoming.peer.id = "fixture-incoming"; incoming.peer.nickname = "نور"; incoming.remark = ""
+        incoming.isContact = false; incoming.state = "pending"; incoming.requestID = "fixture-request"
+        incoming.requesterID = incoming.peer.id; incoming.requestState = "pending"
+        incoming.requestMessage = "你好，我们在设计活动中见过。 مرحبًا"; incoming.requestUpdatedAt = 1_800_000_000_000
+        incoming.availableActions = ["accept", "reject", "block"]
+        var blocked = contact; blocked.peer.id = "fixture-blocked"; blocked.peer.nickname = "许言"; blocked.remark = ""
+        blocked.isBlocked = true; blocked.availableActions = ["unblock", "remark", "delete"]
+        return [contact, second, incoming, blocked]
+    }
+    static var contact: ChatContact {
+        var value = ContactRelationship()
+        value.relationshipID = "00000000-0000-0000-0000-000000000011"
+        value.peer.userID = "00000000-0000-0000-0000-000000000012"
+        value.peer.nickname = "林沐"; value.remark = "林沐 · 设计"
+        value.state = "friend"; value.isContact = true; value.semanticsVersion = 2; value.revision = 2
+        value.availableActions = ["send", "remark", "delete", "block"]
+        return ChatContact(value)
     }
 }
 #endif

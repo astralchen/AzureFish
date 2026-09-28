@@ -19,7 +19,7 @@ final class ChatDetailsRegressionController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         // 隔离 UI 回归不等待系统搜索动画的空闲通知；正式页面不改变系统动画。
-        UIView.setAnimationsEnabled(false)
+        if !ProcessInfo.processInfo.arguments.contains("-contacts-list") { UIView.setAnimationsEnabled(false) }
         view.backgroundColor = .systemBackground
         title = "详情回归"
         task = Task { [weak self] in
@@ -38,7 +38,8 @@ final class ChatDetailsRegressionController: UIViewController {
                 if args.contains("-details-large") { navigationController?.traitOverrides.preferredContentSizeCategory = .accessibilityExtraExtraExtraLarge }
                 let conversation = ConversationPreviewData.detailsConversation(group: !args.contains("-details-direct"), owner: !args.contains("-details-member"))
                 try await store.save(conversation)
-                for i in 1...260 {
+                for offset in 0..<(args.contains("-contacts-list") ? 0 : 260) {
+                    let i = offset + 1
                     let object: [String: Any] = ["id": "fixture-\(i)", "conversationID": conversation.id, "clientID": "", "serverID": "fixture-\(i)",
                         "senderID": conversation.members[1].id, "deviceID": "fixture", "sequence": i, "createdAt": 1_800_000_000_000 + i * 1000,
                         "revision": 1, "kind": "text", "schemaVersion": 1, "text": i == 2 ? "海边见面 old needle العربية" : "周末计划 \(i)", "revoked": false, "assets": [],
@@ -59,10 +60,24 @@ final class ChatDetailsRegressionController: UIViewController {
                     try await store.save(empty)
                     conversations += [direct, empty]
                 }
-                let runtime = ChatRuntime(session: preview.session, engine: engine, media: media, conversations: conversations, pageLeaseRoot: root)
+                let contacts = args.contains("-contacts-list") ? ConversationPreviewData.contacts : []
+                for contact in contacts { try await store.save(contact) }
+                let runtime = ChatRuntime(session: preview.session, engine: engine, media: media, conversations: conversations, pageLeaseRoot: root, contacts: contacts)
                 self.runtime = runtime
                 try await runtime.refreshListStates()
                 if args.contains("-details-dark") { navigationController?.overrideUserInterfaceStyle = .dark }
+                if args.contains("-contacts-list") {
+                    navigationController?.overrideUserInterfaceStyle = args.contains("-details-dark") ? .dark : .light
+                    let tabs = UITabBarController()
+                    let contacts = ContactsSplitViewController(runtime: runtime)
+                    contacts.tabBarItem = UITabBarItem(title: Localization.text("chat.live.contacts"), image: UIImage(systemName: "person.2"), tag: 0)
+                    let settings = UINavigationController(rootViewController: AccountSettingsViewController(runtime: runtime))
+                    settings.tabBarItem = UITabBarItem(title: Localization.text("account.design.settings"), image: UIImage(systemName: "gearshape"), tag: 1)
+                    tabs.viewControllers = [contacts, settings]
+                    navigationController?.setNavigationBarHidden(true, animated: false)
+                    navigationController?.pushViewController(tabs, animated: false)
+                    return
+                }
                 if args.contains("-details-list") {
                     navigationController?.overrideUserInterfaceStyle = args.contains("-details-dark") ? .dark : .light
                     try await runtime.setPreference(.init(isPinned: true), conversation: conversation.id)

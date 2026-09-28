@@ -11,7 +11,7 @@ struct FriendshipNoticeTests {
         try await withServer { app, _ in
             let a = try await auth(app, name: "notice_a"), b = try await auth(app, name: "notice_b")
             let pending = try await imCall(app, "contacts/mutate", contactInput(b, action: "request"), ContactRelationship.self, a)
-            let accept = contactInput(a, action: "accept", revision: pending.revision)
+            let accept = contactInput(a, action: "accept", revision: pending.revision, requestID: pending.requestID)
             async let first = imCall(app, "contacts/mutate", accept, ContactRelationship.self, b)
             async let duplicate = imCall(app, "contacts/mutate", accept, ContactRelationship.self, b)
             let (friend, replay) = try await (first, duplicate)
@@ -43,9 +43,10 @@ struct FriendshipNoticeTests {
             #expect(try await imCall(app, "conversations/get", conversationInput(chat), IMConversation.self, b).readState.unreadCount == 1)
             _ = try await imCall(app, "read", watermark(chat, through: 1), IMReadState.self, b)
             let deleted = try await imCall(app, "contacts/mutate", contactInput(b, action: "delete", revision: friend.revision), ContactRelationship.self, a)
-            #expect(try await imCall(app, "contacts/mutate", accept, ContactRelationship.self, b).state == "deleted")
-            let request = try await imCall(app, "contacts/mutate", contactInput(b, action: "request", revision: deleted.revision), ContactRelationship.self, a)
-            _ = try await imCall(app, "contacts/mutate", contactInput(a, action: "accept", revision: request.revision), ContactRelationship.self, b)
+            #expect(try await imCall(app, "contacts/mutate", accept, ContactRelationship.self, b).state == "friend")
+            let removed = try await imCall(app, "contacts/mutate", contactInput(a, action: "delete", revision: deleted.revision), ContactRelationship.self, b)
+            let request = try await imCall(app, "contacts/mutate", contactInput(b, action: "request", revision: removed.revision), ContactRelationship.self, a)
+            _ = try await imCall(app, "contacts/mutate", contactInput(a, action: "accept", revision: request.revision, requestID: request.requestID), ContactRelationship.self, b)
             let updated = try await imCall(app, "conversations/get", conversationInput(chat), IMConversation.self, a)
             #expect(updated.latestSeq == 2 && updated.readState.unreadCount == 1)
             #expect(updated.latestMessage.messageUuid != notice.messageUuid)
@@ -57,7 +58,7 @@ struct FriendshipNoticeTests {
         try await withServer { app, _ in
             let a = try await auth(app, name: "rollback_a"), b = try await auth(app, name: "rollback_b")
             let pending = try await imCall(app, "contacts/mutate", contactInput(b, action: "request"), ContactRelationship.self, a)
-            let accept = contactInput(a, action: "accept", revision: pending.revision)
+            let accept = contactInput(a, action: "accept", revision: pending.revision, requestID: pending.requestID)
             let sql = try #require(app.db as? any SQLDatabase)
             try await sql.raw("CREATE TRIGGER fail_notice BEFORE INSERT ON im_messages BEGIN SELECT RAISE(ABORT, 'injected'); END").run()
             #expect(try await send(app, .POST, "/v1/im/contacts/mutate", accept, token: b.accessToken).status == .internalServerError)
@@ -77,7 +78,7 @@ struct FriendshipNoticeTests {
         do {
             a = try await auth(app, name: "restart_notice_a"); b = try await auth(app, name: "restart_notice_b")
             let pending = try await imCall(app, "contacts/mutate", contactInput(b, action: "request"), ContactRelationship.self, a)
-            accept = contactInput(a, action: "accept", revision: pending.revision)
+            accept = contactInput(a, action: "accept", revision: pending.revision, requestID: pending.requestID)
             // 容量占位仅参与成员计数，不读写真实会话密文。
             for _ in 0..<500 {
                 let row = IMConversationRecord(); row.id = UUID(); row.pairKey = UUID().uuidString; row.payload = "capacity-fixture"

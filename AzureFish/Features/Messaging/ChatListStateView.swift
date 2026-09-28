@@ -83,7 +83,7 @@ final class ChatListStateContentView: QuickLayoutView {
 
     func configure(_ state: ChatListContentState) {
         self.state = state
-        titleLabel.text = Localization.text(state.titleKey)
+        titleLabel.text = state.titleKey.isEmpty ? nil : Localization.text(state.titleKey)
         detailLabel.text = state.detailKey.map { Localization.text($0) }
         retryButton.setTitle(Localization.text("chat.list.retry"), for: .normal)
         retryButton.isHidden = state != .failed

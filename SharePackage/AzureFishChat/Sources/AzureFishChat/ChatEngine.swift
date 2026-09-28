@@ -10,6 +10,7 @@ public enum ChatSynchronizationState: Sendable, Equatable {
 public struct ChatEngineUpdate: Sendable, Equatable {
     public let online: Bool
     public let synchronization: ChatSynchronizationState
+    public var ownProfileVersion: Int64 = 0
 }
 
 /// 驱动账号隔离的 HTTP 同步和持久 outbox；WebSocket 只唤醒 HTTP 补拉。
@@ -28,6 +29,7 @@ public actor ChatEngine {
     private var notificationGate = ChatIncomingNotificationGate()
     private var online = false
     private var synchronization: ChatSynchronizationState = .idle
+    private var ownProfileVersion: Int64 = 0
     public init(store: ChatStore, session: APISessionManager) {
         self.store = store
         api = IMAPI(session: session)
@@ -48,13 +50,13 @@ public actor ChatEngine {
         let id = UUID()
         let (stream, continuation) = AsyncStream<ChatEngineUpdate>.makeStream(bufferingPolicy: .bufferingNewest(1))
         updateObservers[id] = continuation
-        continuation.yield(.init(online: online, synchronization: synchronization))
+        continuation.yield(.init(online: online, synchronization: synchronization, ownProfileVersion: ownProfileVersion))
         continuation.onTermination = { [weak self] _ in Task { await self?.removeUpdateObserver(id) } }
         return stream
     }
     private func removeUpdateObserver(_ id: UUID) { updateObservers[id] = nil }
     private func publishUpdate() {
-        let value = ChatEngineUpdate(online: online, synchronization: synchronization)
+        let value = ChatEngineUpdate(online: online, synchronization: synchronization, ownProfileVersion: ownProfileVersion)
         for observer in updateObservers.values { observer.yield(value) }
     }
     private func notify(_ online: Bool) {
@@ -128,7 +130,8 @@ public actor ChatEngine {
         let notificationPull = notificationGate.begin(hasCheckpoint: checkpoint != nil)
         var received: [ChatMessage] = []
         try await store.expireReedits()
-        if try await store.checkpoint() == nil { try await snapshot() }
+        let needsContactUpgrade = try await store.contacts().contains { $0.semanticsVersion < 2 }
+        if checkpoint == nil || needsContactUpgrade { try await snapshot() }
         do { received = try await events() } catch APIClientError.service(let error)
             where error.code == .cursorExpired
         {
@@ -184,6 +187,7 @@ public actor ChatEngine {
             try Task.checkCancellation()
             let batch = try await api.events(cursor: checkpoint.cursor, epoch: checkpoint.epoch)
             received += try await store.apply(events: batch, expected: checkpoint)
+            ownProfileVersion = max(ownProfileVersion, batch.ownProfileVersion ?? 0)
             if !batch.hasMore { break }
         }
         return received

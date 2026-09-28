@@ -33,16 +33,29 @@ public struct IMAPI: Sendable {
         input.peerUserID = peer
         return try await call("v1/im/contacts/get", input, as: ContactRelationship.self, map: ChatContact.init)
     }
-    public func mutateContact(peer: String, action: ContactAction, revision: Int64, operationID: UUID) async throws
-        -> ChatContact
-    {
+    /// 编码联系人操作；调用方可将返回字节保存在账号加密库中以恢复同一次操作。
+    public static func contactMutation(peer: String, action: ContactAction, revision: Int64, operationID: UUID,
+                                       remark: String = "", message: String = "", requestID: String = "") throws -> Data {
         var input = ContactMutationRequest()
-        input.peerUserID = peer
-        input.action = action.rawValue
-        input.expectedRevision = revision
-        input.operationID = operationID.uuidString.lowercased()
-        return try await call(
-            "v1/im/contacts/mutate", input, as: ContactRelationship.self, id: operationID, map: ChatContact.init)
+        input.peerUserID = peer; input.action = action.rawValue; input.expectedRevision = revision
+        input.operationID = operationID.uuidString.lowercased(); input.semanticsVersion = 2
+        input.remark = remark; input.requestMessage = message; input.requestID = requestID
+        return try input.serializedData()
+    }
+    public func mutateContact(bytes: Data) async throws -> ChatContact {
+        guard bytes.count <= 16 * 1024 else { throw APIClientError.requestTooLarge }
+        let input = try ContactMutationRequest(serializedBytes: bytes)
+        guard let id = UUID(uuidString: input.operationID), input.semanticsVersion == 2 else { throw APIClientError.invalidRequest }
+        let credentials = try await session.credentials()
+        let operation = AccountOperation<ChatContact>(operationID: id, environment: session.environment,
+            path: "v1/im/contacts/mutate", method: .post, body: bytes, expectedStatus: 200,
+            authorization: SessionIdentity(credentials)) { ChatContact(try ContactRelationship(serializedBytes: $0)) }
+        return try await session.execute(operation)
+    }
+    public func mutateContact(peer: String, action: ContactAction, revision: Int64, operationID: UUID,
+                              remark: String = "", message: String = "", requestID: String = "") async throws -> ChatContact {
+        try await mutateContact(bytes: Self.contactMutation(peer: peer, action: action, revision: revision,
+            operationID: operationID, remark: remark, message: message, requestID: requestID))
     }
     public func resolve(peer: String, operationID: UUID) async throws -> ChatConversation {
         var input = IMResolveRequest()
@@ -147,7 +160,7 @@ public struct IMAPI: Sendable {
         return try await call("v1/im/receipts", input, as: IMReceiptsResponse.self, map: ChatReceipts.init)
     }
 }
-public enum ContactAction: String, Codable, Sendable { case request, accept, reject, cancel, delete }
+public enum ContactAction: String, Codable, Sendable { case request, accept, reject, cancel, delete, restore, remark, block, unblock }
 public enum GroupAction: String, Codable, Sendable { case rename, add, remove, leave, transfer, dissolve }
 /// 可保存到加密 outbox 的不可变消息身份；同一条消息的网络重试复用所有字段。
 public struct ChatOutgoing: Codable, Sendable, Equatable {

@@ -45,6 +45,8 @@ public enum APIErrorCode: String, Sendable {
     case selfContact = "SELF_CONTACT"
     case contactVersionConflict = "CONTACT_VERSION_CONFLICT"
     case contactActionUnavailable = "CONTACT_ACTION_UNAVAILABLE"
+    case contactUnavailable = "CONTACT_UNAVAILABLE"
+    case contactClientUpdateRequired = "CONTACT_CLIENT_UPDATE_REQUIRED"
     case contactLimit = "CONTACT_LIMIT"
     case userNotFound = "USER_NOT_FOUND"
     case conversationClosed = "CONVERSATION_CLOSED"

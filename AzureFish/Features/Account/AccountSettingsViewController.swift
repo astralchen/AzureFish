@@ -6,20 +6,22 @@ import AppLocalization
 
 /// 使用独立 ListKit 列表展示安装偏好；选择后保持当前导航与会话。
 final class AccountSettingsViewController: LocalizedQuickLayoutHostingController {
-    enum Page { case overview, appearance, language }
+    enum Page { case overview, appearance, language, privacy }
+    private let runtime: ChatRuntime?
     private let page: Page
     let collectionView = UICollectionView(frame: .zero, collectionViewLayout: UICollectionViewFlowLayout())
     private lazy var adapter = CollectionListAdapter<String>(collectionView: collectionView)
     private var ready = false
     private var layoutWidth: CGFloat = 0
 
-    init(page: Page = .overview) { self.page = page; super.init(nibName: nil, bundle: nil) }
+    init(page: Page = .overview, runtime: ChatRuntime? = nil) { self.runtime = runtime; self.page = page; super.init(nibName: nil, bundle: nil) }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
     override var localizedTitleKey: String? {
         switch page {
         case .overview: "account.design.settings"
         case .appearance: "account.design.appearance"
         case .language: "account.design.language"
+        case .privacy: "contacts.privacy"
         }
     }
     override var body: Layout { collectionView.resizable().safeAreaPadding(.all, 0) }
@@ -70,6 +72,13 @@ final class AccountSettingsViewController: LocalizedQuickLayoutHostingController
             let language = Localization.localizationController.followsSystemLocale
                 ? Localization.text("language.follow.system") : Localization.localizationController.currentLocale.nativeDisplayName
             adapter.apply(transaction: .disabled) {
+                if runtime != nil {
+                    ListSection("privacy") {
+                        Row("privacy", model: "contacts.privacy", cell: UICollectionViewListCell.self) { cell, key, _ in
+                            Self.configure(cell, id: key, title: Localization.text(key), value: "", stackValue: false)
+                        }.onSelect { [weak self] _, _ in self?.open(.privacy) }
+                    }.layout(Self.sectionLayout(id: "privacy"))
+                }
                 ListSection("appearance") {
                     Row("account.design.appearance", model: appearance, cell: UICollectionViewListCell.self) { cell, value, _ in
                         Self.configure(cell, id: "account.design.appearance", title: Localization.text("account.design.appearance"), value: value, stackValue: stackValue)
@@ -84,6 +93,17 @@ final class AccountSettingsViewController: LocalizedQuickLayoutHostingController
                 }.footer(SettingsFooterView.self, id: "language-help") { footer, _ in
                     footer.configure(key: "account.design.languageHelp")
                 }.layout(Self.sectionLayout(id: "language"))
+            }
+        case .privacy:
+            adapter.apply(transaction: .disabled) {
+                ListSection("blacklist") {
+                    Row("blacklist", model: "contacts.blacklist", cell: UICollectionViewListCell.self) { cell, key, _ in
+                        Self.configure(cell, id: key, title: Localization.text(key), value: "", stackValue: false)
+                    }.onSelect { [weak self] _, _ in
+                        guard let self, let runtime else { return }
+                        navigationController?.pushViewController(BlockedContactsViewController(runtime: runtime), animated: true)
+                    }
+                }.layout(Self.sectionLayout(id: "blacklist"))
             }
         case .appearance:
             adapter.apply(transaction: .disabled) {
@@ -130,7 +150,7 @@ final class AccountSettingsViewController: LocalizedQuickLayoutHostingController
     }
     private func open(_ page: Page) {
         clearSelection()
-        navigationController?.pushViewController(AccountSettingsViewController(page: page), animated: true)
+        navigationController?.pushViewController(AccountSettingsViewController(page: page, runtime: runtime), animated: true)
     }
     private func clearSelection() {
         collectionView.indexPathsForSelectedItems?.forEach { collectionView.deselectItem(at: $0, animated: false) }

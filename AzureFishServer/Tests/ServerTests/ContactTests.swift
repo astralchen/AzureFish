@@ -4,12 +4,14 @@ import VaporTesting
 
 @testable import Server
 
-func contactInput(_ peer: AuthResponse, action: String, revision: Int64 = 0) -> ContactMutationRequest {
+func contactInput(_ peer: AuthResponse, action: String, revision: Int64 = 0, requestID: String = "") -> ContactMutationRequest {
     var value = ContactMutationRequest()
+    value.semanticsVersion = 2
     value.operationID = UUID().uuidString
     value.peerUserID = peer.userID
     value.action = action
     value.expectedRevision = revision
+    value.requestID = requestID
     return value
 }
 func befriend(_ app: Application, _ a: AuthResponse, _ b: AuthResponse) async throws {
@@ -20,7 +22,7 @@ func befriend(_ app: Application, _ a: AuthResponse, _ b: AuthResponse) async th
     let sender = request.requesterUserID == a.userID ? a : b
     do {
         _ = try await imCall(
-            app, "contacts/mutate", contactInput(sender, action: "accept", revision: request.revision),
+            app, "contacts/mutate", contactInput(sender, action: "accept", revision: request.revision, requestID: request.requestID),
             ContactRelationship.self, receiver)
     } catch {
         var get = ContactGetRequest()
@@ -51,9 +53,9 @@ struct ContactTests {
                 try errorCode(
                     await send(
                         app, .POST, "/v1/im/contacts/mutate",
-                        contactInput(b, action: "accept", revision: pending.revision), token: a.accessToken))
+                        contactInput(b, action: "accept", revision: pending.revision, requestID: pending.requestID), token: a.accessToken))
                     == "CONTACT_ACTION_UNAVAILABLE")
-            let accept = contactInput(a, action: "accept", revision: pending.revision)
+            let accept = contactInput(a, action: "accept", revision: pending.revision, requestID: pending.requestID)
             let friend = try await imCall(app, "contacts/mutate", accept, ContactRelationship.self, b)
             let chat = try await imCall(app, "conversations/resolve", resolve, IMConversation.self, a)
             let input = outgoing(chat, a)
@@ -62,7 +64,7 @@ struct ContactTests {
                 app, "contacts/mutate", contactInput(b, action: "delete", revision: friend.revision),
                 ContactRelationship.self, a)
             #expect(deleted.state == "deleted")
-            #expect(try await imCall(app, "contacts/mutate", accept, ContactRelationship.self, b).state == "deleted")
+            #expect(try await imCall(app, "contacts/mutate", accept, ContactRelationship.self, b).state == "friend")
             #expect(try await imCall(app, "contacts/mutate", request, ContactRelationship.self, a).state == "deleted")
             #expect(try await imCall(app, "messages/send", input, IMMessage.self, a).messageUuid == message.messageUuid)
             #expect(
@@ -70,14 +72,14 @@ struct ContactTests {
                     == "FRIEND_REQUIRED")
             #expect(try await imCall(app, "history", historyInput(chat), IMHistoryResponse.self, b).messages.count == 2)
             let events = try await imCall(app, "events", IMEventsRequest(), IMEventsResponse.self, b)
-            #expect(events.events.filter { $0.kind == "contact" }.allSatisfy { $0.contact.state == "deleted" })
+            #expect(events.events.filter { $0.kind == "contact" }.allSatisfy { $0.contact.state == "friend" && !$0.contact.availableActions.contains("send") })
             #expect(events.events.map(\.position) == Array(1...Int64(events.events.count)))
             let snapshot = try await imCall(app, "snapshot", IMSnapshotRequest(), IMSnapshotResponse.self, a)
             #expect(snapshot.contacts.first?.state == "deleted")
             let newRequest = try await imCall(
-                app, "contacts/mutate", contactInput(b, action: "request", revision: deleted.revision),
+                app, "contacts/mutate", contactInput(b, action: "restore", revision: deleted.revision),
                 ContactRelationship.self, a)
-            #expect(newRequest.state == "pending" && newRequest.revision > deleted.revision)
+            #expect(newRequest.state == "friend" && newRequest.revision > deleted.revision)
         }
     }
     @Test func groupRequiresOwnersFriends() async throws {

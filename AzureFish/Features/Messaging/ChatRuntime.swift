@@ -21,15 +21,38 @@ final class ChatRuntime {
     private(set) var transfers: ChatTransferQueue?
     private(set) var originalDraftStore: AccountChatDraftStore?
     private(set) var pageLeaseRoot: URL?
-    private(set) var contacts: [ChatContact] = []
-    private(set) var conversations: [ChatConversation] = []
+    private(set) var contacts: [ChatContact] = [] { didSet { rebuildProfileIndex() } }
+    private(set) var conversations: [ChatConversation] = [] { didSet { rebuildProfileIndex() } }
+    private var profileIndex: [String: ChatUser] = [:]
+    private func rebuildProfileIndex() {
+        var values: [String: ChatUser] = [:]
+        for profile in contacts.map(\.peer) + conversations.flatMap(\.members).map(\.profile) {
+            if profile.version >= (values[profile.id]?.version ?? -1) { values[profile.id] = profile }
+        }
+        profileIndex = values
+    }
     private(set) var online = false
     private(set) var failure: String?
     private(set) var hasSnapshot = false
     private(set) var synchronization: ChatSynchronizationState = .idle
     private(set) var preferences: [String: ConversationLocalPreferences] = [:]
     private(set) var listStates: [String: ConversationListState] = [:]
+    private(set) var draftPreviews: [String: ConversationDraftPreview] = [:]
+    private(set) var pinnedConversationsCollapsed = false
     private var listRefresh = UUID()
+    lazy var contactOperations = ContactOperations(runtime: self)
+    var openConversation: ((ChatConversation) -> Void)?
+    func receivedContact(_ contact: ChatContact, engine: ChatEngine) {
+        guard self.engine === engine else { return }
+        for runtime in Self.instances.compactMap(\.value) {
+            guard runtime.engine?.store.userID == engine.store.userID,
+                  runtime.engine?.store.environment == engine.store.environment else { continue }
+            if let index = runtime.contacts.firstIndex(where: { $0.peer.id == contact.peer.id }) {
+                runtime.contacts[index] = runtime.contacts[index].merging(contact)
+            } else { runtime.contacts.append(contact) }
+            runtime.publish()
+        }
+    }
     var incomingMessages: (([ChatMessage]) -> Void)?
     private var incomingTask: Task<Void, Never>?
     private var foreground = false
@@ -39,17 +62,38 @@ final class ChatRuntime {
     var api: IMAPI? { session.sessionManager.map(IMAPI.init) }
     var userID: String { session.profile?.userID.uuidString.lowercased() ?? "" }
     init(session: SessionCoordinator) { self.session = session; registerInstance() }
+    #if DEBUG
+    /// 预览只注入确定性快照，不打开账号存储或发出网络请求。
+    convenience init(previewContacts: [ChatContact]) {
+        self.init(session: .configured())
+        contacts = previewContacts; hasSnapshot = true
+    }
+    convenience init(previewConversations: [ChatConversation], pinned: Set<String>, collapsed: Bool) {
+        self.init(session: .configured())
+        conversations = previewConversations; hasSnapshot = true
+        pinnedConversationsCollapsed = collapsed
+        for conversation in previewConversations {
+            var state = ConversationListState(); state.hasAppeared = true
+            state.activityAt = conversation.latestMessage?.createdAt ?? 0
+            listStates[conversation.id] = state
+            preferences[conversation.id] = .init(isPinned: pinned.contains(conversation.id))
+        }
+    }
+    #endif
     /// 注入已打开的账号资源，供隔离集成验证使用；不启动后台同步或创建替代密钥。
     init(session: SessionCoordinator, engine: ChatEngine, media: ChatMediaStore,
-         conversations: [ChatConversation], pageLeaseRoot: URL) {
+         conversations: [ChatConversation], pageLeaseRoot: URL, contacts: [ChatContact] = []) {
         self.session = session; self.engine = engine; self.media = media
         self.hasSnapshot = true
+        self.contacts = contacts
         self.conversations = conversations.sorted {
                         let left = $0.latestMessage?.createdAt ?? 0, right = $1.latestMessage?.createdAt ?? 0
                         return left == right ? $0.id < $1.id : left > right
                     }; self.pageLeaseRoot = pageLeaseRoot
+        rebuildProfileIndex()
         registerInstance()
         originalDraftStore = AccountChatDraftStore(store: engine.store, media: media)
+        observeDraftSaves(engine: engine)
         if let manager = session.sessionManager {
             transfers = ChatTransferQueue(store: engine.store, media: media, session: manager, engine: engine)
         }
@@ -118,6 +162,7 @@ final class ChatRuntime {
                 self.pageLeaseRoot = pages
                 self.originalDraftStore = AccountChatDraftStore(store: store, media: media)
                 self.engine = engine
+                observeDraftSaves(engine: engine)
                 self.media = media
                 let transfers = ChatTransferQueue(
                     store: store, media: media, session: manager, engine: engine)
@@ -149,6 +194,11 @@ final class ChatRuntime {
                         return left == right ? $0.id < $1.id : left > right
                     }
                     try await self.refreshListStates()
+                    if update.ownProfileVersion > (session.profile?.version ?? 0) {
+                        try? await session.reloadProfile()
+                        guard self.generation == generation, !Task.isCancelled else { break }
+                        self.publish()
+                    }
                     if let invalidated = try? await store.mediaInvalidations() {
                         var removed = Set<UUID>()
                         for id in invalidated {
@@ -170,6 +220,8 @@ final class ChatRuntime {
         incomingTask?.cancel(); incomingTask = nil
         preferences = [:]
         listStates = [:]
+        draftPreviews = [:]
+        pinnedConversationsCollapsed = false
         listRefresh = UUID()
         task?.cancel()
         task = nil
@@ -247,12 +299,26 @@ final class ChatRuntime {
         }
         let request = UUID()
         for target in targets { target.listRefresh = request }
-        let values = try await engine.store.conversationListStates()
+        let snapshot = try await engine.store.conversationListSnapshot()
         guard self.engine === engine else { return }
         for target in targets where target.listRefresh == request && target.engine != nil {
-            target.listStates = values
+            target.listStates = snapshot.states
+            target.draftPreviews = snapshot.drafts
+            target.pinnedConversationsCollapsed = snapshot.pinnedCollapsed
             target.publish()
         }
+    }
+    private func observeDraftSaves(engine: ChatEngine) {
+        originalDraftStore?.didSave = { [weak self, weak engine] in
+            guard let self, let engine, self.engine === engine else { return }
+            try? await refreshListStates()
+        }
+    }
+    func setPinnedConversationsCollapsed(_ collapsed: Bool) async throws {
+        guard let engine else { throw ChatStoreError.unavailable }
+        try await engine.store.setPinnedConversationsCollapsed(collapsed)
+        guard self.engine === engine else { return }
+        try await refreshListStates()
     }
     func markConversationUnread(_ conversation: String, enabled: Bool = true) async throws {
         guard let engine else { throw ChatStoreError.unavailable }
@@ -279,15 +345,20 @@ final class ChatRuntime {
             } catch { /* 保留持久标记，下一次进入页面时重试。 */ }
         }
     }
-    func memberName(_ member: ChatMember) -> String {
-        contacts.first { $0.peer.id == member.id }?.peer.nickname
-            ?? (member.id == userID ? session.profile?.nickname : nil) ?? member.profile.nickname
+    func displayName(user id: String, fallback: ChatUser? = nil) -> String {
+        let contact = contacts.first { $0.peer.id == id }
+        if let remark = contact?.remark, !remark.isEmpty { return remark }
+        var profile = profileIndex[id] ?? fallback
+        if let fallback, profile == nil || fallback.version > profile!.version { profile = fallback }
+        if id == userID, let own = session.profile, own.version >= (profile?.version ?? 0) { return own.nickname }
+        return profile?.nickname ?? Localization.text("chat.live.groupMember")
     }
+    func memberName(_ member: ChatMember) -> String { displayName(user: member.id, fallback: member.profile) }
     func title(_ conversation: ChatConversation) -> String {
+        let conversation = conversations.first { $0.id == conversation.id } ?? conversation
         if conversation.kind == "group" { return conversation.title }
-        let peer = conversation.members.first { $0.id != userID }?.id ?? ""
-        return contacts.first { $0.peer.id == peer }?.peer.nickname
-            ?? Localization.text("chat.live.privateChat")
+        guard let peer = conversation.members.first(where: { $0.id != userID }) else { return Localization.text("chat.live.privateChat") }
+        return memberName(peer)
     }
     func canSend(_ conversation: ChatConversation) -> Bool {
         let conversation = conversations.first { $0.id == conversation.id } ?? conversation
@@ -295,7 +366,7 @@ final class ChatRuntime {
             && conversation.members.contains { $0.id == userID && $0.active }
             && (conversation.kind == "group"
                 || contacts.contains {
-                    $0.state == "friend"
+                    $0.canSend
                         && $0.peer.id == conversation.members.first(where: { $0.id != userID })?.id
                 })
     }

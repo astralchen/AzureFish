@@ -1,4 +1,5 @@
 import Foundation
+import Fluent
 import Vapor
 
 /// 控制本机实时提示连接数量；HTTP 增量始终是消息恢复的权威来源。
@@ -29,6 +30,7 @@ extension IMService {
                 let task = Task {
                     do {
                         var previous = ""
+                        var previousProfile: Int64 = 0
                         var ticks = 0
                         while !Task.isCancelled && !socket.isClosed {
                             let hint = try await self.accounts.gate.run {
@@ -36,11 +38,13 @@ extension IMService {
                                 let tail = try await self.tail(session.userID, db: req.db)
                                 var hint = IMSyncHint(); hint.epoch = self.epoch
                                 hint.latestCursor = try self.cursor(user: session.userID, resource: "events", position: tail)
+                                hint.ownProfileVersion = try await UserRecord.find(session.userID, on: req.db)?.version ?? 0
                                 return hint
                             }
-                            if previous != hint.latestCursor || ticks % 25 == 0 {
+                            if previous != hint.latestCursor || previousProfile != hint.ownProfileVersion || ticks % 25 == 0 {
                                 try await socket.send(raw: hint.serializedData(), opcode: .binary)
                                 previous = hint.latestCursor
+                                previousProfile = hint.ownProfileVersion
                             }
                             ticks += 1
                             try await Task.sleep(for: .seconds(1))

@@ -136,8 +136,30 @@ public actor ChatStore {
         closed = true
         try db.close()
     }
-    public func contacts() throws -> [ChatContact] { try values("contact") }
-    public func conversations() throws -> [ChatConversation] { try values("conversation") }
+    public func contacts() throws -> [ChatContact] {
+        let profiles: [ChatUser] = try values("profile")
+        let latest = Dictionary(uniqueKeysWithValues: profiles.map { ($0.id, $0) })
+        let contacts: [ChatContact] = try values("contact")
+        return contacts.map { contact in
+            var value = contact
+            if let profile = latest[value.peer.id], profile.version > value.peer.version { value.peer = profile }
+            return value
+        }
+    }
+    public func conversations() throws -> [ChatConversation] {
+        let profiles: [ChatUser] = try values("profile")
+        let latest = Dictionary(uniqueKeysWithValues: profiles.map { ($0.id, $0) })
+        let conversations: [ChatConversation] = try values("conversation")
+        return conversations.map { conversation in
+            var value = conversation
+            value.members = value.members.map { member in
+                var member = member
+                if let profile = latest[member.id], profile.version > member.profile.version { member.profile = profile }
+                return member
+            }
+            return value
+        }
+    }
     private func values<T: Decodable>(_ bucket: String) throws -> [T] {
         try check()
         return try db.read { db in
@@ -193,13 +215,16 @@ public actor ChatStore {
             try $0.execute(sql: "INSERT OR REPLACE INTO meta VALUES (?,?)", arguments: [id, data])
         }
     }
+    /// 删除账号私有元数据，不影响其他业务实体或同步游标。
+    public func removeMeta(_ id: String) throws {
+        try check()
+        try db.write { try $0.execute(sql: "DELETE FROM meta WHERE id=?", arguments: [id]) }
+    }
     public func apply(snapshot: ChatSnapshot) throws {
         try check()
         try db.write { db in
             for contact in snapshot.contacts {
-                try Self.put(
-                    contact, bucket: "contact", id: contact.peer.id, revision: contact.revision,
-                    db: db)
+                try Self.putContact(contact, db: db)
             }
             for conversation in snapshot.conversations {
                 try Self.putConversation(conversation, userID: userID, db: db)
@@ -223,9 +248,7 @@ public actor ChatStore {
             else { throw ChatStoreError.cursorMismatch }
             for event in events.events {
                 if let contact = event.contact {
-                    try Self.put(
-                        contact, bucket: "contact", id: contact.peer.id, revision: contact.revision,
-                        db: db)
+                    try Self.putContact(contact, db: db)
                 }
                 if let conversation = event.conversation {
                     try Self.putConversation(conversation, userID: userID, db: db)
@@ -245,8 +268,7 @@ public actor ChatStore {
     public func save(_ contact: ChatContact) throws {
         try check()
         try db.write {
-            try Self.put(
-                contact, bucket: "contact", id: contact.peer.id, revision: contact.revision, db: $0)
+            try Self.putContact(contact, db: $0)
         }
     }
     public func save(_ conversation: ChatConversation) throws {
@@ -387,20 +409,24 @@ public actor ChatStore {
                 let original = try Self.reeditText(message: message, conversation: conversation, now: now(), db: db)
                 guard original == expectedText else { throw ChatStoreError.draftChanged }
             }
+            let previous = try Self.draftPreview(conversation, db: db)
             try db.execute(sql: "INSERT OR REPLACE INTO meta VALUES (?,?)", arguments: ["rich-draft:" + conversation, bytes])
             try db.execute(sql: "INSERT OR REPLACE INTO draft VALUES (?,?)", arguments: [conversation, draft])
+            try Self.recordDraftChange(previous, conversation: conversation, db: db)
         }
     }
     public func saveDraft(_ draft: ChatLocalDraft, conversation: String) throws {
         try check()
         let data = try JSONEncoder().encode(draft)
         try db.write { db in
+            let preview = try Self.draftPreview(conversation, db: db)
             let previous = try Data.fetchOne(db, sql: "SELECT payload FROM draft WHERE id=?", arguments: [conversation])
                 .map { try JSONDecoder().decode(ChatLocalDraft.self, from: $0) }
             if previous?.text != draft.text {
                 try db.execute(sql: "DELETE FROM meta WHERE id=?", arguments: ["rich-draft:" + conversation])
             }
             try db.execute(sql: "INSERT OR REPLACE INTO draft VALUES (?,?)", arguments: [conversation, data])
+            try Self.recordDraftChange(preview, conversation: conversation, db: db)
         }
     }
     /// 删除本地未确认消息；已发出的请求仍可能确认，hidden 记录继续隐藏相同身份。
@@ -547,10 +573,12 @@ public actor ChatStore {
                 ).map { try JSONDecoder().decode(ChatLocalDraft.self, from: $0) }
                 ?? ChatLocalDraft()
             guard draft.text == expectedText else { throw ChatStoreError.draftChanged }
+            let preview = try Self.draftPreview(conversation, db: db)
             draft.text = text
             try db.execute(
                 sql: "INSERT OR REPLACE INTO draft VALUES (?,?)",
                 arguments: [conversation, JSONEncoder().encode(draft)])
+            try Self.recordDraftChange(preview, conversation: conversation, db: db)
             return draft
         }
     }
@@ -711,7 +739,18 @@ public actor ChatStore {
             sql: "INSERT OR REPLACE INTO entity VALUES (?,?,?,?,?,?)",
             arguments: [bucket, id, revision, conversation, sequence, JSONEncoder().encode(value)])
     }
+    private static func putContact(_ incoming: ChatContact, db: Database) throws {
+        var value = incoming
+        if let data = try Data.fetchOne(db, sql: "SELECT payload FROM entity WHERE bucket='contact' AND id=?", arguments: [value.peer.id]) {
+            value = try JSONDecoder().decode(ChatContact.self, from: data).merging(incoming)
+        }
+        try put(value.peer, bucket: "profile", id: value.peer.id, revision: value.peer.version, db: db)
+        try put(value, bucket: "contact", id: value.peer.id, revision: value.revision, db: db)
+    }
     private static func putConversation(_ value: ChatConversation, userID: UUID, db: Database) throws {
+        for member in value.members {
+            try put(member.profile, bucket: "profile", id: member.id, revision: member.profile.version, db: db)
+        }
         var value = value
         if let data = try Data.fetchOne(
             db, sql: "SELECT payload FROM entity WHERE bucket='conversation' AND id=?",

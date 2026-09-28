@@ -52,13 +52,40 @@ final class ChatConversationListUITests: XCTestCase {
             XCTAssertTrue(rows.firstMatch.waitForExistence(timeout: 20))
             XCTAssertEqual(rows.count, 2)
             XCTAssertTrue(rows.element(boundBy: 1).label.contains("12"))
-            expectation(for: NSPredicate(format: "label CONTAINS %@", "周末计划 260"), evaluatedWith: rows.firstMatch)
+            expectation(for: NSPredicate(format: "label CONTAINS %@", "保留这条草稿"), evaluatedWith: rows.firstMatch)
             waitForExpectations(timeout: 5)
             capture(app, name: "会话列表-\(language)")
             if language == "ar" { rows.firstMatch.swipeRight() } else { rows.firstMatch.swipeLeft() }
             let hide = ["zh-Hans": "不显示", "zh-Hant": "不顯示", "en": "Hide", "ar": "إخفاء"][language]!
             XCTAssertTrue(app.buttons[hide].waitForExistence(timeout: 5))
             capture(app, name: "会话列表-滑动操作-\(language)")
+            app.terminate()
+        }
+    }
+    @MainActor func testPinnedFoldDraftAndSearch() throws {
+        continueAfterFailure = false
+        for language in ["zh-Hans", "zh-Hant", "en", "ar"] {
+            let app = XCUIApplication()
+            app.launchArguments = ["-chat-details-ui-test", "-details-list", "-azurefish.locale.identifier", language]
+                + (["zh-Hant", "ar"].contains(language) ? ["-details-dark", "-details-large"] : [])
+            app.launch()
+            let rows = app.cells.matching(NSPredicate(format: "identifier BEGINSWITH 'chat.row.'"))
+            XCTAssertTrue(rows.firstMatch.waitForExistence(timeout: 20))
+            expectation(for: NSPredicate(format: "label CONTAINS %@", "保留这条草稿"), evaluatedWith: rows.firstMatch)
+            waitForExpectations(timeout: 5)
+            let toggle = app.buttons["chat.list.pinnedToggle"]
+            XCTAssertTrue(toggle.exists)
+            capture(app, name: "草稿与置顶-\(language)")
+            toggle.tap()
+            expectation(for: NSPredicate(format: "count == 1"), evaluatedWith: rows)
+            waitForExpectations(timeout: 5)
+            capture(app, name: "折叠置顶-\(language)")
+            let search = app.searchFields.firstMatch
+            search.tap(); search.typeText("周末")
+            XCTAssertTrue(rows.firstMatch.waitForExistence(timeout: 5))
+            expectation(for: NSPredicate(format: "label CONTAINS %@", "保留这条草稿"), evaluatedWith: rows.firstMatch)
+            waitForExpectations(timeout: 5)
+            capture(app, name: "折叠后搜索-\(language)")
             app.terminate()
         }
     }

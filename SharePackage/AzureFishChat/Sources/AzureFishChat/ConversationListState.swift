@@ -135,3 +135,98 @@ extension ChatStore {
         }
     }
 }
+
+/// 会话列表的草稿摘要；资源仅包含稳定身份，不读取或解密媒体文件。
+public struct ConversationDraftPreview: Sendable, Equatable {
+    public let text: String
+    public let hasAttachments: Bool
+    let attachmentIdentity: [String]
+    public var isEmpty: Bool { text.isEmpty && !hasAttachments }
+}
+
+extension ChatStore {
+    // rich-draft 的 v1 清单保留 segments/documents/media/audio；兼容旧库，不在读取时改写可见性。
+    static func draftPreview(_ conversation: String, db: Database) throws -> ConversationDraftPreview {
+        try draftPreview(
+            text: Data.fetchOne(db, sql: "SELECT payload FROM draft WHERE id=?", arguments: [conversation]),
+            rich: Data.fetchOne(db, sql: "SELECT payload FROM meta WHERE id=?", arguments: ["rich-draft:" + conversation]),
+            attachments: Data.fetchOne(db, sql: "SELECT payload FROM meta WHERE id=?", arguments: ["attachments:" + conversation]))
+    }
+
+    private static func draftPreview(text: Data?, rich: Data?, attachments: Data?) throws -> ConversationDraftPreview {
+        let text = try text.map { try JSONDecoder().decode(ChatLocalDraft.self, from: $0).text } ?? ""
+        var resources: [Any] = []
+        if let rich, let snapshot = try JSONSerialization.jsonObject(with: rich) as? [String: Any] {
+            resources += snapshot["documents"] as? [Any] ?? []
+            for key in ["media", "audio"] {
+                if let value = snapshot[key], !(value is NSNull) { resources.append(value) }
+            }
+        } else if let attachments {
+            resources = try JSONSerialization.jsonObject(with: attachments) as? [Any] ?? []
+        }
+        func identities(_ value: Any) -> [String] {
+            if let object = value as? [String: Any] {
+                return object.keys.sorted().flatMap { key in
+                    let value = object[key]!
+                    return key == "id" ? (value as? String).map { [$0] } ?? [] : identities(value)
+                }
+            }
+            return (value as? [Any])?.flatMap(identities) ?? []
+        }
+        return .init(text: text, hasAttachments: !resources.isEmpty,
+                     attachmentIdentity: resources.flatMap(identities))
+    }
+
+    static func recordDraftChange(_ previous: ConversationDraftPreview, conversation: String, db: Database) throws {
+        let next = try draftPreview(conversation, db: db)
+        guard !next.isEmpty, next != previous else { return }
+        var state = try listState(conversation, db: db)
+        state.hasAppeared = true
+        state.hiddenThrough = nil
+        // 草稿影响摘要及可见性，不冒充已发送消息，也不改变消息活动时间。
+        try saveListState(state, conversation: conversation, db: db)
+    }
+
+    /// 原子保存旧系统编辑器的附件；重复保存与资源路径变化不会恢复隐藏会话。
+    public func saveDraftAttachments(_ items: [ChatUploadItem], conversation: String) throws {
+        try check()
+        try db.write { db in
+            let previous = try Self.draftPreview(conversation, db: db)
+            try db.execute(sql: "INSERT OR REPLACE INTO meta VALUES (?,?)",
+                           arguments: ["attachments:" + conversation, JSONEncoder().encode(items)])
+            try Self.recordDraftChange(previous, conversation: conversation, db: db)
+        }
+    }
+
+    /// 在同一读取事务中返回列表状态、草稿与折叠偏好，避免摘要和可见性取自不同保存时刻。
+    public func conversationListSnapshot() throws -> (states: [String: ConversationListState], drafts: [String: ConversationDraftPreview], pinnedCollapsed: Bool) {
+        try check()
+        return try db.read { db in
+            let states = Dictionary(uniqueKeysWithValues: try Row.fetchAll(db, sql: "SELECT * FROM conversation_list").map {
+                ($0["conversation"] as String, ConversationListState($0))
+            })
+            // 批量取已有草稿，避免每次输入或同步时按所有会话逐一查询。
+            let text = Dictionary(uniqueKeysWithValues: try Row.fetchAll(db, sql: "SELECT id,payload FROM draft").map {
+                ($0["id"] as String, $0["payload"] as Data)
+            })
+            let metadata = Dictionary(uniqueKeysWithValues: try Row.fetchAll(db,
+                sql: "SELECT id,payload FROM meta WHERE id LIKE 'rich-draft:%' OR id LIKE 'attachments:%'").map {
+                ($0["id"] as String, $0["payload"] as Data)
+            })
+            let ids = Set(text.keys).union(metadata.keys.map { String($0.dropFirst($0.hasPrefix("rich-draft:") ? 11 : 12)) })
+            var drafts: [String: ConversationDraftPreview] = [:]
+            for id in ids {
+                let value = try Self.draftPreview(text: text[id], rich: metadata["rich-draft:" + id], attachments: metadata["attachments:" + id])
+                if !value.isEmpty { drafts[id] = value }
+            }
+            let collapsed = try Data.fetchOne(db, sql: "SELECT payload FROM meta WHERE id='list-pinned-collapsed'")
+                .map { try JSONDecoder().decode(Bool.self, from: $0) } ?? false
+            return (states, drafts, collapsed)
+        }
+    }
+
+    /// 折叠仅属于当前账号本机的显示偏好，不隐藏会话或更改未读水位。
+    public func setPinnedConversationsCollapsed(_ collapsed: Bool) throws {
+        try setMeta(collapsed, id: "list-pinned-collapsed")
+    }
+}

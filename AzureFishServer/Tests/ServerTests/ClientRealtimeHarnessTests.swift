@@ -34,7 +34,7 @@ struct ClientRealtimeHarnessTests {
             #expect(status == 0)
             #expect(try String(contentsOf: completion, encoding: .utf8) == "completed")
             await app.server.shutdown()
-        } catch { try await app.asyncShutdown(); throw error }
+        } catch { await app.server.shutdown(); try await app.asyncShutdown(); throw error }
         try await app.asyncShutdown()
     }
 }

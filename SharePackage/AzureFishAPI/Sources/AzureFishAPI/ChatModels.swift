@@ -13,7 +13,7 @@ public struct ChatUser: Codable, Sendable, Equatable {
     }
 }
 
-/// 当前好友关系与删除墓碑。
+/// 当前账号可见的联系人投影；备注和拉黑设置属于当前账号。
 public struct ChatContact: Codable, Sendable, Equatable {
     public var id: String
     public var peer: ChatUser
@@ -21,13 +21,54 @@ public struct ChatContact: Codable, Sendable, Equatable {
     public var requesterID: String
     public var revision: Int64
     public var updatedAt: Int64
-    init(_ value: ContactRelationship) {
-        id = value.relationshipID
-        peer = ChatUser(value.peer)
-        state = value.state
-        requesterID = value.requesterUserID
-        revision = value.revision
-        updatedAt = value.updatedAtMs
+    public var semanticsVersion: Int32
+    public var isContact: Bool
+    public var remark: String
+    public var isBlocked: Bool
+    public var requestID: String
+    public var requestState: String
+    public var requestMessage: String
+    public var requestUpdatedAt: Int64
+    public var availableActions: [String]
+    public var displayName: String { remark.isEmpty ? peer.nickname : remark }
+    public var canSend: Bool { availableActions.contains("send") }
+    /// 关系版本和公共资料版本独立合并，迟到的查询不能恢复旧备注或昵称。
+    public func merging(_ other: ChatContact) -> ChatContact {
+        guard peer.id == other.peer.id else { return self }
+        var result = revision > other.revision ? self : other
+        result.peer = peer.version > other.peer.version ? peer : other.peer
+        return result
+    }
+    public func allows(_ action: ContactAction) -> Bool { semanticsVersion == 2 && availableActions.contains(action.rawValue) }
+    public func matches(_ query: String) -> Bool {
+        query.isEmpty || displayName.localizedStandardContains(query) || peer.nickname.localizedStandardContains(query)
+    }
+    public init(_ value: ContactRelationship) {
+        id = value.relationshipID; peer = ChatUser(value.peer); state = value.state
+        requesterID = value.requesterUserID; revision = value.revision; updatedAt = value.updatedAtMs
+        semanticsVersion = value.semanticsVersion; isContact = value.semanticsVersion == 2 ? value.isContact : value.state == "friend"
+        remark = value.remark; isBlocked = value.isBlocked
+        requestID = value.requestID; requestState = value.requestState; requestMessage = value.requestMessage
+        requestUpdatedAt = value.requestUpdatedAtMs; availableActions = value.availableActions
+    }
+    private enum CodingKeys: String, CodingKey {
+        case id, peer, state, requesterID, revision, updatedAt, semanticsVersion, isContact, remark, isBlocked
+        case requestID, requestState, requestMessage, requestUpdatedAt, availableActions
+    }
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id); peer = try c.decode(ChatUser.self, forKey: .peer)
+        state = try c.decode(String.self, forKey: .state); requesterID = try c.decode(String.self, forKey: .requesterID)
+        revision = try c.decode(Int64.self, forKey: .revision); updatedAt = try c.decode(Int64.self, forKey: .updatedAt)
+        semanticsVersion = try c.decodeIfPresent(Int32.self, forKey: .semanticsVersion) ?? 0
+        isContact = try c.decodeIfPresent(Bool.self, forKey: .isContact) ?? (state == "friend")
+        remark = try c.decodeIfPresent(String.self, forKey: .remark) ?? ""
+        isBlocked = try c.decodeIfPresent(Bool.self, forKey: .isBlocked) ?? false
+        requestID = try c.decodeIfPresent(String.self, forKey: .requestID) ?? ""
+        requestState = try c.decodeIfPresent(String.self, forKey: .requestState) ?? ""
+        requestMessage = try c.decodeIfPresent(String.self, forKey: .requestMessage) ?? ""
+        requestUpdatedAt = try c.decodeIfPresent(Int64.self, forKey: .requestUpdatedAt) ?? 0
+        availableActions = try c.decodeIfPresent([String].self, forKey: .availableActions) ?? []
     }
 }
 
@@ -340,12 +381,14 @@ public struct ChatEvent: Codable, Sendable, Equatable {
     }
 }
 public struct ChatEvents: Codable, Sendable, Equatable {
+    public let ownProfileVersion: Int64?
     public let events: [ChatEvent]
     public let base: String
     public let next: String
     public let epoch: String
     public let hasMore: Bool
     init(_ value: IMEventsResponse) {
+        ownProfileVersion = value.ownProfileVersion > 0 ? value.ownProfileVersion : nil
         events = value.events.map(ChatEvent.init)
         base = value.baseCursor
         next = value.nextCursor

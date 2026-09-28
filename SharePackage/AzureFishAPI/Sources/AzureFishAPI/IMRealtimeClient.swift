@@ -7,6 +7,7 @@ import SwiftProtobuf
 public struct IMRealtimeHint: Sendable, Equatable {
     public let epoch: UUID
     public let cursor: String
+    public var ownProfileVersion: Int64 = 0
 }
 
 /// 可合并的 HTTP 补拉通知；每个通知携带会话作用域供调用方隔离迟到结果。
@@ -160,7 +161,7 @@ public actor IMRealtimeClient {
             let closed = await closeConnection()
             if self.generation == closed { setState(.failed(.invalidHint)) }; return
         }
-        let hint = IMRealtimeHint(epoch: epoch, cursor: proto.latestCursor)
+        let hint = IMRealtimeHint(epoch: epoch, cursor: proto.latestCursor, ownProfileVersion: proto.ownProfileVersion)
         if hint != lastHint { lastHint = hint; emit(.hintChanged) }
     }
 

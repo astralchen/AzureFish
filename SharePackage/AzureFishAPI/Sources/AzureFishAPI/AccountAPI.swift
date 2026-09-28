@@ -215,7 +215,7 @@ public struct AccountAPI: Sendable {
         guard response.statusCode == operation.expectedStatus else {
             if !(200...299).contains(response.statusCode), mime == "application/protobuf",
                let message = try? ApiError(serializedBytes: response.body), !message.code.isEmpty {
-                let allowedFields = ["operation_id", "device_id", "account_name", "password", "nickname", "bio", "profile", "expected_profile_version"]
+                let allowedFields = ["operation_id", "device_id", "account_name", "password", "nickname", "bio", "profile", "expected_profile_version", "peer_user_id", "remark", "request_message", "request_id", "action"]
                 let retry = response.header("Retry-After").flatMap(Int.init).flatMap { (0...86400).contains($0) ? $0 : nil }
                 throw APIClientError.service(APIServiceFailure(statusCode: response.statusCode,
                     code: APIErrorCode(rawValue: message.code) ?? .unknown, field: allowedFields.contains(message.field) ? message.field : nil,
