@@ -116,3 +116,15 @@ AZUREFISH_RUN_MEDIA_CAPACITY=1 AZUREFISH_RUN_HTTP_SMOKE=1 PROTOC=/绝对路径/p
 在仓库根目录执行 `python3 Scripts/sync-server-protocol.py --server AzureFishServer --check`；客户端协议包在 `SharePackage/AzureFishProtocol` 执行 `swift test -j 4`。`Scripts/media-slow-transfer.py` 由集成测试通过 stdin 注入临时凭据，不打印凭据。所有媒体样例随服务端测试提供，来源记录在测试 Fixtures/README.md。
 
 未停止或重启用户已有的 8080 服务，未读写 `.local` 原数据库与密钥。临时服务、数据库与媒体由测试关闭和清理。没有执行提交、推送或部署。
+
+## 2026-09-27 原版聊天接入的协议扩展
+
+`swift test -j 4` 通过 45 项／12 个 suite。新增 `RichMessageTests` 验证有序语义格式、组合 emoji／阿拉伯文、链接接受规则、请求重放、历史和撤回清理。`AZUREFISH_RUN_CLIENT_CHAT=1 swift test -j 4 --filter ClientChatHarnessTests` 通过隔离随机回环端口联调，客户端 `IndependentChatTests` 实际通过；未接触现有 8080 服务或真实账号。
+
+客户端聊天包 16 项测试通过；协议同步脚本 `--check` 通过。UI 与权限边界见[本次接入记录](../../Documentation/Design/Chat/original-ui-restoration.md)。
+
+## 2026-09-28 好友通过双向提醒
+
+`AZUREFISH_RUN_HTTP_SMOKE=1 swift test -j 4` 本轮发现 48 项测试，实际通过 45 项，3 项显式启用的客户端 harness／大文件测试跳过。新增回归覆盖双方未读、独立已读、重复接受、删除后重加、旧操作重试、事务失败回滚、会话容量限制、重启及系统消息发送／撤回／回执权限。
+
+随机回环端口 HTTP smoke 通过：双方固定快照及历史包含同一系统提示，申请人阅读后接受方仍未读；原消息、群聊、实时提示与退出流程继续通过。记录为 `/tmp/azurefish-friend-server-final.log`。没有修改或重启既有 8080 服务，没有为旧好友补历史提示。客户端、设计与各类运行验证边界见[双向提醒交付记录](../../Documentation/Design/Chat/friendship-notice.md)。

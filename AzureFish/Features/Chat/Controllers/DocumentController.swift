@@ -42,6 +42,7 @@ final class DocumentController: NSObject, UIDocumentPickerDelegate {
     private var tasks: [UUID: Task<Void, Never>] = [:]
     /// 按链接身份保存的系统网页元数据提供者。
     private var providers: [UUID: LPMetadataProvider] = [:]
+    var linkPreviewLoader: ((LinkAttachment) async -> LinkAttachment)?
     /// 按附件身份保存的系统项目加载进度，支持取消导入。
     private var imports: [UUID: Progress] = [:]
     /// 草稿删除前通知页面关闭仍在使用该文件的预览。
@@ -139,6 +140,15 @@ final class DocumentController: NSObject, UIDocumentPickerDelegate {
     ///
     /// 元数据失败不改变原 URL 的可发送性；未交给存储的临时图片在退出时清理。
     private func fetchLink(_ link: LinkAttachment) {
+        if let linkPreviewLoader {
+            tasks[link.id] = Task { [weak self] in
+                let updated = await linkPreviewLoader(link)
+                guard let self, !Task.isCancelled, drafts[link.id] != nil else { return }
+                update(.init(attachment: .link(updated)))
+                tasks[link.id] = nil
+            }
+            return
+        }
         let provider = LPMetadataProvider()
         provider.timeout = 15
         providers[link.id] = provider

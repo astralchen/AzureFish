@@ -41,6 +41,29 @@ public enum APIErrorCode: String, Sendable {
     /// 服务端发生内部错误，可保留请求 ID 用于诊断。
     case internalError = "INTERNAL_ERROR"
     /// 当前客户端无法识别的服务端业务码；原始未识别字符串不向上暴露。
+    case friendRequired = "FRIEND_REQUIRED"
+    case selfContact = "SELF_CONTACT"
+    case contactVersionConflict = "CONTACT_VERSION_CONFLICT"
+    case contactActionUnavailable = "CONTACT_ACTION_UNAVAILABLE"
+    case contactLimit = "CONTACT_LIMIT"
+    case userNotFound = "USER_NOT_FOUND"
+    case conversationClosed = "CONVERSATION_CLOSED"
+    case conversationVersionConflict = "CONVERSATION_VERSION_CONFLICT"
+    case cursorExpired = "CURSOR_EXPIRED"
+    case snapshotExpired = "SNAPSHOT_EXPIRED"
+    case snapshotNotFound = "SNAPSHOT_NOT_FOUND"
+    case mediaNotAvailable = "MEDIA_NOT_AVAILABLE"
+    case mediaNotFound = "MEDIA_NOT_FOUND"
+    case mediaQuotaExceeded = "MEDIA_QUOTA_EXCEEDED"
+    case mediaStorageUnavailable = "MEDIA_STORAGE_UNAVAILABLE"
+    case mediaInUse = "MEDIA_IN_USE"
+    case uploadIncomplete = "UPLOAD_INCOMPLETE"
+    case partConflict = "PART_CONFLICT"
+    case messageIdConflict = "MESSAGE_ID_CONFLICT"
+    case revokeWindowExpired = "REVOKE_WINDOW_EXPIRED"
+    case ownerRequired = "OWNER_REQUIRED"
+    case ownerTransferRequired = "OWNER_TRANSFER_REQUIRED"
+    case membershipLimit = "MEMBERSHIP_LIMIT"
     case unknown
 }
 

@@ -154,7 +154,7 @@ message UpdateProfileRequest {
     optional string bio = 4;
 }
 
-// 按精确账号名查找可发起私聊的用户；不会返回密码或会话信息。
+// 按精确账号名查找可申请好友的用户；私聊发送另行检查好友关系。
 message IMLookupUserRequest {
     // 使用账号接口相同的规范化规则。
     string account_name = 1;
@@ -199,6 +199,7 @@ message IMMember {
     string user_id = 1; // 用户 UUID。
     bool active = 2; // 当前是否仍为成员。
     repeated IMMembershipInterval intervals = 3; // 按加入时间升序。
+    IMPublicUser profile = 4; // 当前可见成员资料；离开会话后使用冻结资料。
 }
 // 当前账号的权威阅读摘要。
 message IMReadState {
@@ -220,18 +221,26 @@ message IMConversation {
     int64 latest_seq = 8; // 当前账号可见的最高边界，离开后不再推进。
     bool closed = 9; // 当前账号不能再向此会话发消息。
     IMReadState read_state = 10; // 当前账号的阅读摘要。
+    IMMessage latest_message = 11; // 最新可见消息摘要；不代表历史同步覆盖。
 }
 // 发送文本消息；身份以 Bearer 为准，设备必须匹配该会话凭据。
+// 连续语义文字片段；style 使用 bold=1、italic=2、underline=4、strikethrough=8 位组合。
+message IMTextRun {
+    string text = 1;
+    uint32 style = 2;
+}
 message IMSendRequest {
     string operation_id = 1; // 写动作 UUID；重试保留原字节。
     string conversation_id = 2; // 已解析的权威会话 UUID。
     string message_uuid = 3; // 环境内全局唯一 UUID。
     string client_message_id = 4; // 发送者内唯一 UUID。
     string device_id = 5; // 当前凭据绑定的安装 UUID。
-    string content_type = 6; // text、media_group、audio、file。
+    string content_type = 6; // text、link、media_group、audio、file。
     int32 content_schema_version = 7; // 首期为 1。
     string text = 8; // text 类型必填，媒体类型为空。
     repeated string asset_ids = 9; // 有序就绪附件 UUID；媒体组最多 20 个，语音／文件恰好 1 个。
+    repeated IMTextRun text_runs = 10; // text 的可选格式片段，拼接必须等于 text。
+    string link_url = 11; // link 的原始 HTTP(S) URL，text 保留相同值供旧界面展示。
 }
 // 权威消息信封；撤回终态保留身份与序号，清空正文。
 message IMMessage {
@@ -239,8 +248,8 @@ message IMMessage {
     string message_uuid = 2; // 原发送端 UUID。
     string client_message_id = 3; // 原发送端幂等 UUID。
     string server_message_id = 4; // 服务端消息 UUID。
-    string sender_user_id = 5; // 认证得到的发送者 UUID。
-    string device_id = 6; // 原发送会话设备。
+    string sender_user_id = 5; // 认证得到的发送者 UUID；系统消息为空。
+    string device_id = 6; // 原发送会话设备；系统消息为空。
     int64 server_seq = 7; // 会话内严格递增，从 1 开始。
     int64 server_created_at_ms = 8; // 接受时间，Unix 毫秒。
     int64 server_revision = 9; // 正文版本，撤回递增。
@@ -250,6 +259,17 @@ message IMMessage {
     bool revoked = 13; // 不允许恢复正文。
     IMReceiptSummary receipt = 14; // 独立版本的回执摘要。
     repeated MediaAsset assets = 15; // 有序权威附件；撤回后清空，不包含路径或下载凭据。
+    repeated IMTextRun text_runs = 16; // 撤回时清空。
+    string link_url = 17; // 客户端生成预览；服务端不访问此 URL。
+    IMSystemEvent system_event = 18; // 仅服务端生成；system 消息无用户发送者、设备及回执。
+}
+// 持久化的系统事件，不保存本地化文案。
+message IMSystemEvent {
+    string kind = 1; // friendship_accepted；未知事件显示通用占位。
+    string relationship_id = 2;
+    int64 relationship_revision = 3;
+    string requester_user_id = 4;
+    string accepter_user_id = 5;
 }
 // 固定发送时接收范围的回执计数；发送者不计入。
 message IMReceiptSummary {
@@ -302,6 +322,7 @@ message IMEvent {
     string kind = 2; // conversation、message、read、receipt。
     IMConversation conversation = 3; // 含与本批次一致的当前账号摘要。
     IMMessage message = 4; // message 事件存在，其余事件不携带。
+    ContactRelationship contact = 5; // contact 事件为当前权威关系，含删除墓碑。
 }
 message IMEventsResponse {
     string base_cursor = 1; // 对应本次输入位置的规范游标。
@@ -323,6 +344,7 @@ message IMSnapshotResponse {
     bool complete = 4;
     string baseline_cursor = 5; // 仅末页返回；以此继续增量，再拉历史。
     string epoch = 6;
+    repeated ContactRelationship contacts = 7; // 与会话共享固定快照及 baseline。
 }
 // 回执明细固定快照，成员变化不改变旧消息接收范围。
 message IMReceiptsRequest {
@@ -462,4 +484,23 @@ message MediaDownloadGrant {
     string resource_id = 3;
     string etag = 4; // 带双引号的稳定实体标识，可用于 If-Range。
     int64 byte_count = 5;
+}
+
+// 用户对的当前关系；删除和拒绝保留版本，旧事件不能恢复关系。
+message ContactRelationship {
+    string relationship_id = 1;
+    IMPublicUser peer = 2;
+    string state = 3; // pending、friend、rejected、cancelled、deleted。
+    string requester_user_id = 4;
+    int64 revision = 5;
+    int64 updated_at_ms = 6;
+}
+// 查询对方当前关系；无记录时返回 state=none、revision=0。
+message ContactGetRequest { string peer_user_id = 1; }
+// 首次申请 expected_revision=0；后续动作必须使用当前版本。
+message ContactMutationRequest {
+    string operation_id = 1;
+    string peer_user_id = 2;
+    int64 expected_revision = 3;
+    string action = 4; // request、accept、reject、cancel、delete。
 }

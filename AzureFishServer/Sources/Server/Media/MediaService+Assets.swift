@@ -47,7 +47,8 @@ extension MediaService {
         let reservation = reserved
         let free = try await blobs.availableBytes()
         return try await mutate(req, operation: input.operationID, bytes: bytes, name: "create") { session, db in
-            let (conversation, _) = try await self.im.load(input.conversationID, user: session.userID, db: db, active: true)
+            let (conversation, state) = try await self.im.load(input.conversationID, user: session.userID, db: db, active: true)
+            try await self.im.requireSending(user: session.userID, state: state, db: db)
             let all = try await MediaAssetRecord.query(on: db).filter(\.$reservedBytes > 0).all()
             let total = all.reduce(Int64(0)) { $0 + $1.reservedBytes }
             let owned = all.filter { $0.ownerID == session.userID }.reduce(Int64(0)) { $0 + $1.reservedBytes }

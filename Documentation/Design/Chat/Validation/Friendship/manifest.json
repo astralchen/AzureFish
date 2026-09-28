@@ -1,0 +1,20 @@
+{
+  "date": "2026-09-28",
+  "source": "Simulator test-window renders with encrypted fixture data; offline HTTP fixture, not a live friend-accept UI journey",
+  "images": [
+    {
+      "file": "system-notice-dark-rtl.png",
+      "test": "ChatOriginalUIIntegrationTests/realRouteUsesOriginalUIAndKeepsIdentityAfterAcknowledgement()",
+      "device": "iPhone 17 Pro",
+      "os": "iOS 26.5 Simulator",
+      "sha256": "ebb4053f9fa2837eea6334c14f4ab15b73f03c7d28c13ea541b3ecf7ba279dad"
+    },
+    {
+      "file": "system-notice-light.png",
+      "test": "ChatOriginalUIIntegrationTests/realRouteUsesOriginalUIAndKeepsIdentityAfterAcknowledgement()",
+      "device": "iPhone 17 Pro",
+      "os": "iOS 26.5 Simulator",
+      "sha256": "9ba4a5ed15b0ab1451e08be7dc28f42a6b87d57a7d8c625f778c0d1ed2b7112e"
+    }
+  ]
+}

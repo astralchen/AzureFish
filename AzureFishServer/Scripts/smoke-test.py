@@ -111,9 +111,23 @@ def receive_frame(stream):
 
 
 a, b = new_user(), new_user()
+call("POST", "/v1/im/contacts/mutate", "ContactMutationRequest",
+     dict(operation_id=str(uuid.uuid4()), peer_user_id=b["user_id"], action="request"), token=a["access_token"])
+call("POST", "/v1/im/contacts/mutate", "ContactMutationRequest",
+     dict(operation_id=str(uuid.uuid4()), peer_user_id=a["user_id"], expected_revision=1, action="accept"), token=b["access_token"])
 resolve = dict(operation_id=str(uuid.uuid4()), peer_user_id=b["user_id"])
 conversation = protobuf("IMConversation", call("POST", "/v1/im/conversations/resolve", "IMResolveRequest", resolve, token=a["access_token"]), decode=True)
 conversation_id = field(conversation, "conversation_id")
+# 接受申请已原子生成双方会话及未读系统提示，无需先发送普通消息。
+for user in [a, b]:
+    snapshot = protobuf("IMSnapshotResponse", call("POST", "/v1/im/snapshot", "IMSnapshotRequest", {}, token=user["access_token"]), decode=True)
+    assert b'kind: "friendship_accepted"' in snapshot and b"unread_count: 1" in snapshot
+    history = protobuf("IMHistoryResponse", call("POST", "/v1/im/history", "IMHistoryRequest", dict(conversation_id=conversation_id), token=user["access_token"]), decode=True)
+    assert history.count(b'content_type: "system"') == 1
+read = protobuf("IMReadState", call("POST", "/v1/im/read", "IMWatermarkRequest", dict(operation_id=str(uuid.uuid4()), conversation_id=conversation_id, through_seq=1), token=a["access_token"]), decode=True)
+assert b"unread_count:" not in read
+other = protobuf("IMConversation", call("POST", "/v1/im/conversations/get", "IMConversationRequest", dict(conversation_id=conversation_id), token=b["access_token"]), decode=True)
+assert b"unread_count: 1" in other
 message = dict(operation_id=str(uuid.uuid4()), conversation_id=conversation_id,
                message_uuid=str(uuid.uuid4()), client_message_id=str(uuid.uuid4()),
                device_id=a["device_id"], content_type="text", content_schema_version=1,
@@ -150,7 +164,7 @@ with socket.create_connection(("127.0.0.1", PORT), timeout=10) as stream:
     assert opcode == 8, "Revoked session must close its live connection"
 
 history = protobuf("IMHistoryResponse", call("POST", "/v1/im/history", "IMHistoryRequest", dict(conversation_id=conversation_id), token=a["access_token"]), decode=True)
-assert number(history, "upper_bound_seq") == 1
+assert number(history, "upper_bound_seq") == 2
 revoke = dict(operation_id=str(uuid.uuid4()), conversation_id=conversation_id, message_uuid=message["message_uuid"])
 call("POST", "/v1/im/messages/revoke", "IMRevokeRequest", revoke, token=a["access_token"])
 retry = protobuf("IMMessage", call("POST", "/v1/im/messages/send", "IMSendRequest", message, token=a["access_token"]), decode=True)

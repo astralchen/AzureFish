@@ -39,6 +39,26 @@ final class BottomObstructionCoordinator {
     private var keyboardContext: QuickLayoutKeyboardContext?
     /// 从可见键盘切入照片时冻结高度，不能跟随面板从屏幕外升起而先下落。
     private var pickerPresentationHeight: CGFloat?
+    /// 键盘顶部到窗口底部的距离，避免 Sheet 缩放父容器后沿用旧的局部高度。
+    private var pickerWindowObstruction: CGFloat?
+    private var attachmentMenuKeyboardHeight: CGFloat?
+    private var attachmentMenuWindowObstruction: CGFloat?
+
+    /// 附件菜单打开前记录的键盘高度；没有软件键盘时沿用最近的稳定高度。
+    var photoPickerKeyboardHeight: CGFloat { attachmentMenuKeyboardHeight ?? storedKeyboardContentHeight }
+
+    /// 在系统附件菜单展示前记录输入栏底边；参数位于宿主坐标，为 nil 时清除交接记录。
+    func prepareForAttachmentMenu(composerBottom: CGFloat?) {
+        attachmentMenuKeyboardHeight = nil
+        attachmentMenuWindowObstruction = nil
+        guard let bottom = composerBottom, let hostView, let window = hostView.window else { return }
+        let height = Self.contentObstruction(containerMaxY: hostView.bounds.maxY,
+            obstructionMinY: bottom, safeAreaBottom: hostView.safeAreaInsets.bottom)
+        guard height > 0 else { return }
+        attachmentMenuKeyboardHeight = height
+        let top = hostView.convert(CGPoint(x: hostView.bounds.midX, y: bottom), to: window)
+        attachmentMenuWindowObstruction = window.bounds.maxY - top.y
+    }
     /// 系统悬浮面板的实际顶部与键盘顶部略有差异；以展示完成的位置校准后续拖动。
     private var pickerGeometryOffset: CGFloat = 0
     /// 交接前输入栏的实际抬升量；面板消失而键盘通知尚未到达时仍可使用。
@@ -116,13 +136,25 @@ final class BottomObstructionCoordinator {
     /// 必须在收起键盘和开始展示面板之前调用，先屏蔽转场期间的临时键盘高度。
     /// 此处清除上次交接状态，但保留稳定键盘高度供本次面板限位使用。
     func trackPicker(_ picker: UIViewController) {
-        if let hostView, let keyboardContext,
+        pickerWindowObstruction = nil
+        if let height = attachmentMenuKeyboardHeight {
+            storedKeyboardContentHeight = height
+            pickerPresentationHeight = height
+            pickerWindowObstruction = attachmentMenuWindowObstruction
+        } else if let hostView, let keyboardContext,
            targetKeyboardContentHeight(for: keyboardContext, in: hostView) > 0 {
             pickerPresentationHeight = storedKeyboardContentHeight
+            if let window = hostView.window {
+                let top = hostView.convert(CGPoint(x: hostView.bounds.midX,
+                    y: hostView.bounds.maxY - hostView.safeAreaInsets.bottom - storedKeyboardContentHeight), to: window)
+                pickerWindowObstruction = window.bounds.maxY - top.y
+            }
         } else {
             // 直接打开照片或使用外接、浮动键盘时，输入栏仍随面板从底部正常升起。
             pickerPresentationHeight = nil
         }
+        attachmentMenuKeyboardHeight = nil
+        attachmentMenuWindowObstruction = nil
         pickerGeometryOffset = 0
         pickerViewController = picker
         keyboardHandoffStartHeight = nil
@@ -137,10 +169,10 @@ final class BottomObstructionCoordinator {
     func finishPickerPresentation(_ picker: UIViewController) {
         // 旧面板的异步完成回调不得影响已经关闭或重新打开的面板。
         guard pickerViewController === picker else { return }
-        if let height = pickerPresentationHeight,
+        if pickerPresentationHeight != nil,
            let hostView,
            let pickerHeight = visiblePickerHeight(in: hostView) {
-            pickerGeometryOffset = max(0, height - pickerHeight)
+            pickerGeometryOffset = max(0, maximumPickerHeight(in: hostView) - pickerHeight)
         }
         pickerPresentationHeight = nil
         refreshGeometry()
@@ -159,6 +191,7 @@ final class BottomObstructionCoordinator {
     /// 若键盘交接尚未完成，则继续采样，不能随面板消失一起停止显示链接。
     func stopTrackingPicker() {
         pickerViewController = nil
+        pickerWindowObstruction = nil
         pickerPresentationHeight = nil
         pickerGeometryOffset = 0
         if isAwaitingKeyboard && keyboardContext?.isVisible != true {
@@ -184,6 +217,9 @@ final class BottomObstructionCoordinator {
         stopDisplayLink()
         pickerViewController = nil
         keyboardContext = nil
+        attachmentMenuKeyboardHeight = nil
+        attachmentMenuWindowObstruction = nil
+        pickerWindowObstruction = nil
         pickerPresentationHeight = nil
         pickerGeometryOffset = 0
         keyboardHandoffStartHeight = nil
@@ -212,8 +248,8 @@ final class BottomObstructionCoordinator {
         let resolved = Self.resolvedObstruction(
             keyboardHeight: keyboardHeight,
             pickerHeight: visiblePickerHeight(in: hostView),
-            maximumPickerHeight: storedKeyboardContentHeight,
-            pickerPresentationHeight: pickerPresentationHeight,
+            maximumPickerHeight: maximumPickerHeight(in: hostView),
+            pickerPresentationHeight: pickerPresentationHeight.map { _ in maximumPickerHeight(in: hostView) },
             pickerGeometryOffset: pickerGeometryOffset,
             isAwaitingKeyboard: isAwaitingKeyboard,
             keyboardHandoffStartHeight: keyboardHandoffStartHeight,
@@ -224,6 +260,20 @@ final class BottomObstructionCoordinator {
         // 回调会同步触发布局，布局又可能回到 refreshGeometry；先写入高度以阻止重入。
         currentHeight = resolved
         heightDidChange?(resolved, animationContext)
+    }
+
+    /// 将稳定的窗口遮挡转换到当前宿主坐标，包含系统父容器的呈现层变换。
+    private func maximumPickerHeight(in host: UIView) -> CGFloat {
+        guard let obstruction = pickerWindowObstruction, let window = host.window else {
+            return storedKeyboardContentHeight
+        }
+        let point = CGPoint(x: window.bounds.midX, y: window.bounds.maxY - obstruction)
+        let local: CGPoint
+        if let hostLayer = host.layer.presentation(), let windowLayer = window.layer.presentation() {
+            local = hostLayer.convert(point, from: windowLayer)
+        } else { local = host.convert(point, from: window) }
+        return Self.contentObstruction(containerMaxY: host.bounds.maxY, obstructionMinY: local.y,
+            safeAreaBottom: host.safeAreaInsets.bottom)
     }
 
     /// 返回键盘布局指南在指定视图中的有效遮挡高度；不可见时返回零。

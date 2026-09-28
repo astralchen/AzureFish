@@ -205,7 +205,7 @@ public struct AccountAPI: Sendable {
     private func executeValidated<Value>(_ operation: AccountOperation<Value>, headers: [String: String]) async throws -> Value {
         let replay: HTTPReplayPolicy = operation.operationID.map { .idempotentWriteOnce(operationID: $0) } ?? .readOnce
         let request = HTTPRequest(url: environment.url(path: operation.path), method: operation.method, headers: headers,
-                                  body: operation.body, maximumResponseBytes: 64 * 1024, replayPolicy: replay)
+                                  body: operation.body, maximumResponseBytes: operation.maximumResponseBytes, replayPolicy: replay)
         let response: HTTPResponse
         do { response = try await client.send(request) }
         catch let error as NetworkError { throw APIClientError.network(error) }

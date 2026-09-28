@@ -27,7 +27,9 @@ final class ChatKeyboardUITests: XCTestCase {
         let editor = app.textViews["imessage.composer.text"]
         XCTAssertTrue(editor.waitForExistence(timeout: 5))
         editor.tap()
-        editor.typeText("Hello rich text")
+        editor.typeText("Hello rich text\n")
+        // 系统键盘可能仍为拼音；先提交组合输入，再恢复测试正文并选择格式。
+        editor.typeText(XCUIKeyboardKey.delete.rawValue)
         editor.press(forDuration: 1.2)
         let selectAll = app.menuItems["Select All"]
         if selectAll.waitForExistence(timeout: 2) { selectAll.tap() }
@@ -180,7 +182,17 @@ final class ChatKeyboardUITests: XCTestCase {
         XCTAssertTrue(text.waitForExistence(timeout: 10))
         text.tap()
         XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 10))
+        text.typeText("照片面板交接")
         let composer = app.otherElements["imessage.composer"]
+        // 键盘的 AX frame 不包含相同的候选栏范围；以连续采样的输入栏几何作为交接基准。
+        var previousBottom: CGFloat?
+        let keyboardAligned = NSPredicate { _, _ in
+            let bottom = composer.frame.maxY
+            defer { previousBottom = bottom }
+            return bottom < app.frame.maxY - 100 && previousBottom.map { abs($0 - bottom) < 0.5 } == true
+        }
+        expectation(for: keyboardAligned, evaluatedWith: composer)
+        waitForExpectations(timeout: 10)
         let keyboardComposerBottom = composer.frame.maxY
         // 必须实际经过附件菜单；直接调用照片控制器不会产生菜单关闭时的临时键盘通知。
         let attachment = app.buttons["imessage.composer.attachment"]
@@ -189,6 +201,7 @@ final class ChatKeyboardUITests: XCTestCase {
         // 通过系统面板的控制柄验证真实边界，覆盖附件菜单关闭时的焦点恢复。
         let grabber = app.buttons["表单控制柄"]
         XCTAssertTrue(grabber.waitForExistence(timeout: 10))
+        logger.notice("交接验收: 键盘底边=\(keyboardComposerBottom, privacy: .public), 当前底边=\(composer.frame.maxY, privacy: .public), 控制柄=\(grabber.frame.midY, privacy: .public)")
         let aligned = NSPredicate { _, _ in
             composer.frame.maxY <= grabber.frame.midY + 1
                 && abs(composer.frame.maxY - keyboardComposerBottom) <= 1

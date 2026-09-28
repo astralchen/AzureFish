@@ -1814,6 +1814,9 @@ struct ChatMediaTests {
             coordinator.refreshGeometry()
         }
         setPickerHeight(-34)
+        coordinator.prepareForAttachmentMenu(composerBottom: keyboardFrame.minY)
+        // 菜单展示期间的隐藏通知不能丢失进入照片前的真实位置。
+        coordinator.updateKeyboard(.hidden)
         coordinator.trackPicker(picker)
         coordinator.updateKeyboard(.hidden)
         // 面板入场时即使逐帧经过屏幕外和中间高度，输入栏也始终保持键盘等高。
@@ -1835,6 +1838,34 @@ struct ChatMediaTests {
         #expect(coordinator.currentHeight == 0)
         coordinator.stopTrackingPicker()
         #expect(coordinator.currentHeight == 0)
+    }
+
+    @Test func photoSheetPreservesWindowAnchorWhenPresentingContainerScales() throws {
+        guard #available(iOS 26.0, *) else { return }
+        let window = try makeObstructionTestWindow()
+        let host = UIView(frame: window.bounds)
+        window.addSubview(host)
+        let coordinator = BottomObstructionCoordinator(hostView: host)
+        defer { coordinator.stop() }
+        let frame = CGRect(x: 0, y: 510, width: 390, height: 334)
+        let notification = Notification(name: UIResponder.keyboardWillShowNotification, object: window.screen,
+            userInfo: [UIResponder.keyboardFrameEndUserInfoKey: window.convert(frame, to: window.screen.coordinateSpace),
+                       UIResponder.keyboardAnimationDurationUserInfoKey: 0.0])
+        coordinator.updateKeyboard(try #require(QuickLayoutKeyboardContext(notification: notification)))
+        let picker = UIViewController()
+        picker.view = UIView(frame: CGRect(x: 0, y: 516, width: 390, height: 328))
+        window.addSubview(picker.view)
+        coordinator.trackPicker(picker)
+        coordinator.updateKeyboard(.hidden)
+        host.transform = CGAffineTransform(scaleX: 0.95, y: 0.95).translatedBy(x: 0, y: 12)
+        coordinator.refreshGeometry()
+        func screenTop() -> CGFloat {
+            host.convert(CGPoint(x: host.bounds.midX, y: host.bounds.maxY - host.safeAreaInsets.bottom - coordinator.currentHeight), to: window).y
+        }
+        #expect(abs(screenTop() - frame.minY) < 0.5)
+        coordinator.finishPickerPresentation(picker)
+        #expect(abs(screenTop() - frame.minY) < 0.5)
+        coordinator.stopTrackingPicker()
     }
 
     /// 复用测试宿主的场景创建隐藏窗口，独立验证几何且不抢占页面焦点。

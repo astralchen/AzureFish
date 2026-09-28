@@ -21,14 +21,19 @@ extension IMService {
         return try await write(req, operation: input.operationID, bytes: bytes, name: "resolve") { session, db in
             guard peer != session.userID else { throw APIError(.badRequest, "VALIDATION_FAILED", field: "peer_user_id") }
             guard try await UserRecord.find(peer, on: db) != nil else { throw APIError(.notFound, "USER_NOT_FOUND") }
-            let pair = [peer.uuidString, session.userID.uuidString].sorted().joined(separator: ":")
-            let key = self.crypto.digest(Data(pair.utf8), purpose: "im-pair")
-            if let row = try await IMConversationRecord.query(on: db).filter(\.$pairKey == key).first() {
-                let state: IMConversationState = try self.decrypt(row.payload, context: "conversation:" + row.requireID().uuidString)
-                return try await self.view(row, state, user: session.userID, db: db)
-            }
-            return try await self.create(kind: "direct", title: "", owner: nil, members: [session.userID, peer], pair: key, user: session.userID, db: db)
+            try await self.requireFriend(session.userID, peer, db: db)
+            return try await self.resolveDirect(user: session.userID, peer: peer, db: db)
         }
+    }
+    /// 在调用方事务中复用或创建唯一私聊；好友校验由调用方完成。
+    func resolveDirect(user: UUID, peer: UUID, db: any Database) async throws -> IMConversation {
+        let pair = [peer.uuidString, user.uuidString].sorted().joined(separator: ":")
+        let key = crypto.digest(Data(pair.utf8), purpose: "im-pair")
+        if let row = try await IMConversationRecord.query(on: db).filter(\.$pairKey == key).first() {
+            let state: IMConversationState = try decrypt(row.payload, context: "conversation:" + row.requireID().uuidString)
+            return try await view(row, state, user: user, db: db)
+        }
+        return try await create(kind: "direct", title: "", owner: nil, members: [user, peer], pair: key, user: user, db: db)
     }
     func createGroup(_ req: Request) async throws -> Response {
         let (input, bytes) = try requestMessage(IMCreateGroupRequest.self, from: req)
@@ -39,6 +44,7 @@ extension IMService {
             guard !members.contains(session.userID) else { throw APIError(.badRequest, "VALIDATION_FAILED", field: "member_user_ids") }
             for id in members {
                 guard try await UserRecord.find(id, on: db) != nil else { throw APIError(.notFound, "USER_NOT_FOUND") }
+                try await self.requireFriend(session.userID, id, db: db)
             }
             return try await self.create(kind: "group", title: input.title, owner: session.userID, members: [session.userID] + members, pair: UUID().uuidString, user: session.userID, db: db)
         }
@@ -86,6 +92,7 @@ extension IMService {
             case "rename": state.title = input.title
             case "add":
                 guard let target, try await UserRecord.find(target, on: db) != nil else { throw APIError(.notFound, "USER_NOT_FOUND") }
+                try await self.requireFriend(session.userID, target, db: db)
                 if let index = state.members.firstIndex(where: { $0.user == target }) {
                     guard !state.members[index].active else { throw APIError(.conflict, "ALREADY_MEMBER") }
                     guard state.members[index].intervals.count < 100 else { throw APIError(.conflict, "MEMBERSHIP_LIMIT") }

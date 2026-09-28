@@ -125,8 +125,12 @@ final class PageAttachmentStore: AttachmentStoring {
             )
         try? fileManager.createDirectory(
             at: directoryURL,
-            withIntermediateDirectories: true
+            withIntermediateDirectories: true,
+            attributes: [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication]
         )
+        var protectedURL = directoryURL
+        var values = URLResourceValues(); values.isExcludedFromBackup = true
+        try? protectedURL.setResourceValues(values)
     }
 
     /// 在所属主 Actor 上释放存储，使用同一文件管理器删除页面目录及残留临时文件。
@@ -162,6 +166,7 @@ final class PageAttachmentStore: AttachmentStoring {
             )
         }
         try fileManager.copyItem(at: sourceURL, to: destinationURL)
+        try fileManager.setAttributes([.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication], ofItemAtPath: destinationURL.path)
         return destinationURL
     }
 

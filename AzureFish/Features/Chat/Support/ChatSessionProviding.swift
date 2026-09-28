@@ -1,0 +1,18 @@
+import UIKit
+
+/// 为原版会话页面提供真实数据操作；本地演示继续使用独立的 ChatViewModel 生命周期。
+@MainActor
+@available(iOS 26.0, *)
+protocol ChatSessionProviding: AnyObject {
+    func start(in controller: ChatViewController)
+    func stop()
+    func refresh()
+    func loadHistory()
+    func send(_ contents: [MessageContent], completion: @escaping (Bool) -> Void)
+    func retry(_ messageID: Int)
+    func delete(_ messageID: Int)
+    func revoke(_ messageID: Int)
+    func reedit(_ messageID: Int)
+    func viewportChanged()
+    func didTranscribe(_ text: String, messageID: Int, attachmentID: UUID)
+}

@@ -39,7 +39,13 @@ final class ChatViewController: LocalizedQuickLayoutHostingController, MediaImag
     /// 聊天演示页面标题使用的本地化资源键。
     override var localizedTitleKey: String? { "demo.imessage.title" }
 
-    /// 保存消息并生成时间线展示状态的视图模型。
+    /// 会话操作来源；为 `nil` 时使用独立演示业务，在加载视图前注入。
+    var session: (any ChatSessionProviding)?
+    /// 表示草稿正在原子入队，期间禁止重复发送和旧草稿回写。
+    var isSubmittingComposition = false
+    /// 阅读历史期间出现新消息时显示的跳转入口。
+    let latestMessagesButton = UIButton(type: .system)
+    /// 保存页面消息并生成时间线展示状态的视图模型。
     let viewModel: ChatViewModel
     /// 呈现消息时间线和单元格交互的会话视图。
     let conversationView = ConversationView()
@@ -83,6 +89,7 @@ final class ChatViewController: LocalizedQuickLayoutHostingController, MediaImag
         transcriber: audioFileTranscriber
     ) { [weak self] messageID, attachmentID, text in
         self?.viewModel.updateAudioTranscript(text, messageID: messageID, attachmentID: attachmentID)
+        self?.session?.didTranscribe(text, messageID: messageID, attachmentID: attachmentID)
     }
 
     /// 提供系统键盘可见性、几何和动画上下文的观察对象。
@@ -218,7 +225,8 @@ final class ChatViewController: LocalizedQuickLayoutHostingController, MediaImag
     isolated deinit {
         viewModel.cancelHistory()
         // 正常入口独占页面目录；外部保留 ViewModel 时也不能延长附件文件生命周期。
-        if loadsInitialHistory { attachmentStore.removeAll() }
+        if session != nil { session?.stop() }
+        if loadsInitialHistory || session != nil { attachmentStore.removeAll() }
     }
 
     /// 为正常入口配置样例来源并请求首页；依赖注入和 fixture 入口保持关闭。
@@ -242,6 +250,11 @@ final class ChatViewController: LocalizedQuickLayoutHostingController, MediaImag
                 .fixedSize(axis: .vertical)
                 .padding(.bottom, bottomObstruction)
                 .safeAreaPadding([.horizontal, .bottom], 0)
+            if session != nil && !latestMessagesButton.isHidden {
+                latestMessagesButton.frame(minWidth: 44, minHeight: 44)
+                    .padding(.bottom, bottomObstruction + composerView.bounds.height + 8)
+                    .safeAreaPadding([.horizontal, .bottom], 0)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -251,8 +264,15 @@ final class ChatViewController: LocalizedQuickLayoutHostingController, MediaImag
         quickLayoutKeyboardSafeAreaBehavior = .disabled
         super.viewDidLoad()
 
+        latestMessagesButton.isHidden = true
+        latestMessagesButton.setTitle(Localization.text("chat.live.latest"), for: .normal)
+        latestMessagesButton.addAction(UIAction { [weak self] _ in
+            self?.conversationView.scrollToBottom(animated: true)
+            self?.latestMessagesButton.isHidden = true
+            self?.setNeedsQuickLayout()
+        }, for: .touchUpInside)
         contactTitleView.sizeToFit()
-        navigationItem.titleView = contactTitleView
+        if session == nil { navigationItem.titleView = contactTitleView }
         setContentScrollView(conversationView.collectionView, for: .top)
         conversationView.viewportDidLayout = { [weak self] in self?.updateConversationViewport() }
         composerView.geometryDidLayout = { [weak self] in self?.updateConversationViewport() }
@@ -271,11 +291,20 @@ final class ChatViewController: LocalizedQuickLayoutHostingController, MediaImag
         conversationView.menuSaveState = { [weak self] in self?.menuSaveCoordinator.state(for: $0) ?? .available }
         menuSaveCoordinator.failed = { [weak self] in self?.presentAttachmentSaveFailure($0) }
         menuSaveCoordinator.changed = { [weak self] in self?.conversationView.refreshMenuAccessibility() }
-        conversationView.loadEarlierHistory = { [weak self] in self?.viewModel.loadHistory() }
-        conversationView.retryHistory = { [weak self] in self?.viewModel.loadHistory(retrying: true) }
+        conversationView.loadEarlierHistory = { [weak self] in
+            guard let self else { return }
+            if let session { session.loadHistory() } else { viewModel.loadHistory() }
+        }
+        conversationView.retryHistory = { [weak self] in
+            guard let self else { return }
+            if let session { session.loadHistory() } else { viewModel.loadHistory(retrying: true) }
+        }
+        conversationView.systemNoticeDeleteRequested = { [weak self] in self?.confirmSystemNoticeDeletion($0) }
+        conversationView.reeditRequested = { [weak self] in self?.session?.reedit($0) }
+        conversationView.visibleMessagesDidChange = { [weak self] in self?.session?.viewportChanged() }
         configureInteractions()
         #if DEBUG
-        let arguments = ProcessInfo.processInfo.arguments
+        let arguments = session == nil ? ProcessInfo.processInfo.arguments : []
         if arguments.contains("-imessage-menu-long-text") {
             viewModel.insertInitialHistory([.init(direction: .outgoing, content: .userText(
                 String(repeating: "Long message keeps its original bubble. 长按保留原消息气泡与排版。\n", count: 12)))])
@@ -311,7 +340,7 @@ final class ChatViewController: LocalizedQuickLayoutHostingController, MediaImag
                 }
             }
         }
-        if let fixture = try? AttachmentSavePreviewFixtures.attachment(store: attachmentStore) {
+        if session == nil, let fixture = try? AttachmentSavePreviewFixtures.attachment(store: attachmentStore) {
             if ProcessInfo.processInfo.arguments.contains("-imessage-preview-draft") {
                 if case .mediaGroup(let group) = fixture { photoController.applyPreviewFixture(group) }
                 else if case .file(let file) = fixture { documentController.importDocument(file.fileURL) }
@@ -321,7 +350,7 @@ final class ChatViewController: LocalizedQuickLayoutHostingController, MediaImag
             }
         }
         let previewVideoFile = ProcessInfo.processInfo.arguments.contains("preview-video-file")
-        if ProcessInfo.processInfo.arguments.contains("preview-video") || previewVideoFile {
+        if session == nil && (ProcessInfo.processInfo.arguments.contains("preview-video") || previewVideoFile) {
             Task { [weak self] in
                 guard let self, let fixture = try? await AttachmentSavePreviewFixtures.videoAttachment(
                     store: attachmentStore, transform: previewVideoFile ? CGAffineTransform(rotationAngle: .pi / 2) : .identity),
@@ -341,6 +370,7 @@ final class ChatViewController: LocalizedQuickLayoutHostingController, MediaImag
         loadInitialHistory()
         observeKeyboard()
         configureBottomObstruction()
+        session?.start(in: self)
         #if MEDIA_BENCHMARK
         if ProcessInfo.processInfo.arguments.contains("-media-benchmark") {
             mediaBenchmark = MediaConcurrencyBenchmark(chat: self)
@@ -423,6 +453,7 @@ final class ChatViewController: LocalizedQuickLayoutHostingController, MediaImag
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         presentPendingDraftNotice()
+        session?.viewportChanged()
     }
 
     /// 停止当前音频播放，并沿父控制器层级判断是否正在退出聊天。
@@ -452,6 +483,7 @@ final class ChatViewController: LocalizedQuickLayoutHostingController, MediaImag
         // 先冻结快照并取得文件租约，再关闭回调和清理页面，防止复制源被提前删除。
         flushDraftBeforeLeaving()
         hasCleanedUpChat = true
+        session?.stop()
         viewModel.cancelHistory()
         #if MEDIA_BENCHMARK
         mediaBenchmark?.cancel()
@@ -524,7 +556,7 @@ final class ChatViewController: LocalizedQuickLayoutHostingController, MediaImag
             mediaStrings: mediaStrings
         )
         conversationView.configureMediaStrings(mediaStrings)
-        viewModel.refreshLocalizedContent()
+        if let session { session.refresh() } else { viewModel.refreshLocalizedContent() }
     }
 
     /// 将应用布局方向同步到输入栏、联系人标题和消息时间线。

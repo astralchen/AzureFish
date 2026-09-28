@@ -28,6 +28,19 @@ struct ProtocolTests {
         #expect(try message.serializedData() == bytes)
     }
 
+    @Test func systemEventUsesAppendOnlyFieldsAndSurvivesUnknownEnvelope() throws {
+        var message = IMMessage()
+        message.systemEvent.kind = "friendship_accepted"
+        message.systemEvent.relationshipRevision = 2
+        let bytes = try message.serializedData()
+        #expect(Array(bytes.prefix(2)) == [0x92, 0x01]) // 字段 18，不改写原来的消息字段。
+        var conversation = IMConversation()
+        conversation.latestMessage = message
+        #expect(try conversation.serializedData().first == 0x5a) // 字段 11。
+        let legacy = try EmptyResponse(serializedBytes: bytes)
+        #expect(try IMMessage(serializedBytes: legacy.serializedData()) == message)
+    }
+
     @Test func mediaAppendOnlyFieldsAndUnknownEnvelopeRoundTrip() throws {
         var request = IMSendRequest(); request.assetIds = ["asset"]
         #expect(try request.serializedData().first == 0x4a) // 字段 9，保留原来的 1～8。

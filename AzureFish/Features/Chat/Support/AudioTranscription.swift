@@ -43,6 +43,7 @@ final class AudioTranscriptionCoordinator {
     private let completion: (Int, UUID, String) -> Void
     /// 已经受理的请求身份集合；包括失败请求，避免自动重复识别。
     private var attempted: Set<Key> = []
+    private var cancelledMessages: Set<Int> = []
     /// 按时间线发现顺序等待处理的转写请求。
     private var queue: [Job] = []
     /// 串行消费转写队列的任务；空闲时为 `nil`。
@@ -82,6 +83,7 @@ final class AudioTranscriptionCoordinator {
                 do {
                     let result = try await transcriber.transcribe(fileURL: job.fileURL, locale: job.locale)
                     guard !Task.isCancelled, self?.invalidated == false else { break }
+                    guard self?.cancelledMessages.contains(job.key.messageID) == false else { continue }
                     if let text = result?.trimmingCharacters(in: .whitespacesAndNewlines), !text.isEmpty {
                         self?.completion(job.key.messageID, job.key.attachmentID, text)
                     }
@@ -91,6 +93,11 @@ final class AudioTranscriptionCoordinator {
             }
             self?.worker = nil
         }
+    }
+
+    func cancel(messageID: Int) {
+        cancelledMessages.insert(messageID)
+        queue.removeAll { $0.key.messageID == messageID }
     }
 
     /// 永久停止队列，取消当前任务并忽略之后到达的识别结果。

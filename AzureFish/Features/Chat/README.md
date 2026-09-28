@@ -1,14 +1,14 @@
 # iOS 26 iMessage 风格聊天页
 
-`Chat` 是 Demo 内独立的一对一聊天页面，用来演示 QuickLayout、ListKit、AppLocalization、iOS 26 UIKit Liquid Glass、文本、音频、照片/视频、文件和网页链接消息与语音输入的组合使用。页面不复用或修改已有的 `UICollectionView` / `UITableView` 消息示例，也不为 QuickLayoutKit 增加公共 API。
+`Chat` 保留首次迁入的 UIKit／QuickLayoutKit／ListKit 聊天组件。iOS 26+ 真实私聊和群聊通过 `ConversationPageFactory` 注入 `LiveChatSession`，使用真实导航、账号存储、消息队列与权限；iOS 15～25 保留既有真实聊天页面。
 
-该模块仅用于本地界面和交互演示，不接入上传或真实消息服务；添加网页链接时通过系统 Link Presentation 获取公开网页元数据。每次进入页面都会创建新的 `ChatViewModel`、页面附件存储与音频控制器，恢复与联系人 Alex 的固定示例会话。消息时间线和已发送附件只在本次页面生命周期内有效；未发送草稿独立保存在本机，支持离开页面及 App 重启后恢复。
+未注入 session 的演示入口继续使用独立样例历史、模拟回复和演示草稿。真实页面使用账号 SQLCipher／加密媒体及受保护临时租约，不使用下文演示 JSON 存储；视图不依赖 Protobuf。网页预览和语音转写由客户端生成，真实页面结果按账号加密缓存。实现及本次验证边界见[接入记录](../../../Documentation/Design/Chat/original-ui-restoration.md)。
 
 ## 调试日志
 
 在 Xcode 的 Scheme → Run → Arguments → Arguments Passed On Launch 中添加并勾选 `-chat-debug-logs` 和 `true` 两项，才会输出 `[ChatScroll]` 等聊天诊断日志。未传参数、仅传参数名、值为 `false` 或其他值时不输出；Release 始终关闭。开关只读取本次进程参数，不会保存到用户偏好。滚动日志使用 `OSLog.Logger`，可在控制台按 `ChatScroll` 筛选。
 
-## 草稿自动保存
+## 演示草稿自动保存
 
 正常入口按 `demo.chat` 会话标识保存一份草稿，不增加草稿列表。`ChatViewController` 的注入初始化支持 `conversationID` 和 `draftStore`；注入入口默认关闭持久化，避免测试共享用户数据。草稿 UI 测试使用 `-chat-draft-session <独立标识>`，可与既有媒体 fixture 参数组合。
 

@@ -12,8 +12,10 @@ final class SessionCoordinator {
     private(set) var busy = false
     var didChange: (() -> Void)?
     let service: (any AccountServicing)?
-    private let store: CredentialStore
+    let store: CredentialStore
+    let sessionManager: APISessionManager?
     private let repository: UserRepository
+    var sessionIdentity: String? { stored.map { $0.userID.uuidString + ":" + $0.sessionID.uuidString } }
     private var stored: StoredSession?
     private var epoch = UUID()
     private var refreshTask: Task<SessionCredentials, Error>?
@@ -25,6 +27,7 @@ final class SessionCoordinator {
 
     init(service: (any AccountServicing)?, store: CredentialStore, repository: UserRepository) {
         self.service = service; self.store = store; self.repository = repository
+        sessionManager = service.map { APISessionManager(api: $0.api, store: KeychainAPISessionStore(store: store)) }
     }
     static func configured() -> SessionCoordinator {
         let service = LiveAccountService.configured()
@@ -47,6 +50,8 @@ final class SessionCoordinator {
         guard service != nil else { phase = .welcome; noticeKey = AccountFailure.unavailable.key; return }
         do {
             stored = try store.load()
+            try await sessionManager?.restore()
+            stored = try store.load()
             guard let stored else { phase = .welcome; await drainRevocations(); return }
             phase = .restoring; publish()
             let credentials = try stored.credentials()
@@ -58,7 +63,7 @@ final class SessionCoordinator {
         } catch {
             noticeKey = AccountFailure.key(for: error)
             if isTerminal(error) {
-                do { try store.clear(); stored = nil; profile = nil; phase = .welcome }
+                do { try await sessionManager?.clearLocalSession(); stored = nil; profile = nil; phase = .welcome }
                 catch { phase = .recovery; noticeKey = AccountFailure.storage.key }
             } else {
                 do {
@@ -91,16 +96,16 @@ final class SessionCoordinator {
             throw APIClientError.service(failure)
         }
         try check(generation)
-        try install(result)
+        try await install(result)
         authentication = nil; phase = .signedIn
     }
     /// 放弃表单时废弃当前代次；已发出请求可能在服务端完成，但不会安装迟到会话。
     func cancelAuthentication() {
         epoch = UUID(); authentication = nil
     }
-    private func install(_ result: AuthenticatedSession) throws {
+    private func install(_ result: AuthenticatedSession) async throws {
         let value = StoredSession(result.credentials)
-        try store.save(value)
+        try await sessionManager?.install(result.credentials)
         stored = value
         acceptProfile(AccountProfile(result.profile))
         readOnly = false
@@ -113,27 +118,11 @@ final class SessionCoordinator {
         catch { noticeKey = "account.saved.storage" }
     }
     private func refresh() async throws -> SessionCredentials {
-        if let refreshTask { return try await refreshTask.value }
-        guard let api = service?.api, var pending = stored else { throw AccountFailure.expired }
-        let old = try pending.credentials()
-        guard old.refreshExpiresAt > Date() else { throw AccountFailure.expired }
-        let id = pending.pendingRefreshID ?? UUID()
-        pending.pendingRefreshID = id
-        try store.save(pending)
-        stored = pending
-        let operation = try api.prepareRefresh(operationID: id, using: old)
+        guard let sessionManager else { throw AccountFailure.expired }
         let generation = epoch
-        let task = Task { @MainActor in
-            let result = try await api.execute(operation)
-            try self.check(generation)
-            guard self.stored?.sessionID == old.sessionID,
-                  try self.stored?.credentials().refreshGeneration == old.refreshGeneration else { throw CancellationError() }
-            try self.install(result)
-            return result.credentials
-        }
-        refreshTask = task
-        defer { refreshTask = nil }
-        return try await task.value
+        let credentials = try await sessionManager.refresh()
+        try check(generation); stored = try store.load()
+        return credentials
     }
     private func authorized<T: Sendable>(_ work: @escaping @MainActor @Sendable (AccountAPI, SessionCredentials) async throws -> T) async throws -> T {
         let id = UUID()
@@ -146,28 +135,19 @@ final class SessionCoordinator {
             if isTerminal(error), !exitPending {
                 epoch = UUID(); refreshTask?.cancel()
                 profile = nil; readOnly = false
-                do { try store.clear(); stored = nil; phase = .welcome; noticeKey = AccountFailure.expired.key }
+                do { try await sessionManager?.clearLocalSession(); stored = nil; phase = .welcome; noticeKey = AccountFailure.expired.key }
                 catch { phase = .recovery; noticeKey = AccountFailure.storage.key }
                 publish()
             }
             throw error
         }
     }
-    private func performAuthorized<T: Sendable>(_ work: @MainActor (AccountAPI, SessionCredentials) async throws -> T) async throws -> T {
-        guard let api = service?.api, let value = stored else { throw AccountFailure.expired }
+    private func performAuthorized<T: Sendable>(_ work: @escaping @MainActor @Sendable (AccountAPI, SessionCredentials) async throws -> T) async throws -> T {
+        guard let api = service?.api, let sessionManager else { throw AccountFailure.expired }
         let generation = epoch
-        var credentials = try value.credentials()
-        if value.pendingRefreshID != nil || credentials.accessExpiresAt <= Date() { credentials = try await refresh() }
-        do {
-            let result = try await work(api, credentials)
-            try check(generation)
-            return result
-        } catch APIClientError.service(let error) where error.isUnauthenticated {
-            credentials = try await refresh()
-            let result = try await work(api, credentials)
-            try check(generation)
-            return result
-        }
+        let result = try await sessionManager.authorized { credentials in try await work(api, credentials) }
+        try check(generation); stored = try store.load()
+        return result
     }
     func reloadProfile() async throws {
         let value = try await authorized { api, credentials in try await api.profile(using: credentials) }
@@ -204,6 +184,7 @@ final class SessionCoordinator {
     /// 先尝试撤销服务端会话。失败时允许用户明确选择本机退出，补偿只持有旧访问凭据。
     func logout(localOnly: Bool = false) async throws {
         guard !busy else { throw AccountFailure.busy }
+        stored = try store.load()
         guard let api = service?.api, var credentials = try stored?.credentials() else {
             try store.clear(); phase = .welcome; profile = nil; stored = nil; publish(); return
         }
@@ -222,9 +203,9 @@ final class SessionCoordinator {
             if ticket.expiresAt > Date() { queue.append(ticket) }
             try store.saveRevocations(queue)
         } else {
-            try await api.executeLogoutRevocation(ticket)
+            try await sessionManager?.logout(operationID: ticket.operationID)
         }
-        try store.clear()
+        try await sessionManager?.clearLocalSession()
         stored = nil; profile = nil; authentication = nil; profileOperation = nil; pendingLogout = nil
         readOnly = false; noticeKey = nil; phase = .welcome
     }

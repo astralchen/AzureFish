@@ -1,0 +1,42 @@
+{
+  "date": "2026-09-27",
+  "scope": "Recall notice and local three-minute text reediting",
+  "checks": {
+    "storage": {
+      "status": "passed",
+      "reeditTests": 6,
+      "existingStorageTests": 3,
+      "command": "swift test --package-path SharePackage/AzureFishChat -j 4",
+      "note": "The opt-in HTTP test is run separately."
+    },
+    "simulator": {
+      "status": "passed",
+      "tests": 2,
+      "suite": "ChatReeditLayoutTests",
+      "device": "iOS Simulator 26.5",
+      "coverage": ["callback and reuse", "320/390/700 pt", "long text", "large font geometry", "RTL", "44 pt action target"]
+    },
+    "http": {
+      "status": "passed",
+      "suite": "ClientChatHarnessTests / IndependentChatTests",
+      "port": "random loopback, never 8080",
+      "coverage": ["recall", "draft text restore", "attachment identities preserved", "new message identity", "original remains recalled", "closed local store does not block server recall"]
+    },
+    "figma": {
+      "status": "rendered and structurally inspected",
+      "noticeComponent": "115:1811",
+      "updatedOrAddedScreens": 9,
+      "actionSizePt": [68, 44],
+      "browserClickthrough": "not executed"
+    },
+    "documentation": {
+      "status": "passed",
+      "galleryImages": 33,
+      "newLocalizedKeys": 12,
+      "languages": ["zh-Hans", "zh-Hant", "en", "ar"],
+      "checks": ["PNG signatures and hashes", "relative links", "placeholder parity", "protocol copy check", "git diff --check including new text files"]
+    }
+  },
+  "notExecuted": ["full VoiceOver navigation", "physical devices", "older iOS runtime", "Duo", "production service"],
+  "existingFullAppRegression": "Historical-anchor failure recorded separately; not claimed fixed by this change."
+}

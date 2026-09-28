@@ -14,6 +14,8 @@ final class IMService: Sendable {
     func register(on routes: any RoutesBuilder) {
         let im = routes.grouped("im")
         im.post("users", "lookup", use: lookup)
+        im.post("contacts", "get", use: contactGet)
+        im.post("contacts", "mutate", use: contactMutate)
         im.post("conversations", "resolve", use: resolve)
         im.post("groups", "create", use: createGroup)
         im.post("groups", "update", use: updateGroup)
@@ -65,6 +67,10 @@ final class IMService: Sendable {
 
     // 幂等记录只保存消息身份，撤回后任何旧发送重试都不能恢复正文。
     private func materialize(_ bytes: Data, name: String, user: UUID, db: any Database) async throws -> Data {
+        if name == "contact" {
+            let identity = try ContactRelationship(serializedBytes: bytes)
+            return try await contactView(user: user, peer: Validation.uuid(identity.peer.userID, field: "peer_user_id"), db: db).serializedData()
+        }
         guard name == "send" || name == "revoke" else { return bytes }
         let identity = try IMMessage(serializedBytes: bytes)
         let (conversation, state) = try await load(identity.conversationID, user: user, db: db)
@@ -108,7 +114,9 @@ final class IMService: Sendable {
         return value.position
     }
     func tail(_ user: UUID, db: any Database) async throws -> Int64 {
-        try await IMEventRecord.query(on: db).filter(\.$userID == user).sort(\.$position, .descending).first()?.position ?? 0
+        let messages = try await IMEventRecord.query(on: db).filter(\.$userID == user).sort(\.$position, .descending).first()?.position ?? 0
+        let contacts = try await ContactEventRecord.query(on: db).filter(\.$userID == user).sort(\.$position, .descending).first()?.position ?? 0
+        return max(messages, contacts)
     }
     func emit(_ conversation: UUID, users: [UUID], kind: String, message: UUID? = nil, db: any Database) async throws {
         for user in Set(users) {
@@ -125,11 +133,16 @@ final class IMService: Sendable {
         result.ownerUserID = state.owner?.uuidString.lowercased() ?? ""
         result.serverRevision = state.revision; result.boundaryRevision = state.boundary
         result.latestSeq = member.upperBound(state.latest); result.closed = !member.active || state.dissolved
-        result.members = state.members.map { value in
+        for value in state.members {
             var m = IMMember(); m.userID = value.user.uuidString.lowercased(); m.active = value.active
             m.intervals = value.intervals.map { interval in
                 var i = IMMembershipInterval(); i.joinedSeq = interval.joined; i.leftSeq = interval.left; return i
-            }; return m
+            }
+            if let userRow = try await UserRecord.find(value.user, on: db) {
+                m.profile.userID = m.userID; m.profile.nickname = try accounts.payload(userRow).nickname
+                m.profile.profileVersion = userRow.version
+            }
+            result.members.append(m)
         }
         var read = IMReadState(); read.readThroughSeq = member.read; read.deliveredThroughSeq = member.delivered
         read.summaryAtSeq = result.latestSeq; read.serverRevision = state.summaryRevision
@@ -140,6 +153,15 @@ final class IMService: Sendable {
             let value = try storedMessage(message)
             if !value.revoked && value.senderUserID != user.uuidString.lowercased() { read.unreadCount += 1 }
         }
+        for interval in member.intervals.reversed() {
+            let upper = min(result.latestSeq, interval.left == 0 ? result.latestSeq : interval.left - 1)
+            if let latest = try await IMMessageRecord.query(on: db)
+                .filter(\.$conversationID == row.requireID()).filter(\.$sequence >= interval.joined)
+                .filter(\.$sequence <= upper).sort(\.$sequence, .descending).first() {
+                result.latestMessage = try renderedMessage(latest, state)
+                break
+            }
+        }
         if let frozen = member.closedConversation {
             result = try IMConversation(serializedBytes: frozen)
         }
@@ -148,6 +170,7 @@ final class IMService: Sendable {
     func renderedMessage(_ row: IMMessageRecord, _ state: IMConversationState) throws -> IMMessage {
         let stored = try messageState(row)
         var message = try IMMessage(serializedBytes: stored.envelope)
+        if message.contentType == "system" { message.clearReceipt(); return message }
         var summary = IMReceiptSummary(); summary.audienceVersion = 1; summary.serverRevision = state.summaryRevision
         summary.expectedCount = Int64(stored.audience.count)
         for user in stored.audience {

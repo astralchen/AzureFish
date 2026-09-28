@@ -14,12 +14,26 @@ extension IMService {
             guard position <= tail else { throw APIError(.badRequest, "INVALID_CURSOR") }
             let rows = try await IMEventRecord.query(on: db).filter(\.$userID == session.userID)
                 .filter(\.$position > position).sort(\.$position).limit(count).all()
+            let contactRows = try await ContactEventRecord.query(on: db).filter(\.$userID == session.userID)
+                .filter(\.$position > position).sort(\.$position).limit(count).all()
+            let positions = (rows.map(\.position) + contactRows.map(\.position)).sorted().prefix(count)
+            let messageRows = Dictionary(uniqueKeysWithValues: rows.map { ($0.position, $0) })
+            let relationshipRows = Dictionary(uniqueKeysWithValues: contactRows.map { ($0.position, $0) })
             var result = IMEventsResponse(); result.epoch = self.epoch
             result.baseCursor = try self.cursor(user: session.userID, resource: "events", position: position)
             var next = position
             var cache: [UUID: (IMConversationState, IMConversation)] = [:]
             var size = 0
-            for row in rows {
+            for eventPosition in positions {
+                if let contact = relationshipRows[eventPosition] {
+                    var event = IMEvent(); event.position = eventPosition; event.kind = "contact"
+                    event.contact = try await self.contactView(user: session.userID, peer: contact.peerID, db: db)
+                    let bytes = try event.serializedData().count
+                    if size + bytes > 3 * 1024 * 1024 && !result.events.isEmpty { break }
+                    result.events.append(event); size += bytes; next = eventPosition
+                    continue
+                }
+                guard let row = messageRows[eventPosition] else { continue }
                 let state: IMConversationState
                 let view: IMConversation
                 if let entry = cache[row.conversationID] { (state, view) = entry }
@@ -56,6 +70,13 @@ extension IMService {
                     let (row, state) = try await self.load(membership.conversationID.uuidString, user: session.userID, db: db)
                     full.conversations.append(try await self.view(row, state, user: session.userID, db: db))
                 }
+                let relationships = try await ContactRecord.query(on: db).group(.or) {
+                    $0.filter(\.$firstUser == session.userID).filter(\.$secondUser == session.userID)
+                }.sort(\.$id).all()
+                for relationship in relationships {
+                    let peer = relationship.firstUser == session.userID ? relationship.secondUser : relationship.firstUser
+                    full.contacts.append(try await self.contactView(user: session.userID, peer: peer, db: db))
+                }
                 full.baselineCursor = try await self.cursor(user: session.userID, resource: "events", position: self.tail(session.userID, db: db))
                 record = try await self.storeSnapshot(full, user: session.userID, resource: "conversations", db: db)
             } else {
@@ -64,15 +85,18 @@ extension IMService {
             }
             let resource = "snapshot:" + (try record.requireID()).uuidString
             let offset = try self.position(input.cursor, user: session.userID, resource: resource)
-            guard offset <= full.conversations.count else { throw APIError(.badRequest, "INVALID_CURSOR") }
+            let total = full.conversations.count + full.contacts.count
+            guard offset <= total else { throw APIError(.badRequest, "INVALID_CURSOR") }
             var result = IMSnapshotResponse(); result.snapshotToken = try record.requireID().uuidString.lowercased(); result.epoch = self.epoch
             var next = Int(offset), size = 0
-            while next < full.conversations.count && result.conversations.count < count {
-                let value = full.conversations[next], bytes = try value.serializedData().count
-                if size + bytes > 3 * 1024 * 1024 && !result.conversations.isEmpty { break }
-                result.conversations.append(value); next += 1; size += bytes
+            while next < total && result.conversations.count + result.contacts.count < count {
+                let bytes = try next < full.conversations.count ? full.conversations[next].serializedData().count : full.contacts[next - full.conversations.count].serializedData().count
+                if size + bytes > 3 * 1024 * 1024 && next > Int(offset) { break }
+                if next < full.conversations.count { result.conversations.append(full.conversations[next]) }
+                else { result.contacts.append(full.contacts[next - full.conversations.count]) }
+                next += 1; size += bytes
             }
-            result.complete = next == full.conversations.count
+            result.complete = next == total
             if result.complete { result.baselineCursor = full.baselineCursor }
             else { result.nextCursor = try self.cursor(user: session.userID, resource: resource, position: Int64(next)) }
             return result
@@ -87,6 +111,7 @@ extension IMService {
             let (conversation, state) = try await self.load(input.conversationID, user: session.userID, db: db)
             let message = try await self.visibleMessage(uuid, conversation: conversation.requireID(), state: state, user: session.userID, db: db)
             // 仅发送者查询受众明细，成员不能枚举其他人的阅读习惯。
+            guard try self.storedMessage(message).contentType != "system" else { throw APIError(.forbidden, "RECEIPT_FORBIDDEN") }
             guard try self.storedMessage(message).senderUserID == session.userID.uuidString.lowercased() else { throw APIError(.forbidden, "RECEIPT_FORBIDDEN") }
             let resource = "receipts:" + uuid.uuidString
             let record: IMSnapshotRecord

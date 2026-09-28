@@ -6,7 +6,7 @@
 import Foundation
 
 /// 完成本地化解析、供时间线单元格直接渲染的消息值。
-nonisolated struct MessagePresentation: Equatable, Sendable {
+nonisolated struct MessagePresentation: Equatable, Hashable, Sendable {
     /// 对应原始消息的稳定标识符。
     let id: Int
     /// 当前消息的接收或发出方向，用于确定气泡外观与语义对齐。
@@ -17,6 +17,9 @@ nonisolated struct MessagePresentation: Equatable, Sendable {
     let deliveryText: String?
     /// 发出消息的状态；初始化收到消息时强制为 `nil`。
     let deliveryState: MessageDeliveryState?
+    var canRevoke = false
+    var canCancel = false
+    var canRetryMedia = false
 
     /// 创建文本消息的展示模型。
     ///
@@ -117,7 +120,7 @@ nonisolated struct MessagePresentation: Equatable, Sendable {
 }
 
 /// 消息 Cell 渲染的载荷。
-nonisolated enum MessagePresentationContent: Equatable, Sendable {
+nonisolated enum MessagePresentationContent: Equatable, Hashable, Sendable {
     /// 已经解析完成、可直接显示的文本。
     case text(String)
     /// 已解析的局部格式文本。
@@ -171,12 +174,15 @@ nonisolated enum TimelineItemID: Hashable, Sendable {
     case message(Int)
     /// 当前会话唯一的对方输入状态项。
     case typing
+    case notice(Int)
+    case sender(Int)
 }
 
 /// 时间线单项可呈现的内容类型。
 nonisolated enum TimelineContent: Equatable, Sendable {
     /// 显示历史加载进度、失败重试或无更多记录提示。
     case historyStatus(HistoryStatusPresentation)
+    case notice(ConversationNotice)
     /// 显示本地化时间分隔信息。
     case timestamp(TimestampPresentation)
     /// 显示已经解析的文本或附件消息。
@@ -191,4 +197,13 @@ nonisolated struct TimelineItem: Equatable, Sendable {
     let id: TimelineItemID
     /// 由对应单元格显示的时间线内容。
     let content: TimelineContent
+}
+
+/// 会话状态、群成员名或撤回提示；编辑操作始终回查真实消息权限和期限。
+nonisolated struct ConversationNotice: Equatable, Hashable, Sendable {
+    let messageID: Int
+    let text: String
+    var isSender = false
+    var canReedit = false
+    var canDelete = false
 }

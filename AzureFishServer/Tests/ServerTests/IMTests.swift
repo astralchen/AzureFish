@@ -15,10 +15,12 @@ func imCall<I: Message, O: Message>(_ app: Application, _ path: String, _ input:
     return try decode(output, response)
 }
 func direct(_ app: Application, _ a: AuthResponse, _ b: AuthResponse) async throws -> IMConversation {
+    try await befriend(app, a, b)
     var request = IMResolveRequest(); request.operationID = UUID().uuidString; request.peerUserID = b.userID
     return try await imCall(app, "conversations/resolve", request, IMConversation.self, a)
 }
 func group(_ app: Application, _ a: AuthResponse, _ members: [AuthResponse]) async throws -> IMConversation {
+    for member in members { try await befriend(app, a, member) }
     var request = IMCreateGroupRequest(); request.operationID = UUID().uuidString; request.title = "虚构群聊"
     request.memberUserIds = members.map(\.userID)
     return try await imCall(app, "groups/create", request, IMConversation.self, a)
@@ -47,6 +49,7 @@ struct IMTests {
     @Test func uniqueDirectAndConcurrentSendDeduplication() async throws {
         try await withServer { app, _ in
             let a = try await auth(app, name: "im_a"), b = try await auth(app, name: "im_b")
+            try await befriend(app, a, b)
             async let left = direct(app, a, b)
             async let right = direct(app, b, a)
             let (one, two) = try await (left, right)
@@ -56,17 +59,17 @@ struct IMTests {
             async let first = imCall(app, "messages/send", request, IMMessage.self, a)
             async let second = imCall(app, "messages/send", request, IMMessage.self, a)
             let (message, duplicate) = try await (first, second)
-            #expect(message == duplicate && message.serverSeq == 1)
+            #expect(message == duplicate && message.serverSeq == 2)
             var retry = request; retry.operationID = UUID().uuidString
             #expect(try await imCall(app, "messages/send", retry, IMMessage.self, a).messageUuid == message.messageUuid)
             retry.operationID = UUID().uuidString; retry.text = "冲突正文"
             #expect(try errorCode(await send(app, .POST, "/v1/im/messages/send", retry, token: a.accessToken)) == "MESSAGE_ID_CONFLICT")
             retry = request; retry.text = "操作 ID 冲突"
             #expect(try errorCode(await send(app, .POST, "/v1/im/messages/send", retry, token: a.accessToken)) == "OPERATION_CONFLICT")
-            #expect(try await IMMessageRecord.query(on: app.db).count() == 1)
+            #expect(try await IMMessageRecord.query(on: app.db).count() == 2)
             let state = try await imCall(app, "conversations/get", conversationInput(one), IMConversation.self, b)
-            #expect(state.readState.unreadCount == 1 && state.latestSeq == 1)
-            #expect(try await imCall(app, "conversations/get", conversationInput(one), IMConversation.self, a).readState.unreadCount == 0)
+            #expect(state.readState.unreadCount == 2 && state.latestSeq == 2)
+            #expect(try await imCall(app, "conversations/get", conversationInput(one), IMConversation.self, a).readState.unreadCount == 1)
         }
     }
     @Test func authorizationValidationAndCrossAccountIsolation() async throws {
@@ -86,7 +89,7 @@ struct IMTests {
             #expect(try errorCode(await send(app, .POST, "/v1/im/messages/send", message, token: a.accessToken)) == "VALIDATION_FAILED")
             var lookup = IMLookupUserRequest(); lookup.accountName = " IM_B "
             #expect(try await imCall(app, "users/lookup", lookup, IMPublicUser.self, a).userID == b.userID)
-            let read = watermark(chat, through: 2)
+            let read = watermark(chat, through: 3)
             #expect(try errorCode(await send(app, .POST, "/v1/im/read", read, token: b.accessToken)) == "VALIDATION_FAILED")
         }
     }
@@ -96,6 +99,7 @@ struct IMTests {
             var chat = try await group(app, a, [b])
             let first = try await imCall(app, "messages/send", outgoing(chat, a), IMMessage.self, a)
             let staleHistory = try await imCall(app, "history", historyInput(chat, limit: 1), IMHistoryResponse.self, b)
+            try await befriend(app, a, c)
             let add = groupChange(chat, action: "add", target: c.userID)
             #expect(try errorCode(await send(app, .POST, "/v1/im/groups/update", add, token: b.accessToken)) == "OWNER_REQUIRED")
             chat = try await imCall(app, "groups/update", add, IMConversation.self, a)
@@ -161,14 +165,14 @@ struct IMTests {
             var revoke = IMRevokeRequest(); revoke.operationID = UUID().uuidString; revoke.conversationID = chat.conversationID; revoke.messageUuid = message.messageUuid
             #expect(try errorCode(await send(app, .POST, "/v1/im/messages/revoke", revoke, token: b.accessToken)) == "REVOKE_FORBIDDEN")
             let result = try await imCall(app, "messages/revoke", revoke, IMMessage.self, a)
-            #expect(result.revoked && result.text.isEmpty && result.serverRevision == 2 && result.serverSeq == 1)
+            #expect(result.revoked && result.text.isEmpty && result.serverRevision == 2 && result.serverSeq == 2)
             let retry = try await imCall(app, "messages/send", input, IMMessage.self, a)
             #expect(retry.revoked && retry.text.isEmpty)
             let history = try await imCall(app, "history", historyInput(chat), IMHistoryResponse.self, b)
-            #expect(history.messages.count == 1 && history.messages[0].text.isEmpty)
+            #expect(history.messages.count == 2 && history.messages[0].revoked && history.messages[1].contentType == "system")
             let events = try await imCall(app, "events", IMEventsRequest(), IMEventsResponse.self, b)
-            #expect(events.events.filter(\.hasMessage).allSatisfy { $0.message.revoked && $0.message.text.isEmpty })
-            #expect(events.events.last?.conversation.readState.unreadCount == 0)
+            #expect(events.events.filter { $0.hasMessage && $0.message.contentType != "system" }.allSatisfy { $0.message.revoked && $0.message.text.isEmpty })
+            #expect(events.events.last?.conversation.readState.unreadCount == 1)
             #expect(try await imCall(app, "messages/revoke", revoke, IMMessage.self, a).serverRevision == 2)
         }
     }
@@ -178,12 +182,12 @@ struct IMTests {
             let chat = try await direct(app, a, b)
             for _ in 0..<3 { _ = try await imCall(app, "messages/send", outgoing(chat, a), IMMessage.self, a) }
             let first = try await imCall(app, "history", historyInput(chat, limit: 2), IMHistoryResponse.self, b)
-            #expect(first.messages.map(\.serverSeq) == [3, 2] && first.hasMore_p)
+            #expect(first.messages.map(\.serverSeq) == [4, 3] && first.hasMore_p)
             _ = try await imCall(app, "messages/send", outgoing(chat, a), IMMessage.self, a)
             var request = historyInput(chat, limit: 2); request.beforeSeq = first.nextBeforeSeq
             request.upperBoundSeq = first.upperBoundSeq; request.boundaryRevision = first.boundaryRevision
             let second = try await imCall(app, "history", request, IMHistoryResponse.self, b)
-            #expect(second.messages.map(\.serverSeq) == [1] && !second.hasMore_p && second.upperBoundSeq == 3)
+            #expect(second.messages.map(\.serverSeq) == [2, 1] && !second.hasMore_p && second.upperBoundSeq == 4)
             var eventInput = IMEventsRequest(); eventInput.limit = 2
             var positions: [Int64] = []
             while true {
@@ -191,7 +195,7 @@ struct IMTests {
                 positions += page.events.map(\.position); eventInput.cursor = page.nextCursor; eventInput.epoch = page.epoch
                 if !page.hasMore_p { break }
             }
-            #expect(positions == [1, 2, 3, 4, 5])
+            #expect(positions == Array(1...8).map(Int64.init))
             #expect(try await imCall(app, "events", eventInput, IMEventsResponse.self, b).events.isEmpty)
             #expect(try errorCode(await send(app, .POST, "/v1/im/events", eventInput, token: a.accessToken)) == "INVALID_CURSOR")
             eventInput.cursor += "x"
@@ -213,11 +217,14 @@ struct IMTests {
             input.snapshotToken = first.snapshotToken; input.cursor = first.nextCursor
             #expect(try errorCode(await send(app, .POST, "/v1/im/snapshot", input, token: b.accessToken)) == "SNAPSHOT_NOT_FOUND")
             let second = try await imCall(app, "snapshot", input, IMSnapshotResponse.self, a)
-            #expect(second.complete && !second.baselineCursor.isEmpty)
+            #expect(!second.complete && second.baselineCursor.isEmpty)
+            input.cursor = second.nextCursor
+            let last = try await imCall(app, "snapshot", input, IMSnapshotResponse.self, a)
+            #expect(last.complete && last.contacts.count == 1 && !last.baselineCursor.isEmpty)
             #expect((first.conversations + second.conversations).contains { $0.closed })
-            var events = IMEventsRequest(); events.cursor = second.baselineCursor; events.epoch = second.epoch
+            var events = IMEventsRequest(); events.cursor = last.baselineCursor; events.epoch = last.epoch
             let delta = try await imCall(app, "events", events, IMEventsResponse.self, a)
-            #expect(delta.events.count == 1 && delta.events[0].conversation.kind == "direct")
+            #expect(delta.events.count == 4 && delta.events.contains { $0.hasMessage && $0.message.contentType == "system" })
         }
     }
     @Test func restartEncryptionAndRetryAfterTokenRotation() async throws {
@@ -264,9 +271,9 @@ struct IMTests {
                 for try await value in tasks { result.append(value) }
                 return result.sorted()
             }
-            #expect(sequences == Array(1...10).map(Int64.init))
+            #expect(sequences == Array(2...11).map(Int64.init))
             let events = try await imCall(app, "events", IMEventsRequest(), IMEventsResponse.self, b)
-            #expect(events.events.map(\.position) == Array(1...11).map(Int64.init))
+            #expect(events.events.map(\.position) == Array(1...14).map(Int64.init))
         }
     }
 
@@ -305,7 +312,7 @@ struct IMTests {
                 if !result.hasMore_p { break }
                 request.beforeSeq = result.nextBeforeSeq; request.upperBoundSeq = result.upperBoundSeq; request.boundaryRevision = result.boundaryRevision
             }
-            #expect(sequences == Array(1...52).reversed().map(Int64.init))
+            #expect(sequences == Array(1...53).reversed().map(Int64.init))
             var events = IMEventsRequest(); events.limit = 200
             var positions: [Int64] = []
             while true {
@@ -315,7 +322,7 @@ struct IMTests {
                 if !page.hasMore_p { break }
                 events.cursor = page.nextCursor; events.epoch = page.epoch
             }
-            #expect(positions == Array(1...53).map(Int64.init))
+            #expect(positions == Array(1...56).map(Int64.init))
         }
     }
 
@@ -333,11 +340,11 @@ struct IMTests {
             // 水位写入后物化未读发现被篡改正文，整个事务（含水位和事件）应回滚。
             let failed = try await send(app, .POST, "/v1/im/delivered", attempted, token: b.accessToken)
             #expect(try errorCode(failed) == "INTERNAL_ERROR")
-            #expect(try await IMMessageRecord.query(on: app.db).count() == 2)
+            #expect(try await IMMessageRecord.query(on: app.db).count() == 3)
             #expect(try await IMEventRecord.query(on: app.db).count() == oldTail)
             #expect(try await OperationRecord.find(UUID(uuidString: attempted.operationID), on: app.db) == nil)
             one.payload = original; try await one.update(on: app.db)
-            #expect(try await imCall(app, "history", historyInput(chat), IMHistoryResponse.self, a).messages.count == 2)
+            #expect(try await imCall(app, "history", historyInput(chat), IMHistoryResponse.self, a).messages.count == 3)
             #expect(try await imCall(app, "conversations/get", conversationInput(chat), IMConversation.self, b).readState.deliveredThroughSeq == 0)
         }
     }
@@ -365,7 +372,7 @@ struct IMTests {
             #expect(try decode(UserProfile.self, await me(current, existing.accessToken)).userID == existing.userID)
             let peer = try await auth(current, name: "new_peer")
             let chat = try await direct(current, existing, peer)
-            #expect(try await imCall(current, "messages/send", outgoing(chat, existing), IMMessage.self, existing).serverSeq == 1)
+            #expect(try await imCall(current, "messages/send", outgoing(chat, existing), IMMessage.self, existing).serverSeq == 2)
             #expect(try await UserRecord.query(on: current.db).count() == 2)
         } catch { try await current.asyncShutdown(); throw error }
         try await current.asyncShutdown()

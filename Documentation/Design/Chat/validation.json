@@ -1,0 +1,935 @@
+{
+  "date": "2026-09-27",
+  "fileKey": "su1BAcMKAwW11bE2n2n9rN",
+  "scope": "design-only",
+  "newPages": 6,
+  "componentSets": 10,
+  "variants": 40,
+  "businessStates": 89,
+  "adaptationStates": 20,
+  "localizedCopyRows": 148,
+  "checks": {
+    "chat": {
+      "frames": 30,
+      "textOverflows": 0,
+      "smallReactionSources": 0,
+      "reactions": 141,
+      "invalidTargets": 0
+    },
+    "media": {
+      "frames": 30,
+      "textOverflows": 0,
+      "smallReactionSources": 0,
+      "reactions": 85,
+      "invalidTargets": 0
+    },
+    "group": {
+      "frames": 29,
+      "textOverflows": 0,
+      "smallReactionSources": 0,
+      "reactions": 89,
+      "invalidTargets": 0
+    },
+    "adapt": {
+      "frames": 21,
+      "textOverflows": 0,
+      "smallReactionSources": 0,
+      "reactions": 25,
+      "invalidTargets": 0
+    }
+  },
+  "selectedContrastRatios": {
+    "primary/white": 5.8,
+    "danger/white": 5.76,
+    "secondary/light": 5.33,
+    "secondary/dark": 4.65
+  },
+  "limitations": [
+    "Figma preset prototype; no live server execution",
+    "No browser click-through runtime verification",
+    "No simulator, device, VoiceOver or keyboard runtime verification",
+    "Arabic and Traditional Chinese native-language review pending"
+  ],
+  "screens": [
+    {
+      "id": "list.default",
+      "nodeId": "53:1805",
+      "title": "聊天",
+      "kind": "list",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "list.empty",
+      "nodeId": "53:1860",
+      "title": "聊天",
+      "kind": "list",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "list.syncing",
+      "nodeId": "53:1889",
+      "title": "聊天",
+      "kind": "list",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "list.offline",
+      "nodeId": "53:1946",
+      "title": "聊天",
+      "kind": "list",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "list.failed",
+      "nodeId": "53:2003",
+      "title": "聊天",
+      "kind": "list",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "lookup.empty",
+      "nodeId": "53:2060",
+      "title": "发起聊天",
+      "kind": "lookup",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "lookup.result",
+      "nodeId": "53:2081",
+      "title": "发起聊天",
+      "kind": "lookup",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "lookup.missing",
+      "nodeId": "53:2109",
+      "title": "发起聊天",
+      "kind": "lookup",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "lookup.self",
+      "nodeId": "53:2132",
+      "title": "发起聊天",
+      "kind": "lookup",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "lookup.limited",
+      "nodeId": "53:2155",
+      "title": "发起聊天",
+      "kind": "lookup",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "chat.empty",
+      "nodeId": "53:2178",
+      "title": "林沐",
+      "kind": "thread",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "chat.sending",
+      "nodeId": "53:2201",
+      "title": "林沐",
+      "kind": "thread",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "chat.sent",
+      "nodeId": "53:2229",
+      "title": "林沐",
+      "kind": "thread",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "chat.delivered",
+      "nodeId": "53:2257",
+      "title": "林沐",
+      "kind": "thread",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "chat.read",
+      "nodeId": "53:2285",
+      "title": "林沐",
+      "kind": "thread",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "chat.waiting",
+      "nodeId": "53:2313",
+      "title": "林沐",
+      "kind": "thread",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "chat.confirming",
+      "nodeId": "53:2343",
+      "title": "林沐",
+      "kind": "thread",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "chat.failed",
+      "nodeId": "53:2373",
+      "title": "林沐",
+      "kind": "thread",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "chat.history",
+      "nodeId": "53:2403",
+      "title": "林沐",
+      "kind": "thread",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "chat.group",
+      "nodeId": "53:2433",
+      "title": "周末小队",
+      "kind": "thread",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "receipts.summary",
+      "nodeId": "53:2464",
+      "title": "消息回执",
+      "kind": "receipt",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "chat.menu",
+      "nodeId": "53:2500",
+      "title": "消息操作",
+      "kind": "thread",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "revoke.confirm",
+      "nodeId": "53:2534",
+      "title": "撤回消息",
+      "kind": "confirm",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "chat.revoked",
+      "nodeId": "53:2555",
+      "title": "林沐",
+      "kind": "thread",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "revoke.expired",
+      "nodeId": "53:2583",
+      "title": "无法撤回",
+      "kind": "info",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "delete.confirm",
+      "nodeId": "53:2602",
+      "title": "本机删除",
+      "kind": "confirm",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "chat.deleted",
+      "nodeId": "53:2623",
+      "title": "林沐",
+      "kind": "thread",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "chat.details",
+      "nodeId": "53:2644",
+      "title": "聊天详情",
+      "kind": "detail",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "clear.confirm",
+      "nodeId": "53:2663",
+      "title": "清空本机记录",
+      "kind": "confirm",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "chat.unknown",
+      "nodeId": "53:2684",
+      "title": "林沐",
+      "kind": "thread",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "media.draft",
+      "nodeId": "54:1805",
+      "title": "附件草稿",
+      "kind": "mediaDraft",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "media.reorder",
+      "nodeId": "54:1845",
+      "title": "附件顺序",
+      "kind": "reorder",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "media.reordered",
+      "nodeId": "54:1878",
+      "title": "附件顺序",
+      "kind": "reorder",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "media.limit",
+      "nodeId": "54:1911",
+      "title": "附件草稿",
+      "kind": "mediaDraft",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "media.uploading",
+      "nodeId": "54:1953",
+      "title": "正在发送",
+      "kind": "transfer",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "media.processing",
+      "nodeId": "54:1981",
+      "title": "正在发送",
+      "kind": "transfer",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "media.ready",
+      "nodeId": "54:2009",
+      "title": "正在发送",
+      "kind": "transfer",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "media.failed",
+      "nodeId": "54:2035",
+      "title": "发送遇到问题",
+      "kind": "transfer",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "media.cancel",
+      "nodeId": "54:2063",
+      "title": "取消发送",
+      "kind": "confirm",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "media.sent",
+      "nodeId": "54:2084",
+      "title": "林沐",
+      "kind": "mediaSent",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "media.viewer",
+      "nodeId": "54:2113",
+      "title": "照片",
+      "kind": "viewer",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "media.downloading",
+      "nodeId": "54:2140",
+      "title": "照片",
+      "kind": "viewer",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "media.complete",
+      "nodeId": "54:2169",
+      "title": "照片",
+      "kind": "viewer",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "media.live",
+      "nodeId": "54:2198",
+      "title": "Live Photo",
+      "kind": "viewer",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "media.video",
+      "nodeId": "54:2225",
+      "title": "视频",
+      "kind": "viewer",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "media.animated",
+      "nodeId": "54:2252",
+      "title": "动图",
+      "kind": "viewer",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "media.unavailable",
+      "nodeId": "54:2279",
+      "title": "媒体不可用",
+      "kind": "viewer",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "media.saved",
+      "nodeId": "54:2302",
+      "title": "保存完成",
+      "kind": "info",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "media.share",
+      "nodeId": "54:2321",
+      "title": "分享",
+      "kind": "info",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "media.permission",
+      "nodeId": "54:2340",
+      "title": "无法保存",
+      "kind": "info",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "file.available",
+      "nodeId": "54:2359",
+      "title": "文件",
+      "kind": "file",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "file.complete",
+      "nodeId": "54:2379",
+      "title": "文件",
+      "kind": "file",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "file.saved",
+      "nodeId": "54:2401",
+      "title": "保存文件",
+      "kind": "info",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "file.integrity",
+      "nodeId": "54:2420",
+      "title": "文件",
+      "kind": "file",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "voice.recording",
+      "nodeId": "54:2442",
+      "title": "录制语音",
+      "kind": "voice",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "voice.preview",
+      "nodeId": "54:2494",
+      "title": "试听语音",
+      "kind": "voice",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "voice.limit",
+      "nodeId": "54:2546",
+      "title": "试听语音",
+      "kind": "voice",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "voice.sent",
+      "nodeId": "54:2600",
+      "title": "语音消息",
+      "kind": "voice",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "voice.permission",
+      "nodeId": "54:2652",
+      "title": "录音权限",
+      "kind": "info",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "voice.paused",
+      "nodeId": "66:2001",
+      "title": "语音播放暂停",
+      "kind": "voice",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "group.create",
+      "nodeId": "55:1805",
+      "title": "创建群聊",
+      "kind": "groupForm",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "group.lookup",
+      "nodeId": "55:1841",
+      "title": "添加成员",
+      "kind": "lookup",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "group.create.failed",
+      "nodeId": "55:1869",
+      "title": "创建群聊",
+      "kind": "groupForm",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "group.chat",
+      "nodeId": "55:1907",
+      "title": "周末小队",
+      "kind": "thread",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "group.owner",
+      "nodeId": "55:1938",
+      "title": "群聊详情",
+      "kind": "groupDetails",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "group.member",
+      "nodeId": "55:1977",
+      "title": "群聊详情",
+      "kind": "groupDetails",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "group.rename",
+      "nodeId": "55:2010",
+      "title": "修改群名称",
+      "kind": "groupForm",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "group.conflict",
+      "nodeId": "55:2046",
+      "title": "修改群名称",
+      "kind": "groupForm",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "group.members",
+      "nodeId": "55:2084",
+      "title": "群成员",
+      "kind": "members",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "group.remove.confirm",
+      "nodeId": "55:2122",
+      "title": "移除成员",
+      "kind": "confirm",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "group.members.updated",
+      "nodeId": "55:2143",
+      "title": "群成员",
+      "kind": "info",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "group.transfer",
+      "nodeId": "55:2162",
+      "title": "转让群主",
+      "kind": "transferOwner",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "group.transfer.confirm",
+      "nodeId": "55:2192",
+      "title": "转让群主",
+      "kind": "confirm",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "group.leave.confirm",
+      "nodeId": "55:2213",
+      "title": "退出群聊",
+      "kind": "confirm",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "group.left",
+      "nodeId": "55:2234",
+      "title": "周末小队",
+      "kind": "thread",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "group.removed",
+      "nodeId": "55:2269",
+      "title": "周末小队",
+      "kind": "thread",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "group.dissolve.confirm",
+      "nodeId": "55:2304",
+      "title": "解散群聊",
+      "kind": "confirm",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "group.dissolved",
+      "nodeId": "55:2325",
+      "title": "周末小队",
+      "kind": "thread",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "group.rejoined",
+      "nodeId": "55:2360",
+      "title": "周末小队",
+      "kind": "thread",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "group.owner.leave",
+      "nodeId": "55:2393",
+      "title": "退出群聊",
+      "kind": "info",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "draft.closed",
+      "nodeId": "55:2412",
+      "title": "保留的草稿",
+      "kind": "draft",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "draft.copied",
+      "nodeId": "55:2435",
+      "title": "保留的草稿",
+      "kind": "info",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "draft.delete",
+      "nodeId": "55:2454",
+      "title": "删除草稿",
+      "kind": "confirm",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "group.receipts.summary",
+      "nodeId": "55:2475",
+      "title": "群消息回执",
+      "kind": "receipt",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "group.create.filled",
+      "nodeId": "59:1862",
+      "title": "创建群聊",
+      "kind": "groupForm",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "group.remove.xu",
+      "nodeId": "59:1898",
+      "title": "移除成员",
+      "kind": "confirm",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "group.remove.he",
+      "nodeId": "59:1919",
+      "title": "移除成员",
+      "kind": "confirm",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "group.transfer.xu",
+      "nodeId": "59:1940",
+      "title": "转让群主",
+      "kind": "confirm",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "adapt.zh.light",
+      "nodeId": "60:1805",
+      "title": "林沐",
+      "kind": "thread",
+      "width": 390,
+      "height": 872
+    },
+    {
+      "id": "adapt.zh.dark",
+      "nodeId": "60:1833",
+      "title": "林沐",
+      "kind": "thread",
+      "width": 390,
+      "height": 872
+    },
+    {
+      "id": "adapt.hant",
+      "nodeId": "60:1861",
+      "title": "林沐",
+      "kind": "thread",
+      "width": 390,
+      "height": 872
+    },
+    {
+      "id": "adapt.en",
+      "nodeId": "60:1889",
+      "title": "Chats",
+      "kind": "list",
+      "width": 390,
+      "height": 872
+    },
+    {
+      "id": "adapt.ar",
+      "nodeId": "60:1944",
+      "title": "林沐",
+      "kind": "thread",
+      "width": 390,
+      "height": 872
+    },
+    {
+      "id": "adapt.ar.dark",
+      "nodeId": "60:1972",
+      "title": "林沐",
+      "kind": "thread",
+      "width": 390,
+      "height": 872
+    },
+    {
+      "id": "adapt.ar.media",
+      "nodeId": "60:2000",
+      "title": "附件草稿",
+      "kind": "mediaDraft",
+      "width": 390,
+      "height": 872
+    },
+    {
+      "id": "adapt.ar.group",
+      "nodeId": "60:2040",
+      "title": "群聊详情",
+      "kind": "groupDetails",
+      "width": 390,
+      "height": 872
+    },
+    {
+      "id": "adapt.narrow",
+      "nodeId": "60:2079",
+      "title": "林沐",
+      "kind": "thread",
+      "width": 320,
+      "height": 872
+    },
+    {
+      "id": "adapt.large",
+      "nodeId": "60:2107",
+      "title": "林沐",
+      "kind": "thread",
+      "width": 390,
+      "height": 872
+    },
+    {
+      "id": "adapt.legacy",
+      "nodeId": "60:2135",
+      "title": "林沐",
+      "kind": "thread",
+      "width": 390,
+      "height": 872
+    },
+    {
+      "id": "adapt.legacy.dark",
+      "nodeId": "60:2163",
+      "title": "林沐",
+      "kind": "thread",
+      "width": 390,
+      "height": 872
+    },
+    {
+      "id": "adapt.reduceTransparency",
+      "nodeId": "60:2191",
+      "title": "林沐",
+      "kind": "thread",
+      "width": 390,
+      "height": 872
+    },
+    {
+      "id": "adapt.ar.large",
+      "nodeId": "60:2219",
+      "title": "林沐",
+      "kind": "thread",
+      "width": 390,
+      "height": 872
+    },
+    {
+      "id": "adapt.ipad",
+      "nodeId": "61:1846",
+      "title": "iPad 双栏",
+      "kind": "adaptation",
+      "width": 1194,
+      "height": 834
+    },
+    {
+      "id": "adapt.compactWindow",
+      "nodeId": "61:1900",
+      "title": "林沐",
+      "kind": "thread",
+      "width": 600,
+      "height": 900
+    },
+    {
+      "id": "adapt.darkList",
+      "nodeId": "68:1866",
+      "title": "聊天列表 · 深色",
+      "kind": "adaptation",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "adapt.darkMedia",
+      "nodeId": "68:1927",
+      "title": "附件草稿 · 深色",
+      "kind": "adaptation",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "adapt.darkGroup",
+      "nodeId": "68:1967",
+      "title": "群详情 · 深色",
+      "kind": "adaptation",
+      "width": 390,
+      "height": 852
+    },
+    {
+      "id": "adapt.highContrast",
+      "nodeId": "68:2006",
+      "title": "增强对比度",
+      "kind": "adaptation",
+      "width": 390,
+      "height": 872
+    },
+    {
+      "id": "group.member.xu",
+      "nodeId": "71:1873",
+      "title": "许宁成为群主",
+      "kind": "groupDetails",
+      "width": 390,
+      "height": 852
+    }
+  ],
+  "repositoryChecks": {
+    "relativeLinks": "passed",
+    "markdownWhitespaceAndFences": "passed",
+    "uniqueStateIDs": "passed",
+    "fourLanguageRows": "passed",
+    "pngExports": "passed",
+    "newFileDiffCheck": "passed"
+  }
+}

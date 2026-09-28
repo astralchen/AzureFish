@@ -30,6 +30,9 @@ extension ChatViewModel {
             timeline.append(TimelineItem(id: .historyStatus,
                 content: .historyStatus(.init(state: historyState, text: localizer.text(key)))))
         }
+        if let sessionNotice {
+            timeline.append(.init(id: .notice(0), content: .notice(.init(messageID: 0, text: sessionNotice))))
+        }
         var previousDate: Date?
         let latestOutgoingID = messages.last(where: {
             $0.direction == .outgoing
@@ -55,8 +58,23 @@ extension ChatViewModel {
                 )
             }
 
+            if let notice = message.systemNotice {
+                timeline.append(.init(id: .message(message.id), content: .notice(.init(messageID: message.id, text: notice, canDelete: true))))
+                previousDate = message.sentAt
+                continue
+            }
+            if let notice = message.revokedNotice {
+                timeline.append(.init(id: .message(message.id), content: .notice(.init(messageID: message.id, text: notice, canReedit: message.canReedit))))
+                previousDate = message.sentAt
+                continue
+            }
+            if let sender = message.senderName, !sender.isEmpty {
+                timeline.append(.init(id: .sender(message.id), content: .notice(.init(messageID: message.id, text: sender, isSender: true))))
+            }
             let deliveryText: String?
-            if message.direction == .outgoing, let deliveryState = message.deliveryState,
+            if let status = message.statusText {
+                deliveryText = status
+            } else if message.direction == .outgoing, let deliveryState = message.deliveryState,
                message.id == latestOutgoingID || deliveryState == .sending || deliveryState == .failed {
                 let key: String = switch deliveryState {
                 case .sending: "imessage.status.sending"
@@ -69,7 +87,7 @@ extension ChatViewModel {
                 deliveryText = nil
             }
 
-            let presentation: MessagePresentation
+            var presentation: MessagePresentation
             switch message.content {
             case .attachment(let attachment):
                 presentation = MessagePresentation(
@@ -93,6 +111,9 @@ extension ChatViewModel {
                     deliveryState: message.deliveryState
                 )
             }
+            presentation.canRevoke = message.canRevoke
+            presentation.canCancel = message.canCancel
+            presentation.canRetryMedia = message.canRetryMedia
             timeline.append(
                 TimelineItem(
                     id: .message(message.id),

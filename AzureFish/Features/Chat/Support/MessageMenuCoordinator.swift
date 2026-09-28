@@ -148,7 +148,7 @@ final class MessageMenuCoordinator {
     private func menu(_ value: Session) -> UIMenu {
         let actions = items(value.target).map { item in
             var attributes: UIMenuElement.Attributes = item.isEnabled ? [] : [.disabled]
-            if item.operation == .delete { attributes.insert(.destructive) }
+            if [.delete, .revoke, .cancelSend].contains(item.operation) { attributes.insert(.destructive) }
             let action = UIAction(title: Localization.text(item.titleKey), image: UIImage(systemName: item.symbol),
                                   identifier: .init("imessage.menu.\(item.operation.rawValue)"), attributes: attributes) { [weak self, value] _ in
                 guard let self, self.latestSessionID == value.id, !value.isCancelled, !value.didPerformAction,
@@ -160,7 +160,7 @@ final class MessageMenuCoordinator {
             }
             return (item.operation, action)
         }
-        let groups: [[MessageMenuOperation]] = [[.copy, .selectText, .save, .share, .openLink], [.retry], [.delete]]
+        let groups: [[MessageMenuOperation]] = [[.copy, .selectText, .save, .share, .openLink], [.retry], [.revoke, .cancelSend, .delete]]
         return UIMenu(children: groups.compactMap { group in
             let children = actions.filter { group.contains($0.0) }.map(\.1)
             return children.isEmpty ? nil : UIMenu(options: .displayInline, children: children)

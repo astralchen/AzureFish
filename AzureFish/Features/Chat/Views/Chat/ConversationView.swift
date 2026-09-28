@@ -79,12 +79,28 @@ final class ConversationView: QuickLayoutView, UICollectionViewDelegate, UIGestu
     )
     /// 当前渲染版本，用于使旧列表完成回调失效。
     private var renderGeneration = 0
+    private var appliedGeneration = -1
+    /// 只报告已提交到列表且未被导航／输入区遮挡的消息，防止快照切换时误报已读。
+    var visibleMessageIDs: [Int] {
+        guard appliedGeneration == renderGeneration, !isApplyingTimeline, let lastState else { return [] }
+        let viewport = collectionView.bounds.inset(by: collectionView.adjustedContentInset)
+        return collectionView.indexPathsForVisibleItems.compactMap { index in
+            guard lastState.timeline.indices.contains(index.item),
+                  let frame = collectionView.layoutAttributesForItem(at: index)?.frame,
+                  viewport.intersection(frame).height >= min(frame.height, 44),
+                  case .message(let id) = lastState.timeline[index.item].id else { return nil }
+            return id
+        }
+    }
     /// 初始加载或发送触发的底部滚动请求；跨越状态刷新保留至滚动完成。
     private var pendingExplicitScroll = false
     /// 首次历史等待期间发生过拖动或发送时，批量插入应保留阅读位置。
     private var hasInteractedWithTimeline = false
     /// 用户向顶部翻看且满足阈值时请求下一页，由页面转交模型处理。
     var loadEarlierHistory: (() -> Void)?
+    var visibleMessagesDidChange: (() -> Void)?
+    var reeditRequested: ((Int) -> Void)?
+    var systemNoticeDeleteRequested: ((Int) -> Void)?
     /// 用户点击顶部失败提示时请求重试，区别于自动滚动触发。
     var retryHistory: (() -> Void)?
     /// 标记当前一次拖动及其减速过程是否已请求过历史，防止短列表连续自动翻页。
@@ -414,6 +430,7 @@ final class ConversationView: QuickLayoutView, UICollectionViewDelegate, UIGestu
     /// 首次展示、布局更新和程序化定位不会触发请求；失败与结束状态也不会自动重试。
     /// - Parameter scrollView: 列表适配器转发滚动事件的消息集合视图。
     func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        visibleMessagesDidChange?()
         debugLogScroll("scroll", detail: "deltaY=\(scrollView.contentOffset.y - previousScrollOffset)")
         defer { previousScrollOffset = scrollView.contentOffset.y }
         if !isApplyingTimeline, !isUpdatingViewport {
@@ -560,6 +577,7 @@ final class ConversationView: QuickLayoutView, UICollectionViewDelegate, UIGestu
                 guard let self, self.renderGeneration == generation else {
                     return
                 }
+                self.appliedGeneration = generation
                 self.debugLogScroll("render.complete", detail: "reason=\(reason) generation=\(generation)")
                 self.isApplyingTimeline = true
                 defer {
@@ -610,6 +628,12 @@ final class ConversationView: QuickLayoutView, UICollectionViewDelegate, UIGestu
             ListSection(.timeline) {
                 ForEach(state.timeline, id: \.id) { item in
                     switch item.content {
+                    case .notice(let notice):
+                        Row(model: notice, cell: ConversationNoticeCell.self) { [weak self] cell, notice, _ in
+                            cell.configure(notice, delete: { [weak self] in self?.systemNoticeDeleteRequested?(notice.messageID) }) { [weak self] in self?.reeditRequested?(notice.messageID) }
+                        }
+                        .refreshID(notice)
+                        .refresh(when: .automatic, action: .reconfigure(layout: .invalidate))
                     case .historyStatus(let presentation):
                         Row(model: presentation, cell: HistoryStatusCell.self) { [weak self] cell, presentation, _ in
                             cell.retry = { [weak self] in self?.retryHistory?() }
@@ -643,7 +667,7 @@ final class ConversationView: QuickLayoutView, UICollectionViewDelegate, UIGestu
                             }, dismissal: { [weak self] _ in
                                 self?.messageMenuCoordinator.preview(for: message.id, dismissing: true)
                             })
-                            .refreshID(message.refreshIdentity)
+                            .refreshID(message)
                             .refresh(when: .automatic, action: .reconfigure(layout: .invalidate))
 
                         case .attachment(let attachment):
@@ -698,7 +722,7 @@ final class ConversationView: QuickLayoutView, UICollectionViewDelegate, UIGestu
                                 }, dismissal: { [weak self] _ in
                                     self?.messageMenuCoordinator.preview(for: message.id, dismissing: true)
                                 })
-                                .refreshID(message.refreshIdentity)
+                                .refreshID(message)
                                 .refresh(when: .automatic, action: .reconfigure(layout: .invalidate))
                             case .mediaGroup(let group):
                                 Row(

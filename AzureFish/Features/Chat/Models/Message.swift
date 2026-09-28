@@ -52,6 +52,14 @@ nonisolated struct Message: Equatable, Hashable, Sendable {
     let sentAt: Date
     /// 发出消息的发送状态；收到的消息通常为 `nil`。
     var deliveryState: MessageDeliveryState?
+    var senderName: String? = nil
+    var statusText: String? = nil
+    var canRevoke = false
+    var canCancel = false
+    var canRetryMedia = false
+    var systemNotice: String? = nil
+    var revokedNotice: String? = nil
+    var canReedit = false
 }
 
 /// 待插入当前会话的历史消息内容，由视图模型分配本地身份和时间线位置。

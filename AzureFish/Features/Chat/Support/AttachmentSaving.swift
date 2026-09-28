@@ -105,17 +105,24 @@ final class AttachmentSaveSnapshot {
         var copies: [URL] = []
         var videoCopies: [URL?] = []
         do {
+            try manager.createDirectory(at: directoryURL, withIntermediateDirectories: true,
+                attributes: [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication])
+            var directory = directoryURL
+            var values = URLResourceValues(); values.isExcludedFromBackup = true
+            try directory.setResourceValues(values)
             for (index, source) in sources.enumerated() {
                 let folder = directoryURL.appendingPathComponent(String(index), isDirectory: true)
                 try manager.createDirectory(at: folder, withIntermediateDirectories: true)
                 let destination = folder.appendingPathComponent(source.1)
                 try manager.copyItem(at: source.0, to: destination)
+                try manager.setAttributes([.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication], ofItemAtPath: destination.path)
                 copies.append(destination)
                 if case .mediaGroup(let group) = attachment, let video = group.items[index].livePhotoVideoURL {
                     let videoFolder = folder.appendingPathComponent("paired", isDirectory: true)
                     try manager.createDirectory(at: videoFolder, withIntermediateDirectories: true)
                     let videoCopy = videoFolder.appendingPathComponent(video.lastPathComponent)
                     try manager.copyItem(at: video, to: videoCopy)
+                    try manager.setAttributes([.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication], ofItemAtPath: videoCopy.path)
                     videoCopies.append(videoCopy)
                 } else {
                     videoCopies.append(nil)
@@ -170,7 +177,11 @@ final class SystemAttachmentSaver: AttachmentSaving {
     ///
     /// 媒体组写入照片图库，文件通过系统选择器导出；取消文件选择返回 `.cancelled`。
     func save(_ attachment: Attachment, from presenter: UIViewController) async throws -> AttachmentSaveOutcome {
-        let snapshot = try AttachmentSaveSnapshot(attachment)
+        let parent: URL
+        if #available(iOS 26.0, *), let chat = presenter as? ChatViewController, chat.session != nil {
+            parent = chat.attachmentStore.directoryURL.appendingPathComponent("exports/" + attachment.id.uuidString)
+        } else { parent = FileManager.default.temporaryDirectory }
+        let snapshot = try AttachmentSaveSnapshot(attachment, parentDirectory: parent)
         // 显式延长副本生命周期，包含系统保存完成或取消回调。
         defer { withExtendedLifetime(snapshot) {} }
         switch attachment {

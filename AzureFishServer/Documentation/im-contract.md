@@ -1,6 +1,6 @@
 # IM 网络契约 v1
 
-> 本机虚构账号文本与媒体 IM 已实现，客户端尚未接入。唯一字段来源为 [azurefish.proto](../Protos/azurefish.proto)，产品范围见 [需求分析](im-requirements.md)。
+> 本机虚构账号文本与媒体 IM 已实现；客户端接入及运行边界见 [原版 UI 记录](../../Documentation/Design/Chat/original-ui-restoration.md)。唯一字段来源为 [azurefish.proto](../Protos/azurefish.proto)，产品范围见 [需求分析](im-requirements.md)。
 
 ## 传输与路由
 
@@ -27,11 +27,19 @@ HTTP 路由统一要求 Bearer 与 `Accept: application/protobuf`，POST 正文 
 ## 校验与幂等
 
 - UUID 都接受大小写并返回小写；operation_id 全局唯一、原始请求指纹包含未知字段，重试需原字节。普通写恢复窗口沿用账号接口 10 分钟，跨同一 session 的 token 刷新可重放。
-- 文本接受 `content_type=text`、`content_schema_version=1`，非空且最多 16384 Swift Character／64 KiB UTF-8。允许换行，禁止其他控制字符。发送请求编码上限 256 KiB，其余控制请求仍是 16 KiB。媒体追加 `media_group`／`audio`／`file`，组合及字节接口见 [媒体契约](media-contract.md)。
+- 文本接受 `content_type=text`、`content_schema_version=1`，非空且最多 16384 Swift Character／64 KiB UTF-8。允许制表、换行和回车，禁止其他 Unicode control；组合 emoji 的 ZWJ 等 format 字符保留。发送请求编码上限 256 KiB，其余控制请求仍是 16 KiB。媒体追加 `media_group`／`audio`／`file`，组合及字节接口见 [媒体契约](media-contract.md)。
 - `message_uuid` 全环境唯一；`client_message_id` 在发送者内唯一。用新 operation_id 但相同消息身份和内容发送可对账返回当前消息；不同身份映射或内容返回 `MESSAGE_ID_CONFLICT`。跨设备不得重新冒用原 device_id 发新请求；客户端应先同步确认原发送结果。
 - send／revoke 的幂等记录只保存消息身份，重试返回**当前**权威消息（含当前回执）；撤回后永远没有旧正文。其他成功操作在恢复窗口返回原结果，客户端按对应版本合并。
 - 群资料版本仅随群管理变更增加；boundary_revision 仅随成员权限变化增加。message.server_revision 独立于 receipt.server_revision；会话 read_state 也有独立版本。解散或退群禁止新发送，但旧授权历史和撤回窗口仍有效。
 - 每账号 IM 写每分钟 120 次，精确用户查询每分钟 20 次，并继续受控制路由共享的 IP 每分钟 120 次保护（媒体字节路由另为 600 次）。限流为进程内开发实现，不能用来保护公网服务。
+
+## 富文本与链接兼容扩展
+
+保持 schema_version=1，新增字段使用未占用编号：`IMSendRequest.text_runs=10`、`link_url=11`；`IMMessage.text_runs=16`、`link_url=17`。`IMTextRun.text=1`、`style=2`，style 的 1／2／4／8 分别表示粗体／斜体／下划线／删除线，可组合；其余位拒绝。
+
+文本可不带格式；携带格式时最多 16384 个非空片段，按序拼接必须严格等于纯文本 `text`，共同遵循原正文长度限制。`content_type=link` 要求不带格式或附件，`text` 必须等于 `link_url`；仅接受具有非空 host 的 HTTP／HTTPS URL。媒体消息不能携带格式或链接字段。服务端不抓取网页、不生成预览和转写。
+
+新增字段进入消息存储、请求指纹、发送返回、历史及事件。撤回同时清空纯文本、格式、URL 和附件；幂等重放返回已清理的当前消息。旧存储没有新增字段时为空，旧客户端可继续显示 `text` 纯文本投影；未知类型仍需安全降级。客户端扩展后对链接显示原始 URL，预览失败不丢失原文。
 
 ## 历史、事件和固定快照
 
@@ -67,3 +75,11 @@ events limit 默认 100、最大 200；响应至多 4 MiB，实际内容预算 3
 | 429 | `SNAPSHOT_LIMIT`／`RATE_LIMITED` | 等待、复用已有快照，避免重复创建 |
 
 断网、500、响应丢失：写操作保留原字节和 operation_id；恢复窗口到期返回 `OPERATION_RESULT_EXPIRED` 时先通过历史／事件／当前资料对账。客户端不能把网络错误解释为消息已拒绝，也不能因新窗口或语言切换重新发送。
+
+### 好友接受系统提示（2026-09-28）
+
+`accept` 与私聊创建／复用、`system` 消息、双方事件、幂等结果同事务提交；失败整体回滚。新增系统提示双方各计一条未读，接受方不自动已读。每次关系接受版本最多生成一条，删除再添加使用原会话和新版本；旧好友不补历史。
+
+`IMMessage.system_event = 18` 保存 `friendship_accepted`、关系 ID／版本、申请人及接受人。系统消息由服务端生成身份，无用户发送者、设备、client_message_id、文本正文或回执；客户端发送接口不支持此类型，撤回返回 `REVOKE_FORBIDDEN`，回执明细返回 `RECEIPT_FORBIDDEN`。
+
+`IMConversation.latest_message = 11` 返回权限范围内最后消息，适用于快照及增量摘要；不表示历史覆盖。客户端按结构化事件本地化，未知类型保持消息身份并显示占位。旧客户端仍可同步消息信封。没有新增 HTTP 路由或数据库表。

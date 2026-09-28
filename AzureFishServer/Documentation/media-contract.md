@@ -1,6 +1,6 @@
 # IM 媒体后台契约 v1
 
-本实现面向单实例 macOS、虚构账号和回环网络。客户端只同步协议，本轮不接入上传队列、加密缓存或聊天 UI。权威字段见 [azurefish.proto](../Protos/azurefish.proto)，消息受众和同步沿用 [IM 契约](im-contract.md)。验证状态见 [实施记录](validation.md)。
+本实现面向单实例 macOS、虚构账号和回环网络。客户端上传队列、加密缓存及原版聊天 UI 的接入状态见[本次记录](../../Documentation/Design/Chat/original-ui-restoration.md)。权威字段见 [azurefish.proto](../Protos/azurefish.proto)，消息受众和同步沿用 [IM 契约](im-contract.md)。验证状态见 [实施记录](validation.md)。
 
 ## 资源闭环
 
@@ -33,7 +33,7 @@
 
 普通附件只有 original。图片／Live Photo 派生 thumbnail，视频派生 cover，均为最长边 1280 的 JPEG；预览不复制原件定位元数据。原件字节和原有元数据不变。实际解码类型必须匹配声明 MIME。Animated 图片仍使用 image，权威 animated 标识来自解码结果；保留动画原件、只生成静态缩略图。
 
-消息 schema 仍为 1；在已有编号后追加 IMSendRequest.asset_ids 和 IMMessage.assets。text 保持旧约束且不能带附件；media_group 的 text 为空，包含有序且不重复的 1～20 个 image／video／live_photo，原件合计 ≤1 GiB；audio／file 各恰好一个对应附件。全部 ready、同一上传者、同一会话才可提交。消息、序号、事件、附件引用和幂等结果同事务提交。旧客户端继续同步消息信封，将未知类型显示为占位。
+消息 schema 仍为 1；在已有编号后追加 IMSendRequest.asset_ids 和 IMMessage.assets。text 支持 IM 契约中的语义格式，link 支持原始 HTTP／HTTPS URL，两者均不能带附件；media_group 的 text 为空，包含有序且不重复的 1～20 个 image／video／live_photo，原件合计 ≤1 GiB；audio／file 各恰好一个对应附件。全部 ready、同一上传者、同一会话才可提交。消息、序号、事件、附件引用和幂等结果同事务提交。旧客户端继续同步消息信封，将未知类型显示为占位。
 
 ## 状态、任务与生命周期
 

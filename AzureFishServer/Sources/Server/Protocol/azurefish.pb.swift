@@ -301,7 +301,7 @@ public nonisolated struct UpdateProfileRequest: Sendable {
   fileprivate var _bio: String? = nil
 }
 
-/// 按精确账号名查找可发起私聊的用户；不会返回密码或会话信息。
+/// 按精确账号名查找可申请好友的用户；私聊发送另行检查好友关系。
 public nonisolated struct IMLookupUserRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -447,9 +447,21 @@ public nonisolated struct IMMember: Sendable {
   /// 按加入时间升序。
   public var intervals: [IMMembershipInterval] = []
 
+  /// 当前可见成员资料；离开会话后使用冻结资料。
+  public var profile: IMPublicUser {
+    get {_profile ?? IMPublicUser()}
+    set {_profile = newValue}
+  }
+  /// Returns true if `profile` has been explicitly set.
+  public var hasProfile: Bool {self._profile != nil}
+  /// Clears the value of `profile`. Subsequent reads from it will return its default value.
+  public mutating func clearProfile() {self._profile = nil}
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
+
+  fileprivate var _profile: IMPublicUser? = nil
 }
 
 /// 当前账号的权威阅读摘要。
@@ -521,14 +533,40 @@ public nonisolated struct IMConversation: Sendable {
   /// Clears the value of `readState`. Subsequent reads from it will return its default value.
   public mutating func clearReadState() {self._readState = nil}
 
+  /// 最新可见消息摘要；不代表历史同步覆盖。
+  public var latestMessage: IMMessage {
+    get {_latestMessage ?? IMMessage()}
+    set {_latestMessage = newValue}
+  }
+  /// Returns true if `latestMessage` has been explicitly set.
+  public var hasLatestMessage: Bool {self._latestMessage != nil}
+  /// Clears the value of `latestMessage`. Subsequent reads from it will return its default value.
+  public mutating func clearLatestMessage() {self._latestMessage = nil}
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
 
   fileprivate var _readState: IMReadState? = nil
+  fileprivate var _latestMessage: IMMessage? = nil
 }
 
 /// 发送文本消息；身份以 Bearer 为准，设备必须匹配该会话凭据。
+/// 连续语义文字片段；style 使用 bold=1、italic=2、underline=4、strikethrough=8 位组合。
+public nonisolated struct IMTextRun: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var text: String = String()
+
+  public var style: UInt32 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 public nonisolated struct IMSendRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -549,7 +587,7 @@ public nonisolated struct IMSendRequest: Sendable {
   /// 当前凭据绑定的安装 UUID。
   public var deviceID: String = String()
 
-  /// text、media_group、audio、file。
+  /// text、link、media_group、audio、file。
   public var contentType: String = String()
 
   /// 首期为 1。
@@ -560,6 +598,12 @@ public nonisolated struct IMSendRequest: Sendable {
 
   /// 有序就绪附件 UUID；媒体组最多 20 个，语音／文件恰好 1 个。
   public var assetIds: [String] = []
+
+  /// text 的可选格式片段，拼接必须等于 text。
+  public var textRuns: [IMTextRun] = []
+
+  /// link 的原始 HTTP(S) URL，text 保留相同值供旧界面展示。
+  public var linkURL: String = String()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -596,13 +640,13 @@ public nonisolated struct IMMessage: @unchecked Sendable {
     set {_uniqueStorage()._serverMessageID = newValue}
   }
 
-  /// 认证得到的发送者 UUID。
+  /// 认证得到的发送者 UUID；系统消息为空。
   public var senderUserID: String {
     get {_storage._senderUserID}
     set {_uniqueStorage()._senderUserID = newValue}
   }
 
-  /// 原发送会话设备。
+  /// 原发送会话设备；系统消息为空。
   public var deviceID: String {
     get {_storage._deviceID}
     set {_uniqueStorage()._deviceID = newValue}
@@ -666,11 +710,55 @@ public nonisolated struct IMMessage: @unchecked Sendable {
     set {_uniqueStorage()._assets = newValue}
   }
 
+  /// 撤回时清空。
+  public var textRuns: [IMTextRun] {
+    get {_storage._textRuns}
+    set {_uniqueStorage()._textRuns = newValue}
+  }
+
+  /// 客户端生成预览；服务端不访问此 URL。
+  public var linkURL: String {
+    get {_storage._linkURL}
+    set {_uniqueStorage()._linkURL = newValue}
+  }
+
+  /// 仅服务端生成；system 消息无用户发送者、设备及回执。
+  public var systemEvent: IMSystemEvent {
+    get {_storage._systemEvent ?? IMSystemEvent()}
+    set {_uniqueStorage()._systemEvent = newValue}
+  }
+  /// Returns true if `systemEvent` has been explicitly set.
+  public var hasSystemEvent: Bool {_storage._systemEvent != nil}
+  /// Clears the value of `systemEvent`. Subsequent reads from it will return its default value.
+  public mutating func clearSystemEvent() {_uniqueStorage()._systemEvent = nil}
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
 
   fileprivate var _storage = _StorageClass.defaultInstance
+}
+
+/// 持久化的系统事件，不保存本地化文案。
+public nonisolated struct IMSystemEvent: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// friendship_accepted；未知事件显示通用占位。
+  public var kind: String = String()
+
+  public var relationshipID: String = String()
+
+  public var relationshipRevision: Int64 = 0
+
+  public var requesterUserID: String = String()
+
+  public var accepterUserID: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
 }
 
 /// 固定发送时接收范围的回执计数；发送者不计入。
@@ -843,6 +931,16 @@ public nonisolated struct IMEvent: @unchecked Sendable {
   /// Clears the value of `message`. Subsequent reads from it will return its default value.
   public mutating func clearMessage() {_uniqueStorage()._message = nil}
 
+  /// contact 事件为当前权威关系，含删除墓碑。
+  public var contact: ContactRelationship {
+    get {_storage._contact ?? ContactRelationship()}
+    set {_uniqueStorage()._contact = newValue}
+  }
+  /// Returns true if `contact` has been explicitly set.
+  public var hasContact: Bool {_storage._contact != nil}
+  /// Clears the value of `contact`. Subsequent reads from it will return its default value.
+  public mutating func clearContact() {_uniqueStorage()._contact = nil}
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -909,6 +1007,9 @@ public nonisolated struct IMSnapshotResponse: Sendable {
   public var baselineCursor: String = String()
 
   public var epoch: String = String()
+
+  /// 与会话共享固定快照及 baseline。
+  public var contacts: [ContactRelationship] = []
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -1416,6 +1517,72 @@ public nonisolated struct MediaDownloadGrant: Sendable {
   public var etag: String = String()
 
   public var byteCount: Int64 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// 用户对的当前关系；删除和拒绝保留版本，旧事件不能恢复关系。
+public nonisolated struct ContactRelationship: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var relationshipID: String = String()
+
+  public var peer: IMPublicUser {
+    get {_peer ?? IMPublicUser()}
+    set {_peer = newValue}
+  }
+  /// Returns true if `peer` has been explicitly set.
+  public var hasPeer: Bool {self._peer != nil}
+  /// Clears the value of `peer`. Subsequent reads from it will return its default value.
+  public mutating func clearPeer() {self._peer = nil}
+
+  /// pending、friend、rejected、cancelled、deleted。
+  public var state: String = String()
+
+  public var requesterUserID: String = String()
+
+  public var revision: Int64 = 0
+
+  public var updatedAtMs: Int64 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _peer: IMPublicUser? = nil
+}
+
+/// 查询对方当前关系；无记录时返回 state=none、revision=0。
+public nonisolated struct ContactGetRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var peerUserID: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// 首次申请 expected_revision=0；后续动作必须使用当前版本。
+public nonisolated struct ContactMutationRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var operationID: String = String()
+
+  public var peerUserID: String = String()
+
+  public var expectedRevision: Int64 = 0
+
+  /// request、accept、reject、cancel、delete。
+  public var action: String = String()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -2135,7 +2302,7 @@ nonisolated extension IMMembershipInterval: SwiftProtobuf.Message, SwiftProtobuf
 
 nonisolated extension IMMember: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".IMMember"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}user_id\0\u{1}active\0\u{1}intervals\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}user_id\0\u{1}active\0\u{1}intervals\0\u{1}profile\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -2146,12 +2313,17 @@ nonisolated extension IMMember: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
       case 1: try { try decoder.decodeSingularStringField(value: &self.userID) }()
       case 2: try { try decoder.decodeSingularBoolField(value: &self.active) }()
       case 3: try { try decoder.decodeRepeatedMessageField(value: &self.intervals) }()
+      case 4: try { try decoder.decodeSingularMessageField(value: &self._profile) }()
       default: break
       }
     }
   }
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
     if !self.userID.isEmpty {
       try visitor.visitSingularStringField(value: self.userID, fieldNumber: 1)
     }
@@ -2161,6 +2333,9 @@ nonisolated extension IMMember: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
     if !self.intervals.isEmpty {
       try visitor.visitRepeatedMessageField(value: self.intervals, fieldNumber: 3)
     }
+    try { if let v = self._profile {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 4)
+    } }()
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -2168,6 +2343,7 @@ nonisolated extension IMMember: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
     if lhs.userID != rhs.userID {return false}
     if lhs.active != rhs.active {return false}
     if lhs.intervals != rhs.intervals {return false}
+    if lhs._profile != rhs._profile {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -2225,7 +2401,7 @@ nonisolated extension IMReadState: SwiftProtobuf.Message, SwiftProtobuf._Message
 
 nonisolated extension IMConversation: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".IMConversation"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}conversation_id\0\u{1}kind\0\u{1}title\0\u{3}owner_user_id\0\u{1}members\0\u{3}server_revision\0\u{3}boundary_revision\0\u{3}latest_seq\0\u{1}closed\0\u{3}read_state\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}conversation_id\0\u{1}kind\0\u{1}title\0\u{3}owner_user_id\0\u{1}members\0\u{3}server_revision\0\u{3}boundary_revision\0\u{3}latest_seq\0\u{1}closed\0\u{3}read_state\0\u{3}latest_message\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -2243,6 +2419,7 @@ nonisolated extension IMConversation: SwiftProtobuf.Message, SwiftProtobuf._Mess
       case 8: try { try decoder.decodeSingularInt64Field(value: &self.latestSeq) }()
       case 9: try { try decoder.decodeSingularBoolField(value: &self.closed) }()
       case 10: try { try decoder.decodeSingularMessageField(value: &self._readState) }()
+      case 11: try { try decoder.decodeSingularMessageField(value: &self._latestMessage) }()
       default: break
       }
     }
@@ -2283,6 +2460,9 @@ nonisolated extension IMConversation: SwiftProtobuf.Message, SwiftProtobuf._Mess
     try { if let v = self._readState {
       try visitor.visitSingularMessageField(value: v, fieldNumber: 10)
     } }()
+    try { if let v = self._latestMessage {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 11)
+    } }()
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -2297,6 +2477,42 @@ nonisolated extension IMConversation: SwiftProtobuf.Message, SwiftProtobuf._Mess
     if lhs.latestSeq != rhs.latestSeq {return false}
     if lhs.closed != rhs.closed {return false}
     if lhs._readState != rhs._readState {return false}
+    if lhs._latestMessage != rhs._latestMessage {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension IMTextRun: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".IMTextRun"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}text\0\u{1}style\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.text) }()
+      case 2: try { try decoder.decodeSingularUInt32Field(value: &self.style) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.text.isEmpty {
+      try visitor.visitSingularStringField(value: self.text, fieldNumber: 1)
+    }
+    if self.style != 0 {
+      try visitor.visitSingularUInt32Field(value: self.style, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: IMTextRun, rhs: IMTextRun) -> Bool {
+    if lhs.text != rhs.text {return false}
+    if lhs.style != rhs.style {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -2304,7 +2520,7 @@ nonisolated extension IMConversation: SwiftProtobuf.Message, SwiftProtobuf._Mess
 
 nonisolated extension IMSendRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".IMSendRequest"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}operation_id\0\u{3}conversation_id\0\u{3}message_uuid\0\u{3}client_message_id\0\u{3}device_id\0\u{3}content_type\0\u{3}content_schema_version\0\u{1}text\0\u{3}asset_ids\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}operation_id\0\u{3}conversation_id\0\u{3}message_uuid\0\u{3}client_message_id\0\u{3}device_id\0\u{3}content_type\0\u{3}content_schema_version\0\u{1}text\0\u{3}asset_ids\0\u{3}text_runs\0\u{3}link_url\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -2321,6 +2537,8 @@ nonisolated extension IMSendRequest: SwiftProtobuf.Message, SwiftProtobuf._Messa
       case 7: try { try decoder.decodeSingularInt32Field(value: &self.contentSchemaVersion) }()
       case 8: try { try decoder.decodeSingularStringField(value: &self.text) }()
       case 9: try { try decoder.decodeRepeatedStringField(value: &self.assetIds) }()
+      case 10: try { try decoder.decodeRepeatedMessageField(value: &self.textRuns) }()
+      case 11: try { try decoder.decodeSingularStringField(value: &self.linkURL) }()
       default: break
       }
     }
@@ -2354,6 +2572,12 @@ nonisolated extension IMSendRequest: SwiftProtobuf.Message, SwiftProtobuf._Messa
     if !self.assetIds.isEmpty {
       try visitor.visitRepeatedStringField(value: self.assetIds, fieldNumber: 9)
     }
+    if !self.textRuns.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.textRuns, fieldNumber: 10)
+    }
+    if !self.linkURL.isEmpty {
+      try visitor.visitSingularStringField(value: self.linkURL, fieldNumber: 11)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -2367,6 +2591,8 @@ nonisolated extension IMSendRequest: SwiftProtobuf.Message, SwiftProtobuf._Messa
     if lhs.contentSchemaVersion != rhs.contentSchemaVersion {return false}
     if lhs.text != rhs.text {return false}
     if lhs.assetIds != rhs.assetIds {return false}
+    if lhs.textRuns != rhs.textRuns {return false}
+    if lhs.linkURL != rhs.linkURL {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -2374,7 +2600,7 @@ nonisolated extension IMSendRequest: SwiftProtobuf.Message, SwiftProtobuf._Messa
 
 nonisolated extension IMMessage: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".IMMessage"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}conversation_id\0\u{3}message_uuid\0\u{3}client_message_id\0\u{3}server_message_id\0\u{3}sender_user_id\0\u{3}device_id\0\u{3}server_seq\0\u{3}server_created_at_ms\0\u{3}server_revision\0\u{3}content_type\0\u{3}content_schema_version\0\u{1}text\0\u{1}revoked\0\u{1}receipt\0\u{1}assets\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}conversation_id\0\u{3}message_uuid\0\u{3}client_message_id\0\u{3}server_message_id\0\u{3}sender_user_id\0\u{3}device_id\0\u{3}server_seq\0\u{3}server_created_at_ms\0\u{3}server_revision\0\u{3}content_type\0\u{3}content_schema_version\0\u{1}text\0\u{1}revoked\0\u{1}receipt\0\u{1}assets\0\u{3}text_runs\0\u{3}link_url\0\u{3}system_event\0")
 
   fileprivate class _StorageClass {
     var _conversationID: String = String()
@@ -2392,6 +2618,9 @@ nonisolated extension IMMessage: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     var _revoked: Bool = false
     var _receipt: IMReceiptSummary? = nil
     var _assets: [MediaAsset] = []
+    var _textRuns: [IMTextRun] = []
+    var _linkURL: String = String()
+    var _systemEvent: IMSystemEvent? = nil
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -2417,6 +2646,9 @@ nonisolated extension IMMessage: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       _revoked = source._revoked
       _receipt = source._receipt
       _assets = source._assets
+      _textRuns = source._textRuns
+      _linkURL = source._linkURL
+      _systemEvent = source._systemEvent
     }
   }
 
@@ -2450,6 +2682,9 @@ nonisolated extension IMMessage: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
         case 13: try { try decoder.decodeSingularBoolField(value: &_storage._revoked) }()
         case 14: try { try decoder.decodeSingularMessageField(value: &_storage._receipt) }()
         case 15: try { try decoder.decodeRepeatedMessageField(value: &_storage._assets) }()
+        case 16: try { try decoder.decodeRepeatedMessageField(value: &_storage._textRuns) }()
+        case 17: try { try decoder.decodeSingularStringField(value: &_storage._linkURL) }()
+        case 18: try { try decoder.decodeSingularMessageField(value: &_storage._systemEvent) }()
         default: break
         }
       }
@@ -2507,6 +2742,15 @@ nonisolated extension IMMessage: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       if !_storage._assets.isEmpty {
         try visitor.visitRepeatedMessageField(value: _storage._assets, fieldNumber: 15)
       }
+      if !_storage._textRuns.isEmpty {
+        try visitor.visitRepeatedMessageField(value: _storage._textRuns, fieldNumber: 16)
+      }
+      if !_storage._linkURL.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._linkURL, fieldNumber: 17)
+      }
+      try { if let v = _storage._systemEvent {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 18)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -2531,10 +2775,63 @@ nonisolated extension IMMessage: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
         if _storage._revoked != rhs_storage._revoked {return false}
         if _storage._receipt != rhs_storage._receipt {return false}
         if _storage._assets != rhs_storage._assets {return false}
+        if _storage._textRuns != rhs_storage._textRuns {return false}
+        if _storage._linkURL != rhs_storage._linkURL {return false}
+        if _storage._systemEvent != rhs_storage._systemEvent {return false}
         return true
       }
       if !storagesAreEqual {return false}
     }
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension IMSystemEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".IMSystemEvent"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}kind\0\u{3}relationship_id\0\u{3}relationship_revision\0\u{3}requester_user_id\0\u{3}accepter_user_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.kind) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.relationshipID) }()
+      case 3: try { try decoder.decodeSingularInt64Field(value: &self.relationshipRevision) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self.requesterUserID) }()
+      case 5: try { try decoder.decodeSingularStringField(value: &self.accepterUserID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.kind.isEmpty {
+      try visitor.visitSingularStringField(value: self.kind, fieldNumber: 1)
+    }
+    if !self.relationshipID.isEmpty {
+      try visitor.visitSingularStringField(value: self.relationshipID, fieldNumber: 2)
+    }
+    if self.relationshipRevision != 0 {
+      try visitor.visitSingularInt64Field(value: self.relationshipRevision, fieldNumber: 3)
+    }
+    if !self.requesterUserID.isEmpty {
+      try visitor.visitSingularStringField(value: self.requesterUserID, fieldNumber: 4)
+    }
+    if !self.accepterUserID.isEmpty {
+      try visitor.visitSingularStringField(value: self.accepterUserID, fieldNumber: 5)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: IMSystemEvent, rhs: IMSystemEvent) -> Bool {
+    if lhs.kind != rhs.kind {return false}
+    if lhs.relationshipID != rhs.relationshipID {return false}
+    if lhs.relationshipRevision != rhs.relationshipRevision {return false}
+    if lhs.requesterUserID != rhs.requesterUserID {return false}
+    if lhs.accepterUserID != rhs.accepterUserID {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -2827,13 +3124,14 @@ nonisolated extension IMEventsRequest: SwiftProtobuf.Message, SwiftProtobuf._Mes
 
 nonisolated extension IMEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".IMEvent"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}position\0\u{1}kind\0\u{1}conversation\0\u{1}message\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}position\0\u{1}kind\0\u{1}conversation\0\u{1}message\0\u{1}contact\0")
 
   fileprivate class _StorageClass {
     var _position: Int64 = 0
     var _kind: String = String()
     var _conversation: IMConversation? = nil
     var _message: IMMessage? = nil
+    var _contact: ContactRelationship? = nil
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -2848,6 +3146,7 @@ nonisolated extension IMEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
       _kind = source._kind
       _conversation = source._conversation
       _message = source._message
+      _contact = source._contact
     }
   }
 
@@ -2870,6 +3169,7 @@ nonisolated extension IMEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
         case 2: try { try decoder.decodeSingularStringField(value: &_storage._kind) }()
         case 3: try { try decoder.decodeSingularMessageField(value: &_storage._conversation) }()
         case 4: try { try decoder.decodeSingularMessageField(value: &_storage._message) }()
+        case 5: try { try decoder.decodeSingularMessageField(value: &_storage._contact) }()
         default: break
         }
       }
@@ -2894,6 +3194,9 @@ nonisolated extension IMEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
       try { if let v = _storage._message {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 4)
       } }()
+      try { if let v = _storage._contact {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 5)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -2907,6 +3210,7 @@ nonisolated extension IMEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
         if _storage._kind != rhs_storage._kind {return false}
         if _storage._conversation != rhs_storage._conversation {return false}
         if _storage._message != rhs_storage._message {return false}
+        if _storage._contact != rhs_storage._contact {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -3008,7 +3312,7 @@ nonisolated extension IMSnapshotRequest: SwiftProtobuf.Message, SwiftProtobuf._M
 
 nonisolated extension IMSnapshotResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".IMSnapshotResponse"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}snapshot_token\0\u{1}conversations\0\u{3}next_cursor\0\u{1}complete\0\u{3}baseline_cursor\0\u{1}epoch\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}snapshot_token\0\u{1}conversations\0\u{3}next_cursor\0\u{1}complete\0\u{3}baseline_cursor\0\u{1}epoch\0\u{1}contacts\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -3022,6 +3326,7 @@ nonisolated extension IMSnapshotResponse: SwiftProtobuf.Message, SwiftProtobuf._
       case 4: try { try decoder.decodeSingularBoolField(value: &self.complete) }()
       case 5: try { try decoder.decodeSingularStringField(value: &self.baselineCursor) }()
       case 6: try { try decoder.decodeSingularStringField(value: &self.epoch) }()
+      case 7: try { try decoder.decodeRepeatedMessageField(value: &self.contacts) }()
       default: break
       }
     }
@@ -3046,6 +3351,9 @@ nonisolated extension IMSnapshotResponse: SwiftProtobuf.Message, SwiftProtobuf._
     if !self.epoch.isEmpty {
       try visitor.visitSingularStringField(value: self.epoch, fieldNumber: 6)
     }
+    if !self.contacts.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.contacts, fieldNumber: 7)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -3056,6 +3364,7 @@ nonisolated extension IMSnapshotResponse: SwiftProtobuf.Message, SwiftProtobuf._
     if lhs.complete != rhs.complete {return false}
     if lhs.baselineCursor != rhs.baselineCursor {return false}
     if lhs.epoch != rhs.epoch {return false}
+    if lhs.contacts != rhs.contacts {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -4070,6 +4379,140 @@ nonisolated extension MediaDownloadGrant: SwiftProtobuf.Message, SwiftProtobuf._
     if lhs.resourceID != rhs.resourceID {return false}
     if lhs.etag != rhs.etag {return false}
     if lhs.byteCount != rhs.byteCount {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension ContactRelationship: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ContactRelationship"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}relationship_id\0\u{1}peer\0\u{1}state\0\u{3}requester_user_id\0\u{1}revision\0\u{3}updated_at_ms\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.relationshipID) }()
+      case 2: try { try decoder.decodeSingularMessageField(value: &self._peer) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.state) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self.requesterUserID) }()
+      case 5: try { try decoder.decodeSingularInt64Field(value: &self.revision) }()
+      case 6: try { try decoder.decodeSingularInt64Field(value: &self.updatedAtMs) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    if !self.relationshipID.isEmpty {
+      try visitor.visitSingularStringField(value: self.relationshipID, fieldNumber: 1)
+    }
+    try { if let v = self._peer {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
+    } }()
+    if !self.state.isEmpty {
+      try visitor.visitSingularStringField(value: self.state, fieldNumber: 3)
+    }
+    if !self.requesterUserID.isEmpty {
+      try visitor.visitSingularStringField(value: self.requesterUserID, fieldNumber: 4)
+    }
+    if self.revision != 0 {
+      try visitor.visitSingularInt64Field(value: self.revision, fieldNumber: 5)
+    }
+    if self.updatedAtMs != 0 {
+      try visitor.visitSingularInt64Field(value: self.updatedAtMs, fieldNumber: 6)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: ContactRelationship, rhs: ContactRelationship) -> Bool {
+    if lhs.relationshipID != rhs.relationshipID {return false}
+    if lhs._peer != rhs._peer {return false}
+    if lhs.state != rhs.state {return false}
+    if lhs.requesterUserID != rhs.requesterUserID {return false}
+    if lhs.revision != rhs.revision {return false}
+    if lhs.updatedAtMs != rhs.updatedAtMs {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension ContactGetRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ContactGetRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}peer_user_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.peerUserID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.peerUserID.isEmpty {
+      try visitor.visitSingularStringField(value: self.peerUserID, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: ContactGetRequest, rhs: ContactGetRequest) -> Bool {
+    if lhs.peerUserID != rhs.peerUserID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension ContactMutationRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ContactMutationRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}operation_id\0\u{3}peer_user_id\0\u{3}expected_revision\0\u{1}action\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.operationID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.peerUserID) }()
+      case 3: try { try decoder.decodeSingularInt64Field(value: &self.expectedRevision) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self.action) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.operationID.isEmpty {
+      try visitor.visitSingularStringField(value: self.operationID, fieldNumber: 1)
+    }
+    if !self.peerUserID.isEmpty {
+      try visitor.visitSingularStringField(value: self.peerUserID, fieldNumber: 2)
+    }
+    if self.expectedRevision != 0 {
+      try visitor.visitSingularInt64Field(value: self.expectedRevision, fieldNumber: 3)
+    }
+    if !self.action.isEmpty {
+      try visitor.visitSingularStringField(value: self.action, fieldNumber: 4)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: ContactMutationRequest, rhs: ContactMutationRequest) -> Bool {
+    if lhs.operationID != rhs.operationID {return false}
+    if lhs.peerUserID != rhs.peerUserID {return false}
+    if lhs.expectedRevision != rhs.expectedRevision {return false}
+    if lhs.action != rhs.action {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

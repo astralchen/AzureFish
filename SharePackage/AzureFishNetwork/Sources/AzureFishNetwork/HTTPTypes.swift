@@ -8,6 +8,8 @@ public enum HTTPMethod: String, Sendable {
     case post = "POST"
     /// 提交资源的部分更新；使用此方法本身不代表请求具备幂等性。
     case patch = "PATCH"
+    /// 上传有固定身份与摘要的媒体分块；默认不自动重放。
+    case put = "PUT"
 }
 
 /// 请求遇到指定传输故障时允许采用的自动重放策略。

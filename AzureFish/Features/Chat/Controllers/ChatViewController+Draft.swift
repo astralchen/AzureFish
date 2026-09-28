@@ -60,6 +60,7 @@ extension ChatViewController {
                 draftRestoreTask = nil
                 layoutChatContent()
                 presentPendingDraftNotice()
+                session?.refresh()
             }
             switch result {
             case .success(let result):
@@ -95,7 +96,7 @@ extension ChatViewController {
     ///
     /// - Parameter immediately: 是否绕过普通编辑的防抖窗口；附件就绪和生命周期提交时为 `true`。
     func draftContentDidChange(immediately: Bool = false) {
-        guard !hasCleanedUpChat, !isRestoringDraft, !isHandlingDraftAction else { return }
+        guard !hasCleanedUpChat, !isRestoringDraft, !isHandlingDraftAction, !isSubmittingComposition else { return }
         draftCoordinator?.changed(makeDraftSnapshot(), immediately: immediately)
     }
 
@@ -104,7 +105,7 @@ extension ChatViewController {
     /// 在页面标记为已清理之前或应用进入后台时调用。恢复尚未结束时跳过，
     /// 避免用页面初始化的空状态覆盖磁盘草稿；本方法不会等待磁盘操作完成。
     func flushDraftBeforeLeaving() {
-        guard !isRestoringDraft, !hasCleanedUpChat, let draftCoordinator else { return }
+        guard !isRestoringDraft, !hasCleanedUpChat, !isSubmittingComposition, let draftCoordinator else { return }
         draftContentDidChange(immediately: true)
         guard let operation = draftCoordinator.flush() else { return }
         var token = UIBackgroundTaskIdentifier.invalid

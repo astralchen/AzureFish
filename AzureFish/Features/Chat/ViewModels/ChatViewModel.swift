@@ -130,6 +130,7 @@ final class ChatViewModel {
     var activeReplyID: Int?
 
     /// 最近一次生成并向界面发布的完整状态快照。
+    var sessionNotice: String?
     var state: State
 
     /// 使用实时本地化、系统时钟和默认模拟发送器创建视图模型。

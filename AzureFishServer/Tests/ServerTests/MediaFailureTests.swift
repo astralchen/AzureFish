@@ -48,6 +48,7 @@ struct MediaFailureTests {
     @Test func membershipIntervalsAndCrossAccountReferences() async throws {
         try await withMediaHTTP { app, _, http in
             let a = try await auth(app, name: "history_a"), b = try await auth(app, name: "history_b"), c = try await auth(app, name: "history_c")
+            try await befriend(app, a, b)
             var chat = try await group(app, a, [c])
             let bytes = Data("group resource".utf8)
             let created = try await http.create("file", sources: [("original", "test.bin", "application/octet-stream", bytes)], conversation: chat, user: a)
@@ -69,7 +70,8 @@ struct MediaFailureTests {
             let other = try await direct(app, a, b)
             var cross = message(a); cross.conversationID = other.conversationID
             #expect(try errorCode(await send(app, .POST, "/v1/im/messages/send", cross, token: a.accessToken)) == "MEDIA_NOT_READY")
-            #expect(try await IMMessageRecord.query(on: app.db).count() == 3)
+            // 两次好友接受各生成一条系统提示；失败的跨账号发送不增加记录。
+            #expect(try await IMMessageRecord.query(on: app.db).count() == 5)
             #expect(try await MediaReferenceRecord.query(on: app.db).count() == 3)
         }
     }

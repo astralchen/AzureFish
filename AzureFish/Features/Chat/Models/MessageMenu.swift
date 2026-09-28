@@ -31,7 +31,7 @@ nonisolated struct MessageMenuTarget: Hashable, Sendable {
 }
 
 nonisolated enum MessageMenuOperation: String, Equatable, Sendable {
-    case copy, selectText, share, save, openLink, retry, delete
+    case copy, selectText, share, save, openLink, retry, delete, revoke, cancelSend
 }
 
 nonisolated struct MessageMenuItem: Equatable, Sendable {
@@ -79,10 +79,15 @@ nonisolated enum MessageMenuPolicy {
         }
         let live = target.attachment(in: message)?.mediaGroup?.items.first?.isLivePhoto == true
         append(.share, live ? "shareOriginals" : "share", "square.and.arrow.up")
-        if message.direction == .outgoing && message.deliveryState == .failed {
+        if message.canRetryMedia || (message.direction == .outgoing && message.deliveryState == .failed) {
             append(.retry, "retry", "arrow.clockwise")
         }
-        append(.delete, "delete", "trash")
+        if message.canRevoke {
+            items.append(.init(operation: .revoke, titleKey: "chat.live.revoke", symbol: "arrow.uturn.backward"))
+        }
+        if message.canCancel {
+            items.append(.init(operation: .cancelSend, titleKey: "chat.live.cancel", symbol: "xmark.circle"))
+        } else { append(.delete, "delete", "trash") }
         if saveState == .saving || saveState == .completed, let index = items.firstIndex(where: { $0.operation == .save }) {
             items[index] = .init(operation: .save, titleKey: saveState == .completed ? "imessage.save.completed" : "imessage.menu.saving",
                                  symbol: saveState == .completed ? "checkmark" : "square.and.arrow.down", isEnabled: false)

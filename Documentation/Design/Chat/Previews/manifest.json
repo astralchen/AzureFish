@@ -1,0 +1,375 @@
+{
+  "date": "2026-09-28",
+  "source": "Figma design export; not runtime screenshots",
+  "fileKey": "su1BAcMKAwW11bE2n2n9rN",
+  "images": [
+    {
+      "file": "conversation-list.png",
+      "title": "会话列表",
+      "nodeId": "53:1805",
+      "width": 390,
+      "height": 852,
+      "sha256": "8384ce6aae1e054021c1e5f5bd84694c2da65496ee66d716a54c89890c54be30"
+    },
+    {
+      "file": "contacts-list.png",
+      "title": "通讯录",
+      "nodeId": "84:1805",
+      "width": 390,
+      "height": 852,
+      "sha256": "438282a55e43dd03ca0bbdca2bb95779411b193bceba3c5e097693e0e193d3fd"
+    },
+    {
+      "file": "friend-requests.png",
+      "title": "新的朋友",
+      "nodeId": "84:1861",
+      "width": 390,
+      "height": 852,
+      "sha256": "e25ad2ce67f4221cdb27462842a4bc7aa607f63d582e579053aa3663d41aa337"
+    },
+    {
+      "file": "friend-request-detail.png",
+      "title": "好友申请",
+      "nodeId": "84:1954",
+      "width": 390,
+      "height": 852,
+      "sha256": "52ce3448f1ba3751026834718de25052b75f4f579fbc8c13bb35f1eebf85524f"
+    },
+    {
+      "file": "friend-profile.png",
+      "title": "好友详情",
+      "nodeId": "84:1974",
+      "width": 390,
+      "height": 852,
+      "sha256": "231ed4b6b37b452ef10fed80cf1035bf445b9c7450cfce83ee50a8f5c5be06a3"
+    },
+    {
+      "file": "delete-friend.png",
+      "title": "删除好友",
+      "nodeId": "84:1994",
+      "width": 390,
+      "height": 852,
+      "sha256": "3ce34728237799220301fb47eb44fc1978bc7e7040754f23b0c204a832bd742d"
+    },
+    {
+      "file": "private-chat.png",
+      "title": "私聊",
+      "nodeId": "53:2285",
+      "width": 390,
+      "height": 852,
+      "sha256": "129549ddddea3ff14fe194fe22ec0fe2217e751029cab15af00eead9e9537e97"
+    },
+    {
+      "file": "group-chat.png",
+      "title": "群聊",
+      "nodeId": "53:2433",
+      "width": 390,
+      "height": 852,
+      "sha256": "cffb30511025b3ff6c73751d29fe03ccf9ee436e2dbc2f70b8713e396dedaabf"
+    },
+    {
+      "file": "friend-accepted-chat.png",
+      "title": "接受好友后聊天",
+      "nodeId": "99:1848",
+      "width": 390,
+      "height": 852,
+      "sha256": "717e7f99128951917a3ab682933e9fe1627a9afd7e188edd0b18c026d6ff7516"
+    },
+    {
+      "file": "revoked-message.png",
+      "title": "撤回后重新编辑",
+      "nodeId": "53:2555",
+      "width": 390,
+      "height": 852,
+      "sha256": "c8deab89e46f4b987e8daa1503ebff37992bd1234cf9be9f52a528a1ad69f1fc"
+    },
+    {
+      "file": "group-create.png",
+      "title": "创建群聊",
+      "nodeId": "55:1805",
+      "width": 390,
+      "height": 852,
+      "sha256": "09c41991c9a72591714709982df6d0cd2c9a300455f6370d490121f0d6729d33"
+    },
+    {
+      "file": "group-details.png",
+      "title": "群聊详情",
+      "nodeId": "55:1938",
+      "width": 390,
+      "height": 852,
+      "sha256": "d682b98cfbd46ec256135fec8ca96488334dd85dddf42b1fa3b43006ce2ecc79"
+    },
+    {
+      "file": "group-receipts.png",
+      "title": "群回执",
+      "nodeId": "55:2475",
+      "width": 390,
+      "height": 852,
+      "sha256": "4c9d504f71be7de3a26663aa328e798c1dec71caf525ca68dd6792342d5311f0"
+    },
+    {
+      "file": "media-draft.png",
+      "title": "媒体草稿",
+      "nodeId": "54:1805",
+      "width": 390,
+      "height": 852,
+      "sha256": "4f09a199780f016fc8c4be92277cf0b6b5337d9e1d4de3f4bfb32a6b269aa2fd"
+    },
+    {
+      "file": "media-upload.png",
+      "title": "上传与处理",
+      "nodeId": "54:1953",
+      "width": 390,
+      "height": 852,
+      "sha256": "f12f8da28dd3361b6710e0358f3e1da71d9b81047fe08b0ce5ebbf0d0c33854b"
+    },
+    {
+      "file": "media-viewer.png",
+      "title": "媒体浏览",
+      "nodeId": "54:2113",
+      "width": 390,
+      "height": 852,
+      "sha256": "9ae1edb18422b014d1e92de69d5f0b07c9e4ca0ea2a188badd50f0a9b1b525f1"
+    },
+    {
+      "file": "voice-preview.png",
+      "title": "语音试听",
+      "nodeId": "54:2494",
+      "width": 390,
+      "height": 852,
+      "sha256": "0934c38a2bc9d20ef42ae305ab9c5fb7ebaf326304609adb2f07e051ff23a27c"
+    },
+    {
+      "file": "dark-chat.png",
+      "title": "深色聊天",
+      "nodeId": "60:1833",
+      "width": 390,
+      "height": 872,
+      "sha256": "9ed3bb865c220d8f202f20806725176aa5230db1376c2d15f5074fbb328bca56"
+    },
+    {
+      "file": "narrow-chat.png",
+      "title": "窄屏聊天",
+      "nodeId": "60:2079",
+      "width": 320,
+      "height": 872,
+      "sha256": "eb42a929164b835072575892c8c769265f4802ede9fa79d222756a7e81c9fddf"
+    },
+    {
+      "file": "large-text-chat.png",
+      "title": "大字体聊天",
+      "nodeId": "60:2107",
+      "width": 390,
+      "height": 872,
+      "sha256": "4c44e5af0facd5a025989428bba744becec6f1378e935abea4871159c5835ee6"
+    },
+    {
+      "file": "ipad-chat.png",
+      "title": "双栏聊天",
+      "nodeId": "61:1846",
+      "width": 1194,
+      "height": 834,
+      "sha256": "f50a74b7ab932dd7fb7208c06e238f5108d99163a4279149370ab7ef9da82cf4"
+    },
+    {
+      "file": "arabic-chat.png",
+      "title": "阿拉伯语聊天",
+      "nodeId": "60:1944",
+      "width": 390,
+      "height": 872,
+      "sha256": "fe8abf8a5e14a5f77aca566741cb09eafa55823047ce9fba2d64b514e8cc1d86"
+    },
+    {
+      "file": "traditional-chat.png",
+      "title": "繁中聊天",
+      "nodeId": "60:1861",
+      "width": 390,
+      "height": 872,
+      "sha256": "24d62debd07880bb34ce76d4afa8fdb180f2d0ce73b3e17e01180995ed0c51d7"
+    },
+    {
+      "file": "legacy-chat.png",
+      "title": "旧系统外观",
+      "nodeId": "60:2135",
+      "width": 390,
+      "height": 872,
+      "sha256": "358e001a8ba4ee72484ed900f72ce7901f16eb5540a98f88ba3fdf44ebfdaa52"
+    },
+    {
+      "file": "arabic-group.png",
+      "title": "阿拉伯语群详情",
+      "nodeId": "60:2040",
+      "width": 390,
+      "height": 872,
+      "sha256": "68f8117482c4cb287d3ffeb7fa80be7b5800b58b9075d9ea730bd9d18221af55"
+    },
+    {
+      "file": "revoked-other.png",
+      "title": "对方撤回",
+      "nodeId": "116:1961",
+      "width": 390,
+      "height": 852,
+      "sha256": "e8907e51f5add4001ca79a28e3c3e7297a75b780166604f66f5c447652851c4a"
+    },
+    {
+      "file": "revoked-media.png",
+      "title": "媒体撤回",
+      "nodeId": "116:1994",
+      "width": 390,
+      "height": 852,
+      "sha256": "e47abc2a033fe4963532d15e77057b6764b84b28cb36bdab83cae862cfaf1eba"
+    },
+    {
+      "file": "revoked-expired.png",
+      "title": "重新编辑已过期",
+      "nodeId": "116:2027",
+      "width": 390,
+      "height": 852,
+      "sha256": "e47abc2a033fe4963532d15e77057b6764b84b28cb36bdab83cae862cfaf1eba"
+    },
+    {
+      "file": "reedit-draft.png",
+      "title": "已恢复到输入栏",
+      "nodeId": "116:2060",
+      "width": 390,
+      "height": 852,
+      "sha256": "a95a20e820d17f26aed80dac2844e1fe00d828f14075e9c7a49d1d31caf70280"
+    },
+    {
+      "file": "reedit-existing.png",
+      "title": "已有文字草稿",
+      "nodeId": "116:2099",
+      "width": 390,
+      "height": 852,
+      "sha256": "034b35f726349d596713a86de4904ce8288906d7f50cff16baeb126d6a15c581"
+    },
+    {
+      "file": "reedit-confirm.png",
+      "title": "替换草稿确认",
+      "nodeId": "116:2138",
+      "width": 390,
+      "height": 852,
+      "sha256": "69d9585093751a0f7aaf53c1615d90cb0346337b38d372bb0638dd92b97d7520"
+    },
+    {
+      "file": "revoked-group.png",
+      "title": "群成员撤回",
+      "nodeId": "119:1992",
+      "width": 390,
+      "height": 852,
+      "sha256": "813f9152aafa1070250a9afd3be41315aaa59cd97acd05a20c59a3d31edfde58"
+    },
+    {
+      "file": "revoked-dark.png",
+      "title": "深色撤回提示",
+      "nodeId": "119:2021",
+      "width": 390,
+      "height": 852,
+      "sha256": "1e5795129133033880b4744981bee0e27b09dd88d831d26616756865202dbb4b"
+    },
+    {
+      "nodeId": "53:1860",
+      "file": "conversation-empty.png",
+      "title": "暂无聊天",
+      "width": 390,
+      "height": 852,
+      "sha256": "5396c729b712c3b06f5a5094dad05399cbba188f248eedbb0551b1777b5950d9"
+    },
+    {
+      "nodeId": "53:1889",
+      "file": "conversation-loading.png",
+      "title": "首次加载",
+      "width": 390,
+      "height": 852,
+      "sha256": "fee24aa262a5d5aa270eccf6c4f380341e9a525d77a187828ea31be2cfc1739b"
+    },
+    {
+      "nodeId": "130:2029",
+      "file": "conversation-search-empty.png",
+      "title": "搜索无结果",
+      "width": 390,
+      "height": 852,
+      "sha256": "a3256bdb6361a8335168bd9a408c15bcfd38c6c643b03841f0f72a4b9c65323b"
+    },
+    {
+      "nodeId": "130:2075",
+      "file": "conversation-load-failed.png",
+      "title": "加载失败",
+      "width": 390,
+      "height": 852,
+      "sha256": "be19effdf0568b3a40f0b25cdd104967d369ba2f7d2aa8bec6895cb7fd25bb8e"
+    },
+    {
+      "nodeId": "130:2124",
+      "file": "conversation-empty-dark.png",
+      "title": "暂无聊天 · 深色",
+      "width": 390,
+      "height": 852,
+      "sha256": "644985ae815d4e2bf5960e555339373a9ed6a906cf0bccf0474c605519070664"
+    },
+    {
+      "nodeId": "53:2003",
+      "file": "conversation-sync-failed.png",
+      "title": "同步失败保留列表",
+      "width": 390,
+      "height": 852,
+      "sha256": "d93b622af12f363f582179dec176d83adfb85dee95bf9c6efa65abf9acd22d53"
+    },
+    {
+      "nodeId": "133:1910",
+      "file": "ipad-chat-empty.png",
+      "title": "iPad 双栏暂无聊天",
+      "width": 1194,
+      "height": 834,
+      "sha256": "9444b6f46b9c349e08bbc40be71c100709e5cd3b2835ace86e9e9752815c95fa"
+    },
+    {
+      "file": "Friendship/requester-list.png",
+      "title": "申请人通过提醒",
+      "nodeId": "145:2035",
+      "width": 390,
+      "height": 852,
+      "sha256": "b1369b6b89c68869b3f2b24dd57615fdd4358129847217f68ce347e1572a47b2"
+    },
+    {
+      "file": "Friendship/accepter-list.png",
+      "title": "接受方通过提醒",
+      "nodeId": "145:2100",
+      "width": 390,
+      "height": 852,
+      "sha256": "432f4e5a9e1733283a459472c2a3f402e78a2a376106aaff6a9292a3e9205c02"
+    },
+    {
+      "file": "Friendship/read-list.png",
+      "title": "提醒阅读后",
+      "nodeId": "145:2165",
+      "width": 390,
+      "height": 852,
+      "sha256": "79a3522ee2e2df61fc7894aea82a4061db3a351981ca36a0e456619e6482e2af"
+    },
+    {
+      "file": "Friendship/requester-chat.png",
+      "title": "申请人系统提示",
+      "nodeId": "145:2230",
+      "width": 390,
+      "height": 852,
+      "sha256": "92f56c250fd9d1babb20fcddf6d69646f06906c22ed8eac6ea8f87f864446a14"
+    },
+    {
+      "file": "Friendship/accepter-chat.png",
+      "title": "接受方系统提示",
+      "nodeId": "145:2259",
+      "width": 390,
+      "height": 852,
+      "sha256": "2ad74a1056b3e9b19c7c0fff5856a6ac51c8346200bf9ed87ad19fbf91dfda89"
+    },
+    {
+      "file": "Friendship/accepter-read-list.png",
+      "title": "接受方阅读后",
+      "nodeId": "148:2075",
+      "width": 390,
+      "height": 852,
+      "sha256": "163c79a3c042dfa97a27d8a151d3c834abf615946a75964c93f100691f8161c6"
+    }
+  ]
+}

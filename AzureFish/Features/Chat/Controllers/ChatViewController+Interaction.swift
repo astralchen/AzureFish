@@ -16,8 +16,14 @@ extension ChatViewController {
 
     /// 连接输入栏动作、媒体状态、文档插入和消息交互到页面控制器。
     func configureInteractions() {
+        // UIKit 在菜单手势触发、菜单尚未展示时发送此事件，早于临时键盘隐藏通知。
+        composerView.attachmentButton.addAction(UIAction { [weak self] _ in
+            guard let self else { return }
+            let bottom = composerView.convert(composerView.bounds, to: view).maxY
+            bottomObstructionCoordinator.prepareForAttachmentMenu(composerBottom: bottom)
+        }, for: .menuActionTriggered)
         composerView.actionRequested = { [weak self] action in
-            guard let self, !isRestoringDraft, !hasCleanedUpChat else { return false }
+            guard let self, !isRestoringDraft, !isSubmittingComposition, !hasCleanedUpChat else { return false }
             isHandlingDraftAction = true
             defer {
                 isHandlingDraftAction = false
@@ -199,7 +205,7 @@ extension ChatViewController {
                 photoController.present(
                     from: self,
                     keyboardHeight: bottomObstructionCoordinator
-                        .storedKeyboardContentHeight
+                        .photoPickerKeyboardHeight
                 )
                 return true
             case .file:
@@ -232,9 +238,14 @@ extension ChatViewController {
         case .sendAttachmentDraft:
             guard composerView.canSendAudioDraft, photoController.draft == nil, documentController.drafts.isEmpty else { return false }
             guard let attachment = audioController.previewAttachment,
-                  viewModel.sendAttachment(attachment) else {
+                  !isSubmittingComposition else { return false }
+            if session != nil {
+                sendLiveContents([.attachment(attachment)]) { [weak self] in
+                    _ = self?.audioController.commitPreviewAttachment(id: attachment.id)
+                }
                 return false
             }
+            guard viewModel.sendAttachment(attachment) else { return false }
             return audioController.commitPreviewAttachment(id: attachment.id)
 
         case .toggleAudioPreviewPlayback:
@@ -298,6 +309,16 @@ extension ChatViewController {
                 }
             }
         }
+        if session != nil {
+            let mediaID = photoController.draft?.groupID
+            sendLiveContents(contents) { [weak self] in
+                guard let self else { return }
+                documentController.commit(ids)
+                if photoController.draft?.groupID == mediaID { _ = photoController.commitDraft() }
+                composerView.restoreDraft(segments: [], documents: [:])
+            }
+            return false
+        }
         guard viewModel.sendContents(contents) else {
             presentMediaFailure(.mediaInvalid)
             return false
@@ -306,6 +327,27 @@ extension ChatViewController {
         if photoController.draft != nil { _ = photoController.commitDraft() }
         // 发送只消费草稿；照片面板继续保留当前档位，便于连续选择并发送。
         return true
+    }
+
+    /// 等待加密队列事务成功后才消费输入；失败保留文字、附件和焦点。
+    private func sendLiveContents(_ contents: [MessageContent], consume: @escaping () -> Void) {
+        guard let session, !isSubmittingComposition, !contents.isEmpty else { return }
+        flushDraftBeforeLeaving()
+        isSubmittingComposition = true
+        composerView.isUserInteractionEnabled = false
+        session.send(contents) { [weak self] accepted in
+            guard let self, !hasCleanedUpChat else { return }
+            isSubmittingComposition = false
+            composerView.isUserInteractionEnabled = true
+            if accepted {
+                isHandlingDraftAction = true
+                consume()
+                isHandlingDraftAction = false
+                draftContentDidChange(immediately: true)
+            } else { presentMediaFailure(.mediaImportFailed) }
+            layoutChatContent()
+            session.refresh()
+        }
     }
 
     /// 展示网页地址输入框，并将有效 URL 交给文档草稿控制器。
@@ -342,7 +384,7 @@ extension ChatViewController {
         case .menu(let operation, let target):
             handleMenuAction(operation, target: target)
         case .retryMessage(let messageID):
-            viewModel.retryMessage(id: messageID)
+            if let session { session.retry(messageID) } else { viewModel.retryMessage(id: messageID) }
         case .saveAttachment(let messageID, let attachment):
             guard let message = viewModel.state.timeline.compactMap({ item -> MessagePresentation? in
                 guard case .message(let message) = item.content else { return nil }

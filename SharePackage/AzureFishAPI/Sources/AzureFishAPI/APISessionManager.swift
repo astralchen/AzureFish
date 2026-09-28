@@ -85,6 +85,11 @@ public actor APISessionManager {
         record = value; publish()
     }
 
+    /// 返回当前身份供离线草稿绑定；不保证访问令牌有效，也不发起刷新。
+    public func localIdentity() throws -> SessionCredentials {
+        guard !endingSession, let record else { throw APISessionError.noSession }
+        return record.credentials
+    }
     /// 返回当前凭据；有 pending refresh 时先完成其恢复，避免使用已被消费的旧代次。
     public func credentials() async throws -> SessionCredentials {
         guard !endingSession, let record else { throw APISessionError.noSession }
@@ -176,7 +181,8 @@ public actor APISessionManager {
         try check(generation)
     }
 
-    private func authorized<Value: Sendable>(_ work: @escaping @Sendable (SessionCredentials) async throws -> Value) async throws -> Value {
+    /// 在同一会话代次执行受保护传输，仅对明确认证失败进行一次重试。
+    public func authorized<Value: Sendable>(_ work: @escaping @Sendable (SessionCredentials) async throws -> Value) async throws -> Value {
         let generation = epoch, initial = try await credentials()
         try check(generation)
         do {

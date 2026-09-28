@@ -66,6 +66,7 @@ public func configure(_ app: Application, configuration: ServerConfiguration) as
     app.databases.use(.sqlite(.file(path)), as: .sqlite)
     app.migrations.add(CreateSchema())
     app.migrations.add(CreateIMSchema())
+    app.migrations.add(CreateContactsSchema())
     app.migrations.add(CreateMediaSchema())
     if existing {
         // 在迁移或业务写入前验证原库的环境和密钥，错误时保留原文件。

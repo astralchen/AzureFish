@@ -66,7 +66,7 @@ final class DeliveryStatusView: QuickLayoutButton {
     /// 绑定消息发送状态，并更新文字、进度、失败入口与可交互性。
     func configure(_ message: MessagePresentation?) {
         messageID = message?.id
-        status = message?.deliveryState
+        status = message?.canRetryMedia == true ? .failed : message?.deliveryState
         label.text = message?.deliveryText
         label.textColor = isFailed ? .systemRed : .secondaryLabel
         if isSending { progress.startAnimating() } else { progress.stopAnimating() }

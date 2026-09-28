@@ -417,6 +417,8 @@ struct ChatAudioTranscriptionTests {
             }, isTyping: false)
         }
         conversation.render(state(), reason: .initial)
+        // 首次布局完成前列表仍不可见，不能提前模拟用户阅读而被初始定位覆盖。
+        #expect(await eventually { conversation.initialPresentation.isPresented })
         #expect(await eventually { conversation.collectionView.cellForItem(at: IndexPath(item: 23, section: 0)) != nil })
         let collection = conversation.collectionView
         collection.scrollToItem(at: IndexPath(item: 8, section: 0), at: .top, animated: false)

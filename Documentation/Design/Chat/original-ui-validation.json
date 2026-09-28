@@ -1,0 +1,86 @@
+{
+  "date": "2026-09-27",
+  "baseline": "2a5b35c",
+  "acceptance": "partial",
+  "environment": {
+    "sdk": "iOS 26.5",
+    "simulators": [
+      "iPhone 17 Pro",
+      "iPad Pro 11-inch (M5)"
+    ],
+    "accounts": "isolated fictional users"
+  },
+  "passed": {
+    "app_build": {
+      "destination": "generic/platform=iOS Simulator",
+      "architectures": [
+        "x86_64",
+        "arm64"
+      ]
+    },
+    "server": {
+      "tests": 45,
+      "suites": 12
+    },
+    "chat_package": {
+      "tests": 16,
+      "suites": 5
+    },
+    "http_integration": {
+      "harness": "ClientChatHarnessTests",
+      "client": "IndependentChatTests",
+      "transport": "isolated loopback HTTP",
+      "media": "file"
+    },
+    "iphone_components": {
+      "tests": 13,
+      "suites": 3
+    },
+    "ipad_components": {
+      "tests": 13,
+      "suites": 3
+    },
+    "photo_handoff_components": {
+      "tests": 2,
+      "suites": 1
+    },
+    "ui_cases": [
+      "ChatDraftUITests/testMixedMediaDraftRestoresAfterRelaunchAndCanPreviewAndSend",
+      "ChatKeyboardUITests/testInitialHistoryStartsAtBottomAndStaysThere",
+      "ChatKeyboardUITests/testFormattedTextMenuAndSending",
+      "ChatKeyboardUITests/testKeyboardToPhotoMenu"
+    ],
+    "photo_handoff_composer_bottom_pt": {
+      "keyboard": 539,
+      "photo": 539
+    },
+    "protocol_copy_check": true,
+    "git_diff_check": true
+  },
+  "failed": [
+    {
+      "test": "ChatAudioTranscriptionTests/switchingMessagesStopsPreviousBeforeStartingNext()",
+      "assertion": "playback progress > 0.05 within existing wait",
+      "root_cause": "unconfirmed"
+    },
+    {
+      "test": "ChatAudioTranscriptionTests/controllerPreservesKeyboardDraftAndActivePlaybackWhenTextArrives()",
+      "assertion": "keyboard height > 100; observed 34",
+      "root_cause": "unconfirmed"
+    }
+  ],
+  "not_validated": [
+    "iOS 15–25 runtime",
+    "iOS 27.1 Duo runtime",
+    "physical devices",
+    "complete four-language UI flows",
+    "VoiceOver",
+    "Reduce Transparency",
+    "Increase Contrast",
+    "dynamic window resizing",
+    "all-media two-account UI flow",
+    "real microphone/dictation/Photos write permissions",
+    "iPad dark navigation and glass contrast on screen"
+  ],
+  "screenshots": "Validation/OriginalUI/README.md"
+}

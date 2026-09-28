@@ -20,7 +20,10 @@ extension ChatViewController {
                 }
             }
         case .selectText: conversationView.selectMessageText(target)
-        case .retry: viewModel.retryMessage(id: target.messageID)
+        case .retry:
+            if let session { session.retry(target.messageID) } else { viewModel.retryMessage(id: target.messageID) }
+        case .revoke: session?.revoke(target.messageID)
+        case .cancelSend: session?.delete(target.messageID)
         case .openLink:
             if case .link(let link) = target.attachment(in: message) {
                 viewIfLoaded?.window?.windowScene?.open(link.url, options: nil, completionHandler: nil)
@@ -67,7 +70,7 @@ extension ChatViewController {
                     items = [link.url]
                     snapshot = nil
                 } else {
-                    let resources = try AttachmentSaveSnapshot(attachment)
+                    let resources = try AttachmentSaveSnapshot(attachment, parentDirectory: session == nil ? FileManager.default.temporaryDirectory : attachmentStore.directoryURL.appendingPathComponent("exports/" + attachment.id.uuidString))
                     items = resources.files + resources.pairedVideos.compactMap { $0 }
                     snapshot = resources
                 }
@@ -82,6 +85,19 @@ extension ChatViewController {
             sheet.popoverPresentationController?.sourceRect = source.bounds
             present(sheet, animated: true)
         } catch { presentAttachmentSaveFailure(error) }
+    }
+
+    func confirmSystemNoticeDeletion(_ id: Int) {
+        guard presentedViewController == nil, view.window != nil,
+              viewModel.messages.contains(where: { $0.id == id && $0.systemNotice != nil }) else { return }
+        let alert = UIAlertController(title: Localization.text("imessage.menu.deleteTitle"),
+            message: Localization.text("imessage.menu.deleteDetail"), preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: Localization.text("imessage.action.cancel"), style: .cancel))
+        alert.addAction(UIAlertAction(title: Localization.text("chat.live.localDelete"), style: .destructive) { [weak self] _ in
+            guard let self, viewModel.messages.contains(where: { $0.id == id && $0.systemNotice != nil }) else { return }
+            session?.delete(id)
+        })
+        present(alert, animated: true)
     }
 
     private func confirmMessageDeletion(_ message: MessagePresentation, target: MessageMenuTarget) {
@@ -102,6 +118,6 @@ extension ChatViewController {
         guard conversationView.message(for: target) != nil else { return }
         if audioController.playbackState.messageID == target.messageID { audioController.stopPlayback() }
         conversationView.endMessageSelection()
-        viewModel.deleteMessage(id: target.messageID)
+        if let session { session.delete(target.messageID) } else { viewModel.deleteMessage(id: target.messageID) }
     }
 }
