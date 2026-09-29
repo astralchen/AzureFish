@@ -39,4 +39,4 @@ AzureFish 是 iOS 客户端；仓库根目录下的 `AzureFishServer/` 是独立
 
 独立 AzureFishServer 首期实现服务底座、注册、密码登录、刷新、当前会话退出和资料读写；仅限回环 HTTP＋虚构数据。服务端使用 Fluent SQLite 和字段加密，不代表客户端 SQLCipher 或真实账号安全门槛已经通过。权威字段编号见[服务端协议源](../../AzureFishServer/Protos/azurefish.proto)，运行与测试结果见[服务端验证记录](../../AzureFishServer/Documentation/validation.md)。
 
-客户端通过三个独立本地 SPM 接入密码注册、登录、刷新、当前设备退出与资料读写。Apple、头像上传、密码设置／修改、退出全部设备和删除账号保留不可提交的说明入口，演示状态只在 Debug 目录中存在。真实 IM 尚未接入；实际验证范围见实施记录。
+客户端通过三个独立本地 SPM 接入密码注册、登录、刷新、当前设备退出与资料读写。后续头像上传及账号安全入口的实施与验证范围见[闭环记录](Implementation/2026-09-28-app-closure.md)，早期不可提交的说明入口不代表当前状态。头像与通讯录缓存现已采用[本地优先及长期密文保留](../Design/Chat/contact-cache.md)策略；这不代表真实账号安全门槛或生产 IM 验收完成。

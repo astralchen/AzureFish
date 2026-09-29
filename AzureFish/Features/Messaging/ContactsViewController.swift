@@ -42,9 +42,32 @@ class ContactDirectoryController: LocalizedQuickLayoutHostingController, UISearc
     let sectionIndex = CollectionSectionIndexView()
     private let search = UISearchController(searchResultsController: nil)
     private let stateView = ChatListStateView(frame: .zero)
-    private var isSearching = false
+    private var searchPresentationActive = false
+    private var keyboardFrame: CGRect?
+    private var isSearching: Bool {
+        searchPresentationActive || search.isActive || search.searchBar.searchTextField.isFirstResponder
+    }
     private var observation: UUID?
     private var busy = Set<String>()
+    private struct Presentation: Equatable {
+        let groups: [ContactSection]
+        let pending: Int
+        let busy: Set<String>
+        let query: String
+        let searching: Bool
+        let footer: String
+        let appearance: String
+        let online: Bool
+    }
+    private var presentation: Presentation?
+    private var rowVersions: [String: UInt64] = [:]
+    private struct GroupingInput: Equatable {
+        let contacts: [ChatContact]
+        let query: String
+        let locale: String
+    }
+    private var groupingInput: GroupingInput?
+    private var cachedGroups: [ContactSection] = []
     var showProfile: ((ChatContact) -> Void)?
     init(runtime: ChatRuntime, mode: Mode) { self.runtime = runtime; self.mode = mode; super.init(nibName: nil, bundle: nil) }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
@@ -60,6 +83,7 @@ class ContactDirectoryController: LocalizedQuickLayoutHostingController, UISearc
         }.safeAreaPadding(.horizontal)
     }
     override func viewDidLoad() {
+        quickLayoutKeyboardSafeAreaBehavior = .disabled
         super.viewDidLoad()
         view.backgroundColor = .systemBackground
         list.backgroundColor = .clear; list.alwaysBounceVertical = true
@@ -78,8 +102,18 @@ class ContactDirectoryController: LocalizedQuickLayoutHostingController, UISearc
         refresh.addAction(UIAction { [weak self, weak refresh] _ in Task { await self?.runtime.refreshAndWait(); refresh?.endRefreshing() } }, for: .valueChanged)
         list.refreshControl = refresh
         stateView.content.retry = { [weak self] in self?.runtime.refresh() }
+        NotificationCenter.default.addObserver(self, selector: #selector(keyboardChanged(_:)),
+            name: UIResponder.keyboardWillChangeFrameNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(keyboardChanged(_:)),
+            name: UIResponder.keyboardWillHideNotification, object: nil)
         observation = runtime.observe { [weak self] in self?.render() }
         reloadLocalizedContent()
+    }
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        // 重新进入时仅重配现有行，让上次失败的头像重试；已显示头像保持原视图。
+        presentation = nil
+        render()
     }
     override func reloadLocalizedContent() {
         super.reloadLocalizedContent()
@@ -98,6 +132,25 @@ class ContactDirectoryController: LocalizedQuickLayoutHostingController, UISearc
     }
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
+        updateViewport()
+    }
+    @objc private func keyboardChanged(_ notification: Notification) {
+        keyboardFrame = notification.name == UIResponder.keyboardWillHideNotification ? nil
+            : (notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? NSValue)?.cgRectValue
+        updateViewport()
+    }
+    private func updateViewport() {
+        var overlap: CGFloat = 0
+        if let keyboardFrame, let window = view.window {
+            let frame = list.convert(window.convert(keyboardFrame, from: window.screen.coordinateSpace), from: window)
+            let intersection = list.bounds.intersection(frame)
+            // 与会话列表一致，仅完整停靠键盘增加底部 inset；浮动键盘不占满整行。
+            if !intersection.isNull, intersection.maxY >= list.bounds.maxY - 1,
+               intersection.width >= list.bounds.width * 0.9 { overlap = intersection.height }
+        }
+        let systemBottom = max(0, list.adjustedContentInset.bottom - list.contentInset.bottom)
+        let bottom = max(0, overlap - systemBottom)
+        if abs(list.contentInset.bottom - bottom) > 0.5 { list.contentInset.bottom = bottom }
         // 横向安全区域已由 HStack 消费；纵向只使用列表已合并导航栏／底部栏的 inset。
         let adjusted = list.adjustedContentInset
         sectionIndex.contentInsets = UIEdgeInsets(top: adjusted.top, left: 0, bottom: adjusted.bottom, right: 0)
@@ -113,8 +166,8 @@ class ContactDirectoryController: LocalizedQuickLayoutHostingController, UISearc
         if isViewLoaded { render() }
     }
     func updateSearchResults(for searchController: UISearchController) { render() }
-    func willPresentSearchController(_ searchController: UISearchController) { isSearching = true; render() }
-    func didDismissSearchController(_ searchController: UISearchController) { isSearching = false; render() }
+    func willPresentSearchController(_ searchController: UISearchController) { searchPresentationActive = true; render() }
+    func didDismissSearchController(_ searchController: UISearchController) { searchPresentationActive = false; render() }
     private func open(_ contact: ChatContact) {
         if let showProfile { showProfile(contact) }
         else { navigationController?.pushViewController(FriendViewController(runtime: runtime, contact: contact), animated: true) }
@@ -139,13 +192,18 @@ class ContactDirectoryController: LocalizedQuickLayoutHostingController, UISearc
         case .requests: all = runtime.contacts.filter { !$0.requestID.isEmpty }
         case .blocked: all = runtime.contacts.filter(\.isBlocked)
         }
-        let matches = all.filter { $0.matches(query) }
-        let groups = mode == .contacts ? ContactDirectoryPresentation.sections(all, query: query, locale: locale)
-            : [ContactSection(id: "records", contacts: matches.sorted {
-                $0.requestUpdatedAt == $1.requestUpdatedAt ? $0.peer.id < $1.peer.id : $0.requestUpdatedAt > $1.requestUpdatedAt
-            })]
+        let grouping = GroupingInput(contacts: all, query: query, locale: locale.identifier)
+        if groupingInput != grouping {
+            cachedGroups = mode == .contacts ? ContactDirectoryPresentation.sections(all, query: query, locale: locale)
+                : [ContactSection(id: "records", contacts: all.filter { $0.matches(query) }.sorted {
+                    $0.requestUpdatedAt == $1.requestUpdatedAt ? $0.peer.id < $1.peer.id : $0.requestUpdatedAt > $1.requestUpdatedAt
+                })]
+            groupingInput = grouping
+        }
+        let groups = cachedGroups
+        let matches = groups.flatMap(\.contacts)
         let pending = runtime.contacts.filter { $0.requestState == "pending" && $0.requesterID != runtime.userID && !$0.isBlocked }.count
-        let state = ChatListContentState.resolve(hasSnapshot: runtime.hasSnapshot, synchronization: runtime.synchronization,
+        let state = ChatListContentState.resolve(hasSnapshot: runtime.hasContactSnapshot, synchronization: runtime.synchronization,
             storageFailure: runtime.failure != nil, totalCount: all.count, matchCount: matches.count, searching: !query.isEmpty)
         stateView.content.configure(state)
         if state == .empty {
@@ -153,12 +211,44 @@ class ContactDirectoryController: LocalizedQuickLayoutHostingController, UISearc
             stateView.content.titleLabel.text = Localization.text(key)
             stateView.content.detailLabel.text = mode == .contacts ? Localization.text("chat.live.addHelp") : ""
         }
+        switch state {
+        case .loading: stateView.content.titleLabel.text = Localization.text("contacts.loading")
+        case .failed: stateView.content.titleLabel.text = Localization.text("contacts.loadFailed")
+        case .noResults: stateView.content.titleLabel.text = Localization.text("contacts.noResults")
+        default: break
+        }
         list.backgroundView = state == .content ? nil : stateView
         let count = Localization.text("contacts.count", all.count)
         let footer = [mode == .contacts ? count : "", runtime.online ? "" : Localization.text("chat.live.offline")]
             .filter { !$0.isEmpty }.joined(separator: "\n")
+        let appearance = locale.identifier + ":" + traitCollection.preferredContentSizeCategory.rawValue
+            + ":\(traitCollection.userInterfaceStyle.rawValue):\(traitCollection.accessibilityContrast.rawValue):\(Localization.currentUIKitDirection.rawValue)"
+        let next = Presentation(groups: groups, pending: pending, busy: busy, query: query,
+            searching: isSearching, footer: footer, appearance: appearance, online: runtime.online)
+        guard presentation != next else { return }
+        let previous = presentation
+        let oldRows = Dictionary(uniqueKeysWithValues: (previous?.groups.flatMap(\.contacts) ?? []).map { ($0.peer.id, $0) })
+        let changed = matches.filter {
+            oldRows[$0.peer.id] != $0 || previous?.appearance != appearance
+                || previous?.busy.contains($0.peer.id) != busy.contains($0.peer.id)
+                || (previous?.online == false && runtime.online)
+        }.map(\.peer.id)
+        let surviving = Set(matches.map(\.peer.id))
+        rowVersions = rowVersions.filter { surviving.contains($0.key) }
+        for id in changed { rowVersions[id, default: 0] &+= 1 }
+        let anchor = list.visibleCells.sorted { $0.frame.minY < $1.frame.minY }.compactMap { cell -> String? in
+            guard let id = cell.accessibilityIdentifier, id.hasPrefix("contacts.peer.") else { return nil }
+            let peer = String(id.dropFirst("contacts.peer.".count))
+            return surviving.contains(peer) ? peer : nil
+        }.first
+        var transaction = ListTransaction.disabled
+        if previous?.query == query, previous?.searching == isSearching,
+           !list.isDragging, !list.isDecelerating, let anchor {
+            transaction = transaction.scrollBehavior(.preserveVisiblePosition(of: .init(anchor)))
+        }
+        presentation = next
         let showEntry = mode == .contacts && query.isEmpty
-        adapter.apply(transaction: .disabled, completion: { [weak self] _ in
+        adapter.apply(transaction: transaction, completion: { [weak self] _ in
             self?.setNeedsQuickLayout()
         }) {
             if showEntry {
@@ -189,12 +279,16 @@ class ContactDirectoryController: LocalizedQuickLayoutHostingController, UISearc
                         if self.mode == .requests {
                             Row(contact.peer.id, model: contact, cell: ContactRequestCell.self) { [weak self] cell, contact, _ in
                                 guard let self else { return }
-                                cell.configure(contact, detail: requestDetail(contact, locale: locale), busy: busy.contains(contact.peer.id)) { [weak self] in self?.accept(contact) }
-                            }.onSelect { [weak self] contact, _ in self?.open(contact) }
+                                cell.configure(contact, session: runtime.session, detail: requestDetail(contact, locale: locale), busy: busy.contains(contact.peer.id)) { [weak self] in self?.accept(contact) }
+                            }.refreshID(rowVersions[contact.peer.id, default: 0])
+                                .refresh(when: .refreshIDChanges, action: .reconfigure(layout: .invalidate))
+                                .onSelect { [weak self] contact, _ in self?.open(contact) }
                         } else {
-                            Row(contact.peer.id, model: contact, cell: UICollectionViewListCell.self) { [weak self] cell, contact, _ in
+                            Row(contact.peer.id, model: contact, cell: ContactDirectoryCell.self) { [weak self] cell, contact, _ in
                                 self?.configure(cell, contact: contact, locale: locale)
-                            }.onSelect { [weak self] contact, _ in self?.open(contact) }
+                            }.refreshID(rowVersions[contact.peer.id, default: 0])
+                                .refresh(when: .refreshIDChanges, action: .reconfigure(layout: .invalidate))
+                                .onSelect { [weak self] contact, _ in self?.open(contact) }
                         }
                     }
                 }.sectionSupplementaries {
@@ -217,32 +311,27 @@ class ContactDirectoryController: LocalizedQuickLayoutHostingController, UISearc
             }
 
         }
-        adapter.reconfigureRows(forRowIDs: matches.map(\.peer.id), transaction: .disabled, completion: nil)
     }
     private func requestDetail(_ contact: ChatContact, locale: Locale) -> String {
         let formatter = DateFormatter(); formatter.locale = locale; formatter.dateStyle = .medium; formatter.timeStyle = .none
         let date = formatter.string(from: Date(timeIntervalSince1970: Double(contact.requestUpdatedAt) / 1000))
         return [Localization.text(contact.requesterID == runtime.userID ? "chat.live.outgoing" : "chat.live.incoming"), contact.requestMessage, Localization.text("contacts.request." + contact.requestState), date].filter { !$0.isEmpty }.joined(separator: "\n")
     }
-    private func configure(_ cell: UICollectionViewListCell, contact: ChatContact, locale: Locale) {
+    private func configure(_ cell: ContactDirectoryCell, contact: ChatContact, locale: Locale) {
         var c = UIListContentConfiguration.subtitleCell()
         c.text = contact.peer.deleted == true ? Localization.text("account.deletedUser") : contact.displayName
         c.textProperties.numberOfLines = 0; c.secondaryTextProperties.numberOfLines = 0
         c.secondaryTextProperties.color = .secondaryLabel
-        c.image = nil
-        c.imageProperties.maximumSize = CGSize(width: 44, height: 44)
         c.directionalLayoutMargins = .init(top: 12, leading: 20, bottom: 12, trailing: 20)
         if !contact.remark.isEmpty { c.secondaryText = contact.peer.nickname }
-        let large = cell.traitCollection.preferredContentSizeCategory.isAccessibilityCategory
-        if large { c.image = nil }
         cell.contentConfiguration = c; cell.accessories = [.disclosureIndicator()]
+        let avatar = cell.avatar
         if let user = UUID(uuidString: contact.peer.id) {
-            let avatar = AccountAvatarView()
-            avatar.configure(session: runtime.session, user: user, asset: contact.peer.avatarID)
-            avatar.frame.size = CGSize(width: 44, height: 44); avatar.contentMode = .scaleAspectFit
-            avatar.isAccessibilityElement = false
-            cell.accessories.append(.customView(configuration: .init(customView: avatar, placement: .leading(), reservedLayoutWidth: .actual, maintainsFixedSize: true)))
-        }
+            avatar.configure(session: runtime.session, user: user, asset: contact.peer.deleted == true ? nil : contact.peer.avatarID)
+        } else { avatar.reset() }
+        avatar.frame.size = CGSize(width: 44, height: 44); avatar.contentMode = .scaleAspectFit
+        avatar.isAccessibilityElement = false
+        cell.accessories.append(.customView(configuration: .init(customView: avatar, placement: .leading(), reservedLayoutWidth: .actual, maintainsFixedSize: true)))
         cell.accessibilityIdentifier = "contacts.peer." + contact.peer.id
     }
 
@@ -257,6 +346,12 @@ class ContactDirectoryController: LocalizedQuickLayoutHostingController, UISearc
         if let observation { let runtime = runtime; Task { @MainActor in runtime.remove(observation) } }
     }
 }
+/// 头像由 Cell 持有并随身份重新配置；系统 accessory 负责几何布局。
+final class ContactDirectoryCell: UICollectionViewListCell {
+    let avatar = AccountAvatarView()
+    override func prepareForReuse() { super.prepareForReuse(); avatar.reset() }
+}
+
 final class ContactsViewController: ContactDirectoryController {
     init(runtime: ChatRuntime) { super.init(runtime: runtime, mode: .contacts) }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
@@ -271,7 +366,7 @@ final class BlockedContactsViewController: ContactDirectoryController {
 }
 /// 申请行的大字体布局将操作放在正文之后，避免 RTL 混合文字与头像环绕重叠。
 final class ContactRequestCell: QuickLayoutCollectionViewCell {
-    private let avatar = UIImageView()
+    private let avatar = AccountAvatarView()
     private let name = UILabel(), detail = UILabel()
     private let accept = UIButton(type: .system)
     private let separator = UIView()
@@ -290,7 +385,7 @@ final class ContactRequestCell: QuickLayoutCollectionViewCell {
     override var body: Layout {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top, spacing: 12) {
-                avatar.frame(width: 44, height: 44)
+                avatar.resizable().frame(width: 44, height: 44)
                 VStack(alignment: .leading, spacing: 6) { name.resizable(axis: .horizontal); detail.resizable(axis: .horizontal) }
                     .frame(maxWidth: .infinity)
             }
@@ -298,8 +393,13 @@ final class ContactRequestCell: QuickLayoutCollectionViewCell {
             separator.resizable(axis: .horizontal).frame(height: 0.5)
         }.padding(.horizontal, 20).padding(.top, 16)
     }
-    func configure(_ contact: ChatContact, detail: String, busy: Bool, accepted: @escaping () -> Void) {
-        name.text = contact.displayName; self.detail.text = detail; avatar.image = ContactAvatar.image
+    override func prepareForReuse() { super.prepareForReuse(); avatar.reset(); accepted = nil }
+    func configure(_ contact: ChatContact, session: SessionCoordinator? = nil, detail: String, busy: Bool, accepted: @escaping () -> Void) {
+        name.text = contact.peer.deleted == true ? Localization.text("account.deletedUser") : contact.displayName
+        self.detail.text = detail
+        if let session, let user = UUID(uuidString: contact.peer.id) {
+            avatar.configure(session: session, user: user, asset: contact.peer.deleted == true ? nil : contact.peer.avatarID)
+        } else { avatar.reset() }
         name.textAlignment = Localization.currentUIKitDirection == .rightToLeft ? .right : .left
         self.detail.textAlignment = name.textAlignment
         canAccept = contact.allows(.accept); self.accepted = accepted
@@ -312,18 +412,6 @@ final class ContactRequestCell: QuickLayoutCollectionViewCell {
     }
 }
 
-@MainActor
-enum ContactAvatar {
-    static var image: UIImage? {
-        let format = UIGraphicsImageRendererFormat(); format.scale = 2
-        return UIGraphicsImageRenderer(size: CGSize(width: 48, height: 48), format: format).image { _ in
-            UIColor.systemBlue.withAlphaComponent(0.12).setFill()
-            UIBezierPath(roundedRect: CGRect(x: 0, y: 0, width: 48, height: 48), cornerRadius: 10).fill()
-            UIImage(systemName: "person.fill")?.withTintColor(.systemBlue).draw(in: CGRect(x: 12, y: 11, width: 24, height: 26))
-        }
-    }
-}
-
 extension UIViewController {
     func showContactMessage(_ key: String) {
         let alert = UIAlertController(title: Localization.text(key), message: nil, preferredStyle: .alert)
@@ -332,6 +420,17 @@ extension UIViewController {
     }
 }
 #if DEBUG
+@available(iOS 17.0, *)
+#Preview("通讯录联系人行") {
+    let cell = ContactDirectoryCell(frame: CGRect(x: 0, y: 0, width: 390, height: 72))
+    var content = UIListContentConfiguration.subtitleCell()
+    content.text = ConversationPreviewData.contact.displayName
+    content.secondaryText = ConversationPreviewData.contact.peer.nickname
+    cell.contentConfiguration = content
+    cell.avatar.frame.size = CGSize(width: 44, height: 44)
+    cell.accessories = [.customView(configuration: .init(customView: cell.avatar, placement: .leading()))]
+    return QuickLayoutHostingController { cell.resizable(axis: .horizontal).frame(height: 72) }
+}
 @available(iOS 17.0, *)
 #Preview("通讯录") { UINavigationController(rootViewController: ContactsViewController(runtime: ChatRuntime(previewContacts: ConversationPreviewData.contacts))) }
 @available(iOS 17.0, *)

@@ -60,7 +60,7 @@ final class ContactOperations {
             if saved != nil && (pending.action != action || pending.remark != remark || pending.message != message) {
                 throw ContactOperationError.confirmedPrevious
             }
-            return result
+            return runtime.contacts.first { $0.peer.id == peer } ?? result
         } catch {
             if case APIClientError.service(let failure) = error, (400..<500).contains(failure.statusCode), failure.statusCode != 429 {
                 let fresh = try await api.contact(peer: peer)

@@ -40,6 +40,32 @@ final class AccountAvatarCache {
         try directory.setResourceValues(attributes)
         try sealed.combined!.write(to: file(user, asset), options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
     }
+    /// Keychain 访问留在主 actor，文件读取及认证解密在后台执行；认证失败原样抛出。
+    func loadInBackground(user: UUID, asset: String) async throws -> Data? {
+        let url = file(user, asset)
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            // 已有账号目录缺钥时，即使请求的是新资源也不能当作普通未命中。
+            if FileManager.default.fileExists(atPath: root.path) { _ = try key() }
+            return nil
+        }
+        let key = try key(), identity = identity(user, asset)
+        return try await Task.detached {
+            try AES.GCM.open(AES.GCM.SealedBox(combined: Data(contentsOf: url)), using: key, authenticating: identity)
+        }.value
+    }
+    /// 等待密文原子写入完成。账号清理必须先等待加载服务停止，再删除目录与密钥。
+    func saveInBackground(_ bytes: Data, user: UUID, asset: String) async throws {
+        let key = try key(), identity = identity(user, asset), url = file(user, asset), root = root
+        try Task.checkCancellation()
+        try await Task.detached {
+            let sealed = try AES.GCM.seal(bytes, using: key, authenticating: identity)
+            try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true,
+                attributes: [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication])
+            var directory = root; var attributes = URLResourceValues(); attributes.isExcludedFromBackup = true
+            try directory.setResourceValues(attributes)
+            try sealed.combined!.write(to: url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+        }.value
+    }
     func deleteFiles() throws {
         if FileManager.default.fileExists(atPath: root.path) { try FileManager.default.removeItem(at: root) }
     }

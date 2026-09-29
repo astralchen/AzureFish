@@ -392,7 +392,7 @@ final class ConversationListViewController: LiveChatListController {
                 manuallyUnread: runtime.listStates[$0.id]?.manuallyUnread == true,
                 isDraft: runtime.draftPreviews[$0.id] != nil,
                 avatarUser: $0.kind == "direct" ? $0.members.first { $0.id != runtime.userID }?.id : nil,
-                avatarAsset: $0.kind == "direct" ? $0.members.first { $0.id != runtime.userID }?.profile.avatarID : nil)
+                avatarAsset: $0.kind == "direct" ? $0.members.first { $0.id != runtime.userID }.flatMap { runtime.avatarAsset(user: $0.id, fallback: $0.profile) } : nil)
         }
         let state = ChatListContentState.resolve(
             hasSnapshot: runtime.hasSnapshot, synchronization: runtime.synchronization,

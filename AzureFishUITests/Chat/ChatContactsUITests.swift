@@ -30,8 +30,15 @@ final class ChatContactsUITests: XCTestCase {
         wait(for: [hidden], timeout: 5)
         XCTAssertTrue(app.cells["contacts.peer.index-A-0"].isHittable)
         search.buttons.firstMatch.tap()
-        XCTAssertFalse(index.exists)
-        app.buttons["关闭"].tap()
+        capture(app, name: "通讯录-清空搜索")
+        let close = app.buttons["关闭"]
+        if close.exists {
+            // 紧凑导航保留搜索呈现；iPad 的原生内联按钮可能同时结束搜索。
+            XCTAssertFalse(index.exists)
+            close.tap()
+        } else {
+            XCTAssertFalse(app.keyboards.firstMatch.exists)
+        }
         XCTAssertTrue(index.waitForExistence(timeout: 5))
         XCTAssertTrue(index.isHittable)
         capture(app, name: "通讯录-字母索引恢复")

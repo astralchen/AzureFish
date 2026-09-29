@@ -137,11 +137,24 @@ public actor ChatStore {
         try db.close()
     }
     public func contacts() throws -> [ChatContact] {
-        let profiles: [ChatUser] = try values("profile")
+        try check()
+        return try db.read { try Self.readContacts($0) }
+    }
+    /// 在同一次数据库读取中恢复通讯录与首次同步状态，不发起网络请求。
+    public func contactDirectorySnapshot() throws -> (contacts: [ChatContact], hasSnapshot: Bool) {
+        try check()
+        return try db.read { db in
+            let checkpoint = try Data.fetchOne(db, sql: "SELECT payload FROM meta WHERE id='checkpoint'")
+                .map { try JSONDecoder().decode(ChatCheckpoint.self, from: $0) }
+            return (try Self.readContacts(db), checkpoint != nil)
+        }
+    }
+    private static func readContacts(_ db: Database) throws -> [ChatContact] {
+        let profiles = try Data.fetchAll(db, sql: "SELECT payload FROM entity WHERE bucket='profile'")
+            .map { try JSONDecoder().decode(ChatUser.self, from: $0) }
         let latest = Dictionary(uniqueKeysWithValues: profiles.map { ($0.id, $0) })
-        let contacts: [ChatContact] = try values("contact")
-        return contacts.map { contact in
-            var value = contact
+        return try Data.fetchAll(db, sql: "SELECT payload FROM entity WHERE bucket='contact'").map {
+            var value = try JSONDecoder().decode(ChatContact.self, from: $0)
             if let profile = latest[value.peer.id], profile.version > value.peer.version { value.peer = profile }
             return value
         }

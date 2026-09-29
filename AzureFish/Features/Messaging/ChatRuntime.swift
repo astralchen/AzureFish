@@ -34,6 +34,7 @@ final class ChatRuntime {
     private(set) var online = false
     private(set) var failure: String?
     private(set) var hasSnapshot = false
+    private(set) var hasContactSnapshot = false
     private(set) var synchronization: ChatSynchronizationState = .idle
     private(set) var preferences: [String: ConversationLocalPreferences] = [:]
     private(set) var listStates: [String: ConversationListState] = [:]
@@ -53,6 +54,46 @@ final class ChatRuntime {
             runtime.publish()
         }
     }
+    private static var contactChecks: [String: (id: UUID, engine: ChatEngine, task: Task<ChatContact, Error>)] = [:]
+    /// 同账号、同联系人只进行一次并发校验；写入完成后发布版本合并后的资料。
+    @discardableResult
+    func refreshContact(peer: String) async throws -> ChatContact {
+        guard let engine, let api else { throw ChatStoreError.unavailable }
+        let scope = engine.store.environment + ":" + engine.store.userID.uuidString + ":" + peer
+        let request: Task<ChatContact, Error>
+        if let pending = Self.contactChecks[scope] { request = pending.task }
+        else {
+            let id = UUID()
+            request = Task { [self] in
+                defer { if Self.contactChecks[scope]?.id == id { Self.contactChecks[scope] = nil } }
+                let value = try await api.contact(peer: peer)
+                try Task.checkCancellation()
+                guard self.engine === engine else { throw CancellationError() }
+                try await engine.store.save(value)
+                try Task.checkCancellation()
+                guard self.engine === engine else { throw CancellationError() }
+                receivedContact(value, engine: engine)
+                return contacts.first { $0.peer.id == peer } ?? value
+            }
+            Self.contactChecks[scope] = (id, engine, request)
+        }
+        let result = try await request.value
+        try Task.checkCancellation()
+        guard self.engine === engine else { throw CancellationError() }
+        return contacts.first { $0.peer.id == peer }.map { $0.merging(result) } ?? result
+    }
+    /// 先发布本地通讯录；其他列表恢复与网络任务不会阻塞这次发布。
+    func restoreDirectory(engine: ChatEngine) async throws {
+        let snapshot = try await engine.store.contactDirectorySnapshot()
+        try Task.checkCancellation()
+        guard self.engine === engine else { throw CancellationError() }
+        let previous = Dictionary(uniqueKeysWithValues: contacts.map { ($0.peer.id, $0) })
+        var restored = Dictionary(uniqueKeysWithValues: snapshot.contacts.map { ($0.peer.id, $0) })
+        for (id, old) in previous { restored[id] = restored[id].map { old.merging($0) } ?? old }
+        contacts = restored.values.sorted { $0.peer.id < $1.peer.id }
+        hasContactSnapshot = snapshot.hasSnapshot
+        publish()
+    }
     var incomingMessages: (([ChatMessage]) -> Void)?
     private var incomingTask: Task<Void, Never>?
     private var foreground = false
@@ -66,7 +107,7 @@ final class ChatRuntime {
     /// 预览只注入确定性快照，不打开账号存储或发出网络请求。
     convenience init(previewContacts: [ChatContact]) {
         self.init(session: .configured())
-        contacts = previewContacts; hasSnapshot = true
+        contacts = previewContacts; hasContactSnapshot = true; hasSnapshot = true
     }
     convenience init(previewConversations: [ChatConversation], pinned: Set<String>, collapsed: Bool) {
         self.init(session: .configured())
@@ -85,6 +126,7 @@ final class ChatRuntime {
          conversations: [ChatConversation], pageLeaseRoot: URL, contacts: [ChatContact] = []) {
         self.session = session; self.engine = engine; self.media = media
         self.hasSnapshot = true
+        self.hasContactSnapshot = true
         self.contacts = contacts
         self.conversations = conversations.sorted {
                         let left = $0.latestMessage?.createdAt ?? 0, right = $1.latestMessage?.createdAt ?? 0
@@ -167,6 +209,7 @@ final class ChatRuntime {
                 let transfers = ChatTransferQueue(
                     store: store, media: media, session: manager, engine: engine)
                 self.transfers = transfers
+                try await restoreDirectory(engine: engine)
                 await transfers.resume()
                 incomingTask = Task { [weak self, engine] in
                     let stream = await engine.incomingMessages()
@@ -180,14 +223,14 @@ final class ChatRuntime {
                 await engine.start()
                 for await update in changes {
                     guard self.generation == generation, !Task.isCancelled else { break }
-                    let contacts = try await store.contacts()
+                    self.online = update.online
+                    self.synchronization = update.synchronization
+                    try await restoreDirectory(engine: engine)
                     let conversations = try await store.conversations()
-                    let hasSnapshot = try await store.checkpoint() != nil
                     guard self.generation == generation, !Task.isCancelled else { break }
                     self.online = update.online
                     self.synchronization = update.synchronization
-                    self.hasSnapshot = hasSnapshot
-                    self.contacts = contacts
+                    self.hasSnapshot = self.hasContactSnapshot
                     self.preferences = try await store.allConversationPreferences()
                     self.conversations = conversations.sorted {
                         let left = $0.latestMessage?.createdAt ?? 0, right = $1.latestMessage?.createdAt ?? 0
@@ -237,6 +280,8 @@ final class ChatRuntime {
         task?.cancel()
         task = nil
         let old = engine
+        let checks = Self.contactChecks.values.filter { $0.engine === old }.map(\.task)
+        checks.forEach { $0.cancel() }
         let media = media
         let transfers = transfers
         let pages = pageLeaseRoot
@@ -249,11 +294,13 @@ final class ChatRuntime {
         conversations = []
         online = false
         hasSnapshot = false
+        hasContactSnapshot = false
         synchronization = .idle
         failure = nil
         publish()
         stopping = Task {
             await starting?.value
+            for check in checks { _ = try? await check.value }
             await transfers?.stop()
             await old?.stop()
             try await media?.clearLeases()
@@ -356,6 +403,13 @@ final class ChatRuntime {
                 try await refreshListStates()
             } catch { /* 保留持久标记，下一次进入页面时重试。 */ }
         }
+    }
+    /// 返回跨通讯录和会话合并的最新头像身份；删除标记优先于旧资源。
+    func avatarAsset(user: String, fallback: ChatUser? = nil) -> String? {
+        var profile = profileIndex[user] ?? fallback
+        if let fallback, fallback.version > (profile?.version ?? -1) { profile = fallback }
+        if user == userID, let own = session.profile, own.version >= (profile?.version ?? -1) { return own.avatarID }
+        return profile?.deleted == true ? nil : profile?.avatarID
     }
     func displayName(user id: String, fallback: ChatUser? = nil) -> String {
         let contact = contacts.first { $0.peer.id == id }

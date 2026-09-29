@@ -399,13 +399,18 @@ final class ConversationMemberViewController: AccountScreen {
         setNeedsQuickLayout()
     }
     private func openProfile() {
-        guard !busy, let api = runtime.api, let engine = runtime.engine else { return }
+        guard !busy else { return }
+        if let contact = runtime.contacts.first(where: { $0.peer.id == member.id }) {
+            navigationController?.pushViewController(FriendViewController(runtime: runtime, contact: contact), animated: true)
+            return
+        }
+        guard let engine = runtime.engine else { return }
         busy = true
         Task { [weak self] in
             guard let self else { return }
             defer { busy = false }
             do {
-                let contact = try await api.contact(peer: member.id)
+                let contact = try await runtime.refreshContact(peer: member.id)
                 guard runtime.engine === engine, navigationController?.topViewController === self else { return }
                 navigationController?.pushViewController(FriendViewController(runtime: runtime, contact: contact), animated: true)
             } catch { showMessage("chat.live.failed") }

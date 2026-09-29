@@ -67,6 +67,10 @@ struct ChatContactOperationsTests {
         let runtime = ChatRuntime(session: session, engine: engine, media: media, conversations: [], pageLeaseRoot: root, contacts: [contact])
         let operation = Task { try await runtime.contactOperations.mutate(contact, action: .remark, remark: "私人备注") }
         while await transport.writes.isEmpty { await Task.yield() }
+        var renamed = contact
+        renamed.peer.version += 1; renamed.peer.nickname = "Latest profile"; renamed.peer.avatarID = "latest-avatar"
+        try await database.save(renamed)
+        runtime.receivedContact(renamed, engine: engine)
         await #expect(throws: ContactOperationError.self) {
             try await runtime.contactOperations.mutate(contact, action: .delete)
         }
@@ -79,6 +83,7 @@ struct ChatContactOperationsTests {
         // 新实例模拟页面重建，操作身份仍从账号加密库恢复。
         let restored = try await ContactOperations(runtime: runtime).mutate(contact, action: .remark, remark: "私人备注")
         #expect(restored.remark == "私人备注" && restored.revision == 3)
+        #expect(restored.peer.nickname == "Latest profile" && restored.peer.avatarID == "latest-avatar")
         let writes = await transport.writes
         #expect(writes.count >= 2 && Set(writes).count == 1)
         let cleared: PendingContactOperation? = try await database.meta(key)

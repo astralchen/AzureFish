@@ -97,7 +97,7 @@ final class AddFriendViewController: ContactFormController {
                 let user = try await api.lookup(account: value)
                 guard self.generation == generation, runtime.engine === engine, !Task.isCancelled else { return }
                 guard user.id != runtime.userID else { statusKey = "chat.live.selfContact"; return }
-                let contact = try await api.contact(peer: user.id)
+                let contact = try await runtime.refreshContact(peer: user.id)
                 guard self.generation == generation, runtime.engine === engine, !Task.isCancelled else { return }
                 account.input.resignFirstResponder()
                 navigationController?.pushViewController(FriendViewController(runtime: runtime, contact: contact), animated: true)
@@ -115,37 +115,44 @@ final class FriendViewController: ContactFormController {
     private let runtime: ChatRuntime
     private var contact: ChatContact
     private var observation: UUID?
+    private let avatar = AccountAvatarView()
     private var resolveOperation = UUID()
-    init(runtime: ChatRuntime, contact: ChatContact) { self.runtime = runtime; self.contact = contact; super.init(nibName: nil, bundle: nil) }
+    init(runtime: ChatRuntime, contact: ChatContact) {
+        self.runtime = runtime
+        self.contact = runtime.contacts.first { $0.peer.id == contact.peer.id }.map { contact.merging($0) } ?? contact
+        super.init(nibName: nil, bundle: nil)
+    }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
     override var localizedTitleKey: String? { "chat.live.friendProfile" }
     override func viewDidLoad() {
         super.viewDidLoad()
         observation = runtime.observe { [weak self] in
             guard let self, let value = runtime.contacts.first(where: { $0.peer.id == contact.peer.id }) else { return }
-            contact = contact.merging(value); render()
+            let merged = contact.merging(value)
+            guard merged != contact else { return }
+            contact = merged; render()
         }
         render()
     }
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        guard let api = runtime.api, let engine = runtime.engine else { return }
+        configureAvatar()
         Task { [weak self] in
             guard let self else { return }
-            if let value = try? await api.contact(peer: contact.peer.id), runtime.engine === engine {
-                try? await engine.store.save(value); runtime.receivedContact(value, engine: engine)
-                contact = contact.merging(value); render()
-            }
+            _ = try? await runtime.refreshContact(peer: contact.peer.id)
         }
     }
     override func reloadLocalizedContent() { super.reloadLocalizedContent(); if isViewLoaded { render() } }
+    private func configureAvatar() {
+        if let user = UUID(uuidString: contact.peer.id) { avatar.configure(session: runtime.session, user: user, asset: contact.peer.deleted == true ? nil : contact.peer.avatarID) }
+        else { avatar.reset() }
+    }
     private func render() {
-        let avatar = AccountAvatarView()
-        if let user = UUID(uuidString: contact.peer.id) { avatar.configure(session: runtime.session, user: user, asset: contact.peer.avatarID) }
+        configureAvatar()
         avatar.isAccessibilityElement = true
         avatar.accessibilityIdentifier = "contacts.profile.avatar"
         // 表单项会横向撑满；由独立容器保持头像的方形尺寸。
-        let avatarRow = QuickLayoutView {
+        let avatarRow = QuickLayoutView { [avatar] in
             avatar.resizable().frame(width: 64, height: 64)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }

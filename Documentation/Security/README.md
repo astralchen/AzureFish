@@ -1,6 +1,6 @@
 # 数据安全与客户端加密设计
 
-> **状态：已增加 Keychain 会话包与 AES-GCM 资料快照，仅供虚构账号开发验证。** 更新日期：2026-09-28。头像使用独立 AES-GCM 缓存密钥，删除增加可恢复清理标记；见 [本轮证据](../Authentication/Implementation/2026-09-28-app-closure.md)。SQLCipher 主机及模拟器可行性通过，完整 iOS／真机安全门槛尚未完成。见 [客户端实施记录](../Authentication/client-implementation.md)。
+> **状态：已增加 Keychain 会话包与 AES-GCM 资料快照，仅供虚构账号开发验证。** 更新日期：2026-09-29。头像使用独立 AES-GCM 缓存密钥，删除增加可恢复清理标记；既有接入见[闭环记录](../Authentication/Implementation/2026-09-28-app-closure.md)，本轮共享缓存与长期保留见[通讯录缓存验证](../Design/Chat/contact-cache.md)。SQLCipher 主机及模拟器可行性通过，完整 iOS／真机安全门槛尚未完成。见[客户端实施记录](../Authentication/client-implementation.md)。
 
 ## 1. 阅读与权威边界
 
@@ -28,7 +28,9 @@
 
 Debug 的 127.0.0.1 回环 HTTP 仅用于虚构测试账号，独立测试数据目录、环境 ID 和客户端缓存命名空间。真实账号、Apple 登录以及所有真机请求使用 HTTPS。发布配置不包含 HTTP 地址或全局 ATS 放宽。Protobuf 是序列化，不是加密；不在其外另造网络密文协议。
 
-认证与个人数据请求采用禁止磁盘缓存的 URLSession 配置；响应 Cache-Control: no-store。头像仍可用 ETag，但由 UserRepository 管理账号级加密缓存，HTTP 缓存使用 private, no-cache，禁止共享 URLCache 自动写明文。304 只在当前 environment＋user_id＋asset_id 已有可解密缓存时接受；否则无条件重取。网络二进制、解码图像仅在请求和显示期间存于内存，退出／账号切换释放旧账号引用。
+认证与个人数据请求采用禁止磁盘缓存的 URLSession 配置；响应 Cache-Control: no-store。当前头像由 AccountAvatarCache 管理账号级 AES-GCM 密文，AccountAvatarLoader 合并下载并缓存已解码图片；不使用共享 URLCache，不新增 ETag／304 行为。磁盘密文按已确认策略长期保留，内存图片采用 16 MiB 像素成本预算。退出／账号切换使共享服务和视图中的旧账号图片引用失效，取消消费者不能破坏其他页面的共享请求。
+
+头像资源 ID 随公共资料版本更新；空 ID 或注销标记不得回退展示旧文件。旧文件保留不代表它仍是当前头像。清除账号文件前等待加载任务及后台磁盘访问结束，再删除文件和密钥，缺失密钥及认证失败不得按缓存未命中处理。现有目录、AAD 和密文格式保持兼容，完整目标信封仍以第 5 节的设计边界为准；本次不宣称完成格式迁移。实现和证据见[通讯录缓存](../Design/Chat/contact-cache.md)。
 
 ## 4. SQLCipher 与账号密钥
 

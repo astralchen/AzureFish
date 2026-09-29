@@ -1,6 +1,7 @@
 import Foundation
 import CryptoKit
 import AzureFishAPI
+import UIKit
 
 /// 协调单个应用会话的恢复、刷新、资料和退出，拒绝已退出代次的迟到响应。
 @MainActor
@@ -29,7 +30,7 @@ final class SessionCoordinator {
     private var profileOperation: (AccountProfile, String, String, AccountOperation<UserProfile>)?
     private var securityOperation: (AccountSecurityAction, String, AccountOperation<Bool>, SessionCredentials)?
     private var avatarOperation: (Data, AccountOperation<UserProfile>)?
-    private var avatarCache: AccountAvatarCache?
+    private var avatarsSuspended = false
     private var exitPending = false
     private var pendingLogout: LogoutRevocation?
     private var requests: [UUID: () -> Void] = [:]
@@ -70,17 +71,18 @@ final class SessionCoordinator {
             guard credentials.refreshExpiresAt > Date() else { throw AccountFailure.expired }
             if stored.pendingRefreshID != nil || credentials.accessExpiresAt <= Date() { _ = try await refresh() }
             try await reloadProfile()
-            phase = .signedIn
+            avatarsSuspended = false; phase = .signedIn
             await drainRevocations()
         } catch {
             noticeKey = AccountFailure.key(for: error)
             if isTerminal(error) {
+                invalidateAvatars()
                 do { try await sessionManager?.clearLocalSession(); stored = nil; profile = nil; phase = .welcome }
                 catch { phase = .recovery; noticeKey = AccountFailure.storage.key }
             } else {
                 do {
                     if let user = stored?.userID, let cached = try repository.load(user: user) {
-                        profile = cached; readOnly = true; phase = .signedIn
+                        profile = cached; readOnly = true; avatarsSuspended = false; phase = .signedIn
                     } else { phase = .recovery }
                 } catch { phase = .recovery; noticeKey = AccountFailure.key(for: error) }
             }
@@ -112,7 +114,7 @@ final class SessionCoordinator {
         }
         try check(generation)
         try await install(result)
-        authentication = nil; phase = .signedIn
+        authentication = nil; avatarsSuspended = false; phase = .signedIn
     }
     /// 放弃表单时废弃当前代次；已发出请求可能在服务端完成，但不会安装迟到会话。
     func cancelAuthentication() {
@@ -120,8 +122,10 @@ final class SessionCoordinator {
     }
     private func install(_ result: AuthenticatedSession) async throws {
         let value = StoredSession(result.credentials)
+        if stored?.userID != value.userID { await invalidateAvatars()?.value }
         try await sessionManager?.install(result.credentials)
         stored = value
+        avatarsSuspended = false
         acceptProfile(AccountProfile(result.profile))
         readOnly = false
     }
@@ -148,6 +152,7 @@ final class SessionCoordinator {
             return try await withTaskCancellationHandler { try await task.value } onCancel: { task.cancel() }
         } catch {
             if isTerminal(error), !exitPending {
+                invalidateAvatars()
                 epoch = UUID(); refreshTask?.cancel()
                 profile = nil; readOnly = false
                 do { try await sessionManager?.clearLocalSession(); stored = nil; phase = .welcome; noticeKey = AccountFailure.expired.key }
@@ -201,15 +206,25 @@ final class SessionCoordinator {
         guard !busy else { throw AccountFailure.busy }
         stored = try store.load()
         guard let api = service?.api, var credentials = try stored?.credentials() else {
+            await invalidateAvatars()?.value
             try store.clear(); phase = .welcome; profile = nil; stored = nil; publish(); return
         }
         busy = true
-        defer { busy = false; exitPending = false; publish() }
+        defer {
+            if phase == .signedIn {
+                for session in Self.instances.compactMap(\.value)
+                    where session.store.environmentID == store.environmentID && session.stored?.userID == stored?.userID {
+                    session.avatarsSuspended = false
+                }
+            }
+            busy = false; exitPending = false; publish()
+        }
         if !localOnly && (stored?.pendingRefreshID != nil || credentials.accessExpiresAt <= Date()) {
             credentials = try await refresh()
             pendingLogout = nil
         }
         exitPending = true; epoch = UUID(); refreshTask?.cancel()
+        await invalidateAvatars()?.value
         requests.values.forEach { $0() }; requests.removeAll()
         let ticket = try pendingLogout ?? api.prepareLogoutRevocation(operationID: UUID(), using: credentials)
         pendingLogout = ticket
@@ -223,7 +238,7 @@ final class SessionCoordinator {
         try await ChatRuntime.stopAccount(user: credentials.userID, environment: store.environmentID)
         try await sessionManager?.clearLocalSession()
         try await endOtherWindows(user: credentials.userID)
-        avatarCache = nil; avatarOperation = nil; securityOperation = nil
+        avatarOperation = nil; securityOperation = nil
         stored = nil; profile = nil; authentication = nil; profileOperation = nil; pendingLogout = nil
         readOnly = false; noticeKey = nil; phase = .welcome
     }
@@ -261,19 +276,21 @@ final class SessionCoordinator {
             try store.values.write(Data(pending.3.userID.uuidString.utf8), key: deletionKey)
         }
         try await ChatRuntime.stopAccount(user: pending.3.userID, environment: store.environmentID)
+        invalidateAvatars()
         epoch = UUID(); requests.values.forEach { $0() }; requests.removeAll()
         try await manager.clearLocalSession()
         try await endOtherWindows(user: pending.3.userID)
         if action == .deleteAccount { try await recoverLocalDeletion() }
-        securityOperation = nil; avatarOperation = nil; avatarCache = nil
+        securityOperation = nil; avatarOperation = nil
         stored = nil; profile = nil; readOnly = false; phase = .welcome
         noticeKey = action == .deleteAccount ? "account.deletion.accepted" : "account.security.completed"
     }
     private func endOtherWindows(user: UUID) async throws {
         for other in Self.instances.compactMap(\.value) where other !== self && other.store.environmentID == store.environmentID && other.profile?.userID == user {
+            other.invalidateAvatars()
             other.epoch = UUID(); other.requests.values.forEach { $0() }; other.requests.removeAll()
             other.refreshTask?.cancel(); other.profile = nil; other.stored = nil
-            other.avatarCache = nil; other.avatarOperation = nil; other.securityOperation = nil
+            other.avatarOperation = nil; other.securityOperation = nil
             other.authentication = nil; other.profileOperation = nil; other.readOnly = false
             do { try await other.sessionManager?.clearLocalSession(); other.phase = .welcome }
             catch { other.phase = .recovery; other.noticeKey = AccountFailure.storage.key; other.publish(); throw error }
@@ -305,6 +322,7 @@ final class SessionCoordinator {
         guard let user = UUID(uuidString: String(decoding: bytes, as: UTF8.self)) else { throw AccountFailure.storage }
         try await ChatRuntime.stopAccount(user: user, environment: store.environmentID)
         try await endOtherWindows(user: user)
+        await AccountAvatarLoader.invalidate(scope: .init(environment: store.environmentID, user: user))?.value
         let scope = store.environmentID + ":" + user.uuidString.lowercased()
         let hash = SHA256.hash(data: Data(scope.utf8)).map { String(format: "%02x", $0) }.joined()
         let directory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("ChatAccounts/" + hash)
@@ -335,16 +353,36 @@ final class SessionCoordinator {
             avatarOperation = nil; try await reloadProfile(); throw AccountFailure.conflict
         }
     }
-    func avatar(user: UUID, asset: String?) async throws -> Data? {
-        guard let asset, let owner = stored?.userID else { return nil }
-        if avatarCache == nil { avatarCache = AccountAvatarCache(keys: store.values, environment: store.environmentID, user: owner) }
-        if let cached = try avatarCache?.load(user: user, asset: asset) { return cached }
+    var avatarScope: AccountAvatarLoader.Scope? {
+        guard !exitPending, !avatarsSuspended, phase == .signedIn, let owner = stored?.userID else { return nil }
+        return .init(environment: store.environmentID, user: owner)
+    }
+    /// 同步读取已解码图片，不进行磁盘或网络访问。
+    func cachedAvatar(user: UUID, asset: String) -> UIImage? {
+        guard let scope = avatarScope else { return nil }
+        return try? AccountAvatarLoader.shared(scope: scope, keys: store.values).cached(.init(user: user, asset: asset))
+    }
+    func avatar(user: UUID, asset: String) async throws -> UIImage? {
+        guard let scope = avatarScope else { throw CancellationError() }
+        let loader = try AccountAvatarLoader.shared(scope: scope, keys: store.values)
         let generation = epoch
-        let result = try await authorized { api, credentials in try await api.avatar(user: user, using: credentials) }
+        let image = try await loader.image(.init(user: user, asset: asset)) { [self] in
+            let result = try await authorized { api, credentials in try await api.avatar(user: user, using: credentials) }
+            try check(generation)
+            return result.id == asset ? result.jpeg : nil
+        }
         try check(generation)
-        guard result.id == asset else { return nil }
-        try avatarCache?.save(result.jpeg, user: user, asset: asset)
-        return result.jpeg
+        guard avatarScope == scope else { throw CancellationError() }
+        return image
+    }
+    @discardableResult
+    private func invalidateAvatars() -> Task<Void, Never>? {
+        guard let owner = stored?.userID ?? profile?.userID else { return nil }
+        for session in Self.instances.compactMap(\.value)
+            where session.store.environmentID == store.environmentID && (session.stored?.userID ?? session.profile?.userID) == owner {
+            session.avatarsSuspended = true
+        }
+        return AccountAvatarLoader.invalidate(scope: .init(environment: store.environmentID, user: owner))
     }
     private func drainRevocations() async {
         guard let api = service?.api, let queue = try? store.revocations() else { return }
@@ -360,7 +398,7 @@ final class SessionCoordinator {
         profile = AccountProfile(userID: UUID(uuidString: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")!,
             accountName: "fictional_user", nickname: long ? String(repeating: "AzureFish ", count: 8) : "小鱼",
             bio: long ? String(repeating: "A long profile. ملف شخصي. 個人資料。", count: 12) : "", version: 1)
-        readOnly = offline; phase = .signedIn
+        readOnly = offline; avatarsSuspended = false; phase = .signedIn
     }
     #endif
 

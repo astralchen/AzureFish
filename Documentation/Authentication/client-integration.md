@@ -20,7 +20,7 @@
 
 Protos 源只在 AzureFishServer 的 `Protos/azurefish.proto` 维护，首期已定义密码账号接口；生成清单 `Protos/generation.json` 记录 schema hash 与生成器／运行库版本。客户端将带注释的 proto 副本同步到 `SharePackage/AzureFishProtocol/Sources/AzureFishProtocol/azurefish.proto`，由官方 SwiftProtobufPlugin 在构建时生成 Swift，随客户端保存 `generation.json` 的来源和内容 hash；服务端协议来源文件尚未提交或存在未提交修改时 revision 明确为空。第三方 SwiftProtobuf 使用精确锁定的远程 Package；不将服务端 Package 作为 App 构建依赖，正常构建通过插件调用锁定依赖自带的 protoc 和 Swift 生成器，无需手工安装工具。
 
-当前可对接范围为 `/v1/auth/register`、`/v1/auth/login`、`/v1/auth/refresh`、`/v1/auth/logout` 和 `/v1/me`（GET／PATCH）；成功写动作的恢复窗口为 10 分钟。服务端暂仅开放虚构数据回环联调，Apple、头像及敏感账号动作尚未实现；本文件后续章节对这些功能的描述仍是设计要求，不能据此认为相应接口已可调用。
+首期接入范围为 `/v1/auth/register`、`/v1/auth/login`、`/v1/auth/refresh`、`/v1/auth/logout` 和 `/v1/me`（GET／PATCH）；成功写动作的恢复窗口为 10 分钟。后续头像及账号安全入口的实施状态见[闭环记录](Implementation/2026-09-28-app-closure.md)，不能再按首期未实现范围判断。2026-09-29 的头像共享、资料更新失效及长期密文保留规则见[通讯录缓存](../Design/Chat/contact-cache.md)。真实账号验收门槛仍以验证记录为准。
 
 真实业务通过 HTTPS，Debug 回环 HTTP 仅限独立环境中的虚构测试数据；Protobuf 不提供加密。请求体是 Protobuf 二进制，普通 API 的 Content-Type 和 Accept 为 application/protobuf；GET 没有 body。资料响应解码为 UserProfile，业务错误先按 HTTP 状态识别，再尝试解码 ApiError。头像读取使用携带 JPEG 字节与资源 ID 的 `AvatarResponse`，Content-Type 同为 `application/protobuf`，错误仍为 ApiError。禁止 URLCache 磁盘缓存。代理 HTML 错误、错误 MIME 或截断数据映射成可识别网络错误，不当作密码错误。
 

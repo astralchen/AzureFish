@@ -7,28 +7,46 @@ import UIKit
 final class AccountAvatarView: UIImageView {
     private var loading: Task<Void, Never>?
     private var identity: String?
-    init() { super.init(image: UIImage(systemName: "person.crop.circle.fill")); contentMode = .scaleAspectFill; clipsToBounds = true }
+    private var scope: AccountAvatarLoader.Scope?
+    private var invalidation: NSObjectProtocol?
+    init() {
+        super.init(image: UIImage(systemName: "person.crop.circle.fill"))
+        contentMode = .scaleAspectFill; clipsToBounds = true
+        invalidation = NotificationCenter.default.addObserver(forName: .accountAvatarsInvalidated, object: nil, queue: .main) { [weak self] note in
+            let scope = note.userInfo?["scope"] as? AccountAvatarLoader.Scope
+            MainActor.assumeIsolated { if self?.scope == scope { self?.reset() } }
+        }
+    }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
     override func layoutSubviews() { super.layoutSubviews(); layer.cornerRadius = min(bounds.width, bounds.height) / 2 }
+    func reset() {
+        identity = nil; scope = nil; loading?.cancel(); loading = nil
+        image = UIImage(systemName: "person.crop.circle.fill")
+    }
     func configure(session: SessionCoordinator, user: UUID, asset: String?) {
         accessibilityLabel = Localization.text(asset == nil ? "account.default.avatar" : "account.avatar.preview")
         let id = user.uuidString + ":" + (asset ?? "default")
-        guard id != identity else { return }
-        identity = id; loading?.cancel(); image = UIImage(systemName: "person.crop.circle.fill")
-        guard asset != nil else { return }
+        let scope = session.avatarScope
+        guard id != identity || self.scope != scope else { return }
+        reset(); identity = id; self.scope = scope
+        guard let asset, scope != nil else { return }
+        if let cached = session.cachedAvatar(user: user, asset: asset) { image = cached; return }
         loading = Task { [weak self] in
             do {
-                let data = try await session.avatar(user: user, asset: asset)
-                guard !Task.isCancelled, self?.identity == id else { return }
-                guard let data else { self?.identity = nil; return }
-                self?.image = UIImage(data: data)
+                let image = try await session.avatar(user: user, asset: asset)
+                guard !Task.isCancelled, self?.identity == id, self?.scope == scope else { return }
+                guard let image else { self?.identity = nil; return }
+                self?.image = image
             } catch {
                 // 保留默认图，允许资料刷新或重连后的下一次配置重试。
-                if !Task.isCancelled, self?.identity == id { self?.identity = nil }
+                if !Task.isCancelled, self?.identity == id, self?.scope == scope { self?.identity = nil }
             }
         }
     }
-    deinit { loading?.cancel() }
+    isolated deinit {
+        loading?.cancel()
+        if let invalidation { NotificationCenter.default.removeObserver(invalidation) }
+    }
 }
 
 /// 选择器只负责取图，确认页独立提交头像，不改变资料文字草稿。

@@ -117,6 +117,58 @@ struct ChatContactsTests {
         }
     }
 
+    @Test func requestAvatarUsesItsReservedSquareInsteadOfSymbolIntrinsicSize() {
+        guard #available(iOS 16.0, *) else { return }
+        let cell = ContactRequestCell(frame: CGRect(x: 0, y: 0, width: 390, height: 360))
+        cell.configure(ConversationPreviewData.contacts[2], detail: "Fixture", busy: false, accepted: {})
+        cell.setNeedsQuickLayout(); cell.layoutIfNeeded()
+        func findAvatar(_ view: UIView) -> AccountAvatarView? {
+            (view as? AccountAvatarView) ?? view.subviews.lazy.compactMap { findAvatar($0) }.first
+        }
+        #expect(findAvatar(cell)?.bounds.size == CGSize(width: 44, height: 44))
+    }
+
+    @Test func memberOpensCachedContactWithoutNetworkRuntime() throws {
+        guard #available(iOS 16.0, *) else { return }
+        var member = ConversationPreviewData.detailsConversation().members[1]
+        let contact = ConversationPreviewData.contact
+        member.id = contact.peer.id; member.profile = contact.peer
+        let runtime = ChatRuntime(previewContacts: [contact])
+        #expect(runtime.engine == nil)
+        let controller = ConversationMemberViewController(runtime: runtime, member: member)
+        let navigation = UINavigationController(rootViewController: controller)
+        controller.loadViewIfNeeded()
+        let open = try #require(controller.actions.compactMap { $0 as? UIButton }.first)
+        open.sendActions(for: .touchUpInside)
+        #expect(navigation.topViewController is FriendViewController)
+    }
+
+    @Test func searchPlaceholderAvoidsDockedKeyboardAndRestoresInsets() async throws {
+        guard #available(iOS 16.0, *) else { return }
+        let scene = try #require(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
+        let previous = scene.windows.first { $0.isKeyWindow }
+        let controller = ContactsViewController(runtime: ChatRuntime(previewContacts: ConversationPreviewData.contacts))
+        let window = UIWindow(windowScene: scene)
+        window.rootViewController = UINavigationController(rootViewController: controller)
+        window.makeKeyAndVisible()
+        defer { window.isHidden = true; previous?.makeKey() }
+        controller.loadViewIfNeeded()
+        let search = try #require(controller.navigationItem.searchController)
+        search.searchBar.text = "NoSuchContact"
+        controller.updateSearchResults(for: search)
+        try await Task.sleep(nanoseconds: 200_000_000)
+        window.layoutIfNeeded(); controller.view.layoutIfNeeded()
+        let keyboard = CGRect(x: 0, y: window.bounds.height - 300, width: window.bounds.width, height: 300)
+        NotificationCenter.default.post(name: UIResponder.keyboardWillChangeFrameNotification, object: nil,
+            userInfo: [UIResponder.keyboardFrameEndUserInfoKey: NSValue(cgRect: window.convert(keyboard, to: window.screen.coordinateSpace))])
+        let state = try #require(controller.list.backgroundView as? ChatListStateView)
+        state.layoutIfNeeded()
+        #expect(abs(controller.list.adjustedContentInset.bottom - 300) < 1)
+        #expect(state.content.convert(state.content.bounds, to: window).maxY <= keyboard.minY)
+        NotificationCenter.default.post(name: UIResponder.keyboardWillHideNotification, object: nil)
+        #expect(controller.list.contentInset.bottom == 0)
+    }
+
     @Test func displayNamesFilteringAndStableSections() {
         guard #available(iOS 16.0, *) else { return }
         let fixture = ConversationPreviewData.contacts

@@ -138,6 +138,8 @@ public actor ChatEngine {
             try await snapshot()
             _ = try await events()
         }
+        // 通讯录与游标已入库，先通知界面，不等待可能很慢的会话历史检查。
+        publishUpdate()
         try await inspectConversationLists()
         if notificationGate.complete(notificationPull), !received.isEmpty {
             for observer in incomingObservers.values { observer.yield(received) }
