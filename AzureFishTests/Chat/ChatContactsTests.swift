@@ -3,6 +3,7 @@ import AzureFishChat
 import AzureFishProtocol
 import CryptoKit
 import Foundation
+import ListKit
 import QuickLayoutKit
 import Testing
 import UIKit
@@ -10,6 +11,78 @@ import UIKit
 
 @MainActor
 struct ChatContactsTests {
+    @Test func indexFollowsSearchAndStaysAtSemanticTrailingEdge() async throws {
+        guard #available(iOS 16.0, *) else { return }
+        let controller = ContactsViewController(runtime: ChatRuntime(previewContacts: ConversationPreviewData.indexedContacts))
+        controller.loadViewIfNeeded()
+        for _ in 0..<100 where controller.sectionIndex.titles.isEmpty {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        #expect(controller.sectionIndex.titles.count == 27)
+        for direction: UISemanticContentAttribute in [.forceLeftToRight, .forceRightToLeft] {
+            controller.view.semanticContentAttribute = direction
+            for width: CGFloat in [320, 768] {
+                controller.view.frame = CGRect(x: 0, y: 0, width: width, height: 800)
+                controller.setNeedsQuickLayout()
+                controller.view.layoutIfNeeded()
+                let index = controller.sectionIndex.frame
+                let list = controller.list.frame
+                #expect(index.width == 44)
+                if direction == .forceLeftToRight { #expect(index.minX >= list.maxX) }
+                else { #expect(index.maxX <= list.minX) }
+            }
+        }
+        let search = try #require(controller.navigationItem.searchController)
+        search.searchBar.text = "NoSuchContact"
+        controller.updateSearchResults(for: search)
+        for _ in 0..<100 where !controller.sectionIndex.titles.isEmpty {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        #expect(controller.sectionIndex.isHidden)
+        #expect(controller.sectionIndex.titles.isEmpty)
+        search.searchBar.text = ""
+        controller.updateSearchResults(for: search)
+        for _ in 0..<100 where controller.sectionIndex.titles.isEmpty {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        #expect(controller.sectionIndex.titles.count == 27)
+    }
+
+    @Test func indexConsumesHorizontalSafeAreaOnceAndUsesListVerticalInsets() async throws {
+        guard #available(iOS 16.0, *) else { return }
+        let controller = ContactsViewController(runtime: ChatRuntime(previewContacts: ConversationPreviewData.indexedContacts))
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 844, height: 390))
+        window.rootViewController = UINavigationController(rootViewController: controller)
+        window.isHidden = false
+        defer { window.isHidden = true }
+        controller.additionalSafeAreaInsets = UIEdgeInsets(top: 20, left: 30, bottom: 25, right: 15)
+        for _ in 0..<100 where controller.sectionIndex.titles.isEmpty {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        for direction: UISemanticContentAttribute in [.forceLeftToRight, .forceRightToLeft] {
+            controller.view.semanticContentAttribute = direction
+            controller.setNeedsQuickLayout()
+            window.layoutIfNeeded()
+            controller.view.layoutIfNeeded()
+            let index = controller.sectionIndex
+            index.layoutIfNeeded()
+            let safe = controller.view.bounds.inset(by: controller.view.safeAreaInsets)
+            #expect(controller.view.safeAreaInsets.left >= 30)
+            #expect(controller.view.safeAreaInsets.right >= 15)
+            let rail = index.convert(index.bounds, to: controller.view)
+            #expect(rail.minX >= safe.minX - 1)
+            #expect(rail.maxX <= safe.maxX + 1)
+            #expect(rail.width == 44)
+            #expect(index.contentInsets.left == 0 && index.contentInsets.right == 0)
+            #expect(index.contentInsets.top == controller.list.adjustedContentInset.top)
+            #expect(index.contentInsets.bottom == controller.list.adjustedContentInset.bottom)
+            let first = index.convert(index.rectForTitle(at: 0), to: controller.view)
+            let last = index.convert(index.rectForTitle(at: 26), to: controller.view)
+            #expect(first.minY >= safe.minY - 1)
+            #expect(last.maxY <= safe.maxY + 1)
+        }
+    }
+
     @Test func profileAvatarKeepsSquareSizeAcrossContainerAndImageChanges() throws {
         guard #available(iOS 16.0, *) else { return }
         let controller = FriendViewController(runtime: ChatRuntime(session: .configured()), contact: ConversationPreviewData.contact)

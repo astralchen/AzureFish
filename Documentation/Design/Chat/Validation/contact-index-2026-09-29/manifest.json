@@ -1,0 +1,44 @@
+[
+  {
+    "file": "通讯录-ar.png",
+    "test": "ChatContactsUITests/testFourLanguagesRequestsAndSearch()",
+    "device": "iPhone 17 Pro",
+    "timestamp": 1790670146.295
+  },
+  {
+    "file": "通讯录-en.png",
+    "test": "ChatContactsUITests/testFourLanguagesRequestsAndSearch()",
+    "device": "iPhone 17 Pro",
+    "timestamp": 1790670119.195
+  },
+  {
+    "file": "通讯录-zh-Hant.png",
+    "test": "ChatContactsUITests/testFourLanguagesRequestsAndSearch()",
+    "device": "iPhone 17 Pro",
+    "timestamp": 1790670090.699
+  },
+  {
+    "file": "通讯录-zh-Hans.png",
+    "test": "ChatContactsUITests/testFourLanguagesRequestsAndSearch()",
+    "device": "iPhone 17 Pro",
+    "timestamp": 1790670064.924
+  },
+  {
+    "file": "通讯录-字母索引恢复.png",
+    "test": "ChatContactsUITests/testSectionIndexTapDragAndSearch()",
+    "device": "iPhone 17 Pro",
+    "timestamp": 1790670203.744
+  },
+  {
+    "file": "通讯录-字母索引末组.png",
+    "test": "ChatContactsUITests/testSectionIndexTapDragAndSearch()",
+    "device": "iPhone 17 Pro",
+    "timestamp": 1790670179.375
+  },
+  {
+    "file": "通讯录-字母索引首页.png",
+    "test": "ChatContactsUITests/testSectionIndexTapDragAndSearch()",
+    "device": "iPhone 17 Pro",
+    "timestamp": 1790670173.69
+  }
+]

@@ -250,6 +250,19 @@ extension ConversationPreviewData {
 #if DEBUG
 @available(iOS 16.0, *)
 extension ConversationPreviewData {
+    /// 覆盖完整字母索引与多屏滚动的确定性联系人样例。
+    static var indexedContacts: [ChatContact] {
+        (Array("ABCDEFGHIJKLMNOPQRSTUVWXYZ").map(String.init) + ["#"]).flatMap { letter in
+            (0..<3).map { number in
+                var value = contact
+                value.peer.id = "index-\(letter)-\(number)"
+                value.peer.nickname = letter == "#" ? "123 \(number)" : "\(letter) Contact \(number)"
+                value.remark = ""
+                return value
+            }
+        }
+    }
+
     static var contacts: [ChatContact] {
         var second = contact; second.peer.id = "fixture-alex"; second.peer.nickname = "Alex"; second.remark = ""
         var incoming = contact; incoming.peer.id = "fixture-incoming"; incoming.peer.nickname = "نور"; incoming.remark = ""

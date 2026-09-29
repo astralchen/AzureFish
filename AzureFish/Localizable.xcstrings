@@ -9938,6 +9938,36 @@
         }
       }
     },
+    "contacts.index": {
+      "comment": "通讯录侧边字母索引的辅助功能名称。",
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "فهرس جهات الاتصال"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Contact index"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "联系人索引"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "聯絡人索引"
+          }
+        }
+      }
+    },
     "contacts.invalidInput" : {
       "extractionState" : "manual",
       "localizations" : {

@@ -1,6 +1,42 @@
 import XCTest
 
 final class ChatContactsUITests: XCTestCase {
+    @MainActor func testSectionIndexTapDragAndSearch() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["-chat-details-ui-test", "-contacts-list", "-contacts-index", "-azurefish.locale.identifier", "zh-Hans"]
+        app.launch()
+        let index = app.descendants(matching: .any).matching(identifier: "contacts.index").firstMatch
+        XCTAssertTrue(index.waitForExistence(timeout: 25))
+        XCTAssertTrue(index.isHittable)
+        XCTAssertGreaterThanOrEqual(index.frame.minY, app.searchFields.firstMatch.frame.maxY)
+        capture(app, name: "通讯录-字母索引首页")
+        // 27 项按最多 22 pt 居中排列；在实际控件 frame 内选择末项。
+        let height = min(22, (index.frame.height - 16) / 27)
+        let bottom = index.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).withOffset(CGVector(dx: 0, dy: 13 * height))
+        bottom.tap()
+        XCTAssertTrue(app.cells["contacts.peer.index-#-2"].isHittable)
+        XCTAssertEqual(index.value as? String, "#")
+        capture(app, name: "通讯录-字母索引末组")
+        let dragHeight = min(22, (index.frame.height - 16) / 27)
+        let dragBottom = index.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).withOffset(CGVector(dx: 0, dy: 13 * dragHeight))
+        let dragTop = index.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).withOffset(CGVector(dx: 0, dy: -13 * dragHeight))
+        dragBottom.press(forDuration: 0.2, thenDragTo: dragTop)
+        XCTAssertTrue(app.cells["contacts.peer.index-A-0"].isHittable)
+        XCTAssertEqual(index.value as? String, "A")
+        let search = app.searchFields.firstMatch
+        search.tap(); search.typeText("A Contact")
+        let hidden = expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: index)
+        wait(for: [hidden], timeout: 5)
+        XCTAssertTrue(app.cells["contacts.peer.index-A-0"].isHittable)
+        search.buttons.firstMatch.tap()
+        XCTAssertFalse(index.exists)
+        app.buttons["关闭"].tap()
+        XCTAssertTrue(index.waitForExistence(timeout: 5))
+        XCTAssertTrue(index.isHittable)
+        capture(app, name: "通讯录-字母索引恢复")
+    }
+
     @MainActor func testProfileAvatarHasSquareBounds() throws {
         continueAfterFailure = false
         let app = XCUIApplication()
@@ -87,6 +123,12 @@ final class ChatContactsUITests: XCTestCase {
                 + (["zh-Hant", "ar"].contains(language) ? ["-details-dark", "-details-large"] : [])
             app.launch()
             XCTAssertTrue(app.cells["contacts.requests"].waitForExistence(timeout: 25))
+            let index = app.descendants(matching: .any).matching(identifier: "contacts.index").firstMatch
+            XCTAssertTrue(index.waitForExistence(timeout: 5))
+            XCTAssertTrue(index.isHittable)
+            let list = app.collectionViews["contacts.list"]
+            if language == "ar" { XCTAssertLessThanOrEqual(index.frame.maxX, list.frame.minX + 1) }
+            else { XCTAssertGreaterThanOrEqual(index.frame.minX, list.frame.maxX - 1) }
             capture(app, name: "通讯录-\(language)")
             app.cells["contacts.requests"].tap()
             XCTAssertTrue(app.cells["contacts.peer.fixture-incoming"].waitForExistence(timeout: 5))

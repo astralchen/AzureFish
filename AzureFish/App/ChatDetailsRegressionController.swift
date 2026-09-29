@@ -60,7 +60,8 @@ final class ChatDetailsRegressionController: UIViewController {
                     try await store.save(empty)
                     conversations += [direct, empty]
                 }
-                let contacts = args.contains("-contacts-list") ? ConversationPreviewData.contacts : []
+                let contacts = args.contains("-contacts-list")
+                    ? (args.contains("-contacts-index") ? ConversationPreviewData.indexedContacts : ConversationPreviewData.contacts) : []
                 for contact in contacts { try await store.save(contact) }
                 let runtime = ChatRuntime(session: preview.session, engine: engine, media: media, conversations: conversations, pageLeaseRoot: root, contacts: contacts)
                 self.runtime = runtime

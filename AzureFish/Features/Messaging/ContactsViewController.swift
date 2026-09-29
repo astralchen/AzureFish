@@ -32,15 +32,17 @@ enum ContactDirectoryPresentation {
     }
 }
 
-/// 好友、申请和黑名单的专属列表，共享权威投影及原生分组索引。
-class ContactDirectoryController: LocalizedQuickLayoutHostingController, UISearchResultsUpdating {
+/// 好友、申请和黑名单的专属列表，共享权威投影及 ListKit 分组索引。
+class ContactDirectoryController: LocalizedQuickLayoutHostingController, UISearchResultsUpdating, UISearchControllerDelegate {
     enum Mode { case contacts, requests, blocked }
     let runtime: ChatRuntime
     let mode: Mode
     let list = UICollectionView(frame: .zero, collectionViewLayout: UICollectionViewFlowLayout())
     private lazy var adapter = CollectionListAdapter<String>(collectionView: list)
+    let sectionIndex = CollectionSectionIndexView()
     private let search = UISearchController(searchResultsController: nil)
     private let stateView = ChatListStateView(frame: .zero)
+    private var isSearching = false
     private var observation: UUID?
     private var busy = Set<String>()
     var showProfile: ((ChatContact) -> Void)?
@@ -49,7 +51,14 @@ class ContactDirectoryController: LocalizedQuickLayoutHostingController, UISearc
     override var localizedTitleKey: String? {
         switch mode { case .contacts: "chat.live.contacts"; case .requests: "chat.live.newFriends"; case .blocked: "contacts.blacklist" }
     }
-    override var body: Layout { list.resizable().frame(maxWidth: .infinity, maxHeight: .infinity) }
+    override var body: Layout {
+        HStack(spacing: 0) {
+            list.resizable().frame(maxWidth: .infinity, maxHeight: .infinity)
+            if mode == .contacts && !sectionIndex.titles.isEmpty {
+                sectionIndex.resizable().frame(width: 44).frame(maxHeight: .infinity)
+            }
+        }.safeAreaPadding(.horizontal)
+    }
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .systemBackground
@@ -57,8 +66,10 @@ class ContactDirectoryController: LocalizedQuickLayoutHostingController, UISearc
         list.contentInsetAdjustmentBehavior = .automatic
         list.collectionViewLayout = adapter.makeCompositionalLayout()
         list.accessibilityIdentifier = "contacts.list"
+        if mode == .contacts { adapter.sectionIndexView = sectionIndex }
+        sectionIndex.accessibilityIdentifier = "contacts.index"
         setContentScrollView(list, for: .top)
-        navigationItem.searchController = search; search.searchResultsUpdater = self
+        navigationItem.searchController = search; search.searchResultsUpdater = self; search.delegate = self
         search.obscuresBackgroundDuringPresentation = false
         navigationItem.hidesSearchBarWhenScrolling = false
         navigationItem.largeTitleDisplayMode = mode == .contacts ? .always : .never
@@ -74,6 +85,7 @@ class ContactDirectoryController: LocalizedQuickLayoutHostingController, UISearc
         super.reloadLocalizedContent()
         guard isViewLoaded else { return }
         search.searchBar.placeholder = Localization.text("chat.live.search")
+        sectionIndex.accessibilityLabel = Localization.text("contacts.index")
         if mode != .blocked {
             let add = UIBarButtonItem(image: UIImage(systemName: "person.badge.plus"), primaryAction: UIAction { [weak self] _ in
                 guard let self else { return }
@@ -86,6 +98,9 @@ class ContactDirectoryController: LocalizedQuickLayoutHostingController, UISearc
     }
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
+        // 横向安全区域已由 HStack 消费；纵向只使用列表已合并导航栏／底部栏的 inset。
+        let adjusted = list.adjustedContentInset
+        sectionIndex.contentInsets = UIEdgeInsets(top: adjusted.top, left: 0, bottom: adjusted.bottom, right: 0)
         var inset = list.adjustedContentInset
         if mode == .contacts, search.searchBar.text?.isEmpty != false,
            let frame = list.layoutAttributesForItem(at: IndexPath(item: 0, section: 0))?.frame {
@@ -98,6 +113,8 @@ class ContactDirectoryController: LocalizedQuickLayoutHostingController, UISearc
         if isViewLoaded { render() }
     }
     func updateSearchResults(for searchController: UISearchController) { render() }
+    func willPresentSearchController(_ searchController: UISearchController) { isSearching = true; render() }
+    func didDismissSearchController(_ searchController: UISearchController) { isSearching = false; render() }
     private func open(_ contact: ChatContact) {
         if let showProfile { showProfile(contact) }
         else { navigationController?.pushViewController(FriendViewController(runtime: runtime, contact: contact), animated: true) }
@@ -141,7 +158,9 @@ class ContactDirectoryController: LocalizedQuickLayoutHostingController, UISearc
         let footer = [mode == .contacts ? count : "", runtime.online ? "" : Localization.text("chat.live.offline")]
             .filter { !$0.isEmpty }.joined(separator: "\n")
         let showEntry = mode == .contacts && query.isEmpty
-        adapter.apply(transaction: .disabled) {
+        adapter.apply(transaction: .disabled, completion: { [weak self] _ in
+            self?.setNeedsQuickLayout()
+        }) {
             if showEntry {
                 ListSection("entry") {
                     Row("requests", model: pending, cell: UICollectionViewListCell.self) { cell, count, _ in
@@ -193,7 +212,7 @@ class ContactDirectoryController: LocalizedQuickLayoutHostingController, UISearc
                             cell.accessibilityIdentifier = "contacts.footer"
                         }.layout(extendsBoundary: true)
                     }
-                }.indexTitle(self.mode == .contacts && query.isEmpty ? group.id : nil)
+                }.indexTitle(self.mode == .contacts && query.isEmpty && !self.isSearching ? group.id : nil)
                     .layout(Self.sectionLayout(group.id, header: false))
             }
 
@@ -315,6 +334,8 @@ extension UIViewController {
 #if DEBUG
 @available(iOS 17.0, *)
 #Preview("通讯录") { UINavigationController(rootViewController: ContactsViewController(runtime: ChatRuntime(previewContacts: ConversationPreviewData.contacts))) }
+@available(iOS 17.0, *)
+#Preview("通讯录 · 字母索引") { UINavigationController(rootViewController: ContactsViewController(runtime: ChatRuntime(previewContacts: ConversationPreviewData.indexedContacts))) }
 @available(iOS 17.0, *)
 #Preview("空通讯录") { UINavigationController(rootViewController: ContactsViewController(runtime: ChatRuntime(previewContacts: []))) }
 @available(iOS 17.0, *)
