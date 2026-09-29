@@ -19,6 +19,38 @@ struct LiveChatRow: Sendable, Equatable {
     var isDraft = false
     var avatarUser: String? = nil
     var avatarAsset: String? = nil
+    var timeText: String = ""
+    var timeAccessibilityText: String = ""
+}
+
+/// 将会话活动的 Unix 毫秒时间转换为本地日期；缺失或非正值不显示时间。
+struct ConversationListTime {
+    let text: String
+    let accessibilityText: String
+
+    init(milliseconds: Int64?, now: Date = Date(), locale: Locale, timeZone: TimeZone = .current) {
+        guard let milliseconds, milliseconds > 0 else {
+            text = ""; accessibilityText = ""
+            return
+        }
+        let date = Date(timeIntervalSince1970: Double(milliseconds) / 1000)
+        var calendar = locale.calendar
+        calendar.timeZone = timeZone
+        let formatter = DateFormatter()
+        formatter.locale = locale
+        formatter.calendar = calendar
+        formatter.timeZone = timeZone
+        if calendar.isDate(date, inSameDayAs: now) {
+            formatter.timeStyle = .short
+        } else {
+            let sameYear = calendar.isDate(date, equalTo: now, toGranularity: .year)
+            formatter.setLocalizedDateFormatFromTemplate(sameYear ? "Md" : "yMd")
+        }
+        text = formatter.string(from: date)
+        formatter.dateStyle = .full
+        formatter.timeStyle = .short
+        accessibilityText = formatter.string(from: date)
+    }
 }
 /// 通讯录、会话和成员选择共享的原生列表，实体身份不随语言改变。
 class LiveChatListController: LocalizedQuickLayoutHostingController, UISearchResultsUpdating {
@@ -26,12 +58,15 @@ class LiveChatListController: LocalizedQuickLayoutHostingController, UISearchRes
     let connectionLabel = UILabel()
     let list = UICollectionView(frame: .zero, collectionViewLayout: UICollectionViewFlowLayout())
     private lazy var adapter = CollectionListAdapter<String>(collectionView: list)
+    private var renderedRows: [LiveChatRow]?
+    private var renderedReadOnly: Bool?
     var rows: [LiveChatRow] = [] { didSet { renderRows() } }
     var selected: ((String) -> Void)?
     private var observation: UUID?
     private let search = UISearchController(searchResultsController: nil)
     var query: String { search.searchBar.text ?? "" }
     var showsSeparators: Bool { true }
+    var usesConversationLayout: Bool { false }
     init(runtime: ChatRuntime) {
         self.runtime = runtime
         super.init(nibName: nil, bundle: nil)
@@ -90,13 +125,32 @@ class LiveChatListController: LocalizedQuickLayoutHostingController, UISearchRes
     func reloadRows() { renderRows() }
     private func renderRows() {
         guard isViewLoaded else { return }
-        connectionLabel.text = Localization.text(runtime.session.connectivity == .checking ? "account.connection.checking" : "account.connection.offline")
-        setNeedsQuickLayout()
+        let connectionText = Localization.text(runtime.session.connectivity == .checking ? "account.connection.checking" : "account.connection.offline")
+        if connectionLabel.text != connectionText || renderedReadOnly != runtime.session.readOnly {
+            connectionLabel.text = connectionText
+            renderedReadOnly = runtime.session.readOnly
+            setNeedsQuickLayout()
+        }
+        guard renderedRows != rows else { return }
+        renderedRows = rows
         let values = rows
         adapter.apply(transaction: .disabled) {
             ListSection("content") {
                 ListKit.ForEach(values, id: \.id) { value in
                     Row(value.id, model: value, cell: UICollectionViewListCell.self) { cell, value, _ in
+                        let status = (value.isPinned ? [Localization.text("chat.details.pinned")] : [])
+                            + (value.manuallyUnread ? [Localization.text("chat.list.manuallyUnread")] : [])
+                        cell.accessibilityLabel = ([value.title, value.subtitle, value.timeAccessibilityText, value.badge] + status + value.markers.map { Localization.text($0 == "pin.fill" ? "chat.details.pinned" : "chat.details.muted") }).filter { !$0.isEmpty }
+                            .joined(separator: ", ")
+                        cell.accessibilityIdentifier = "chat.row." + value.id
+                        var background = UIBackgroundConfiguration.listPlainCell()
+                        background.backgroundColor = value.isPinned ? .secondarySystemBackground : .systemBackground
+                        cell.backgroundConfiguration = background
+                        if self.usesConversationLayout {
+                            cell.contentConfiguration = ConversationRowConfiguration(row: value, session: self.runtime.session)
+                            cell.accessories = []
+                            return
+                        }
                         var c = UIListContentConfiguration.subtitleCell()
                         c.text = value.title
                         if let highlight = value.highlight, !highlight.isEmpty,
@@ -119,13 +173,11 @@ class LiveChatListController: LocalizedQuickLayoutHostingController, UISearchRes
                             }
                             c.secondaryAttributedText = text
                         }
-                        let accessibilitySize = cell.traitCollection.preferredContentSizeCategory.isAccessibilityCategory
+                        // 控制器的字号已更新时，复用单元格可能尚未收到新的 traits。
+                        let accessibilitySize = self.traitCollection.preferredContentSizeCategory.isAccessibilityCategory
                         c.image = accessibilitySize || value.avatarUser != nil ? nil : UIImage(systemName: value.symbol)
                         c.imageProperties.tintColor = .systemBlue
                         cell.contentConfiguration = c
-                        var background = UIBackgroundConfiguration.listPlainCell()
-                        background.backgroundColor = value.isPinned ? .secondarySystemBackground : .systemBackground
-                        cell.backgroundConfiguration = background
                         cell.accessories = [.disclosureIndicator()]
                         if let user = value.avatarUser.flatMap(UUID.init(uuidString:)) {
                             let avatar = AccountAvatarView()
@@ -156,11 +208,6 @@ class LiveChatListController: LocalizedQuickLayoutHostingController, UISearchRes
                                 customView: badge, placement: .trailing(),
                                 reservedLayoutWidth: .actual, maintainsFixedSize: true)), at: 0)
                         }
-                        let status = (value.isPinned ? [Localization.text("chat.details.pinned")] : [])
-                            + (value.manuallyUnread ? [Localization.text("chat.list.manuallyUnread")] : [])
-                        cell.accessibilityLabel = ([value.title, value.subtitle, value.badge] + status + value.markers.map { Localization.text($0 == "pin.fill" ? "chat.details.pinned" : "chat.details.muted") }).filter { !$0.isEmpty }
-                            .joined(separator: ", ")
-                        cell.accessibilityIdentifier = "chat.row." + value.id
                     }.onSelect { [weak self] _, _ in self?.selected?(value.id) }
                 }
             }.layout(
@@ -207,6 +254,10 @@ final class ConversationListViewController: LiveChatListController {
     var openConversation: ((ChatConversation) -> Void)?
     private let stateView = ChatListStateView(frame: .zero)
     private var renderGeneration = UUID()
+    private var summaryTask: Task<Void, Never>?
+    private var summaryMessages: [String: ChatMessage] = [:]
+    private var pinnedContentSizeCategory: UIContentSizeCategory?
+    private var synchronizationFailed = false
     private var keyboardFrame: CGRect?
     let pinnedToggle = UIButton(type: .system)
     private var showsPinnedToggle = false
@@ -222,6 +273,7 @@ final class ConversationListViewController: LiveChatListController {
     }
     override var localizedTitleKey: String? { "account.design.chat" }
     override var showsSeparators: Bool { false }
+    override var usesConversationLayout: Bool { true }
     override func viewDidLoad() {
         quickLayoutKeyboardSafeAreaBehavior = .disabled
         super.viewDidLoad()
@@ -355,6 +407,10 @@ final class ConversationListViewController: LiveChatListController {
         let unread = pinned.filter { $0.readState.unread > 0 || runtime.listStates[$0.id]?.manuallyUnread == true }.count
         config.subtitle = String(format: Localization.text("chat.list.pinnedSummary"), locale: locale,
                                  pinned.count.formatted(.number.locale(locale)), unread.formatted(.number.locale(locale)))
+        if pinnedToggle.configuration?.title == config.title,
+           pinnedToggle.configuration?.subtitle == config.subtitle,
+           pinnedContentSizeCategory == traitCollection.preferredContentSizeCategory { return }
+        pinnedContentSizeCategory = traitCollection.preferredContentSizeCategory
         config.image = UIImage(systemName: collapsed ? "chevron.down" : "chevron.up")
         config.imagePlacement = .trailing
         config.imagePadding = 8
@@ -380,7 +436,13 @@ final class ConversationListViewController: LiveChatListController {
                       locale: Locale(identifier: Localization.localizationController.currentLocale.identifier),
                       text.isEmpty && draft.hasAttachments ? Localization.text("chat.list.draftAttachments") : text)
     }
+    private func messageSubtitle(_ message: ChatMessage) -> String {
+        message.revoked ? Localization.text("chat.live.revoked")
+            : message.kind == "system" ? ChatSystemNotice.text(message, userID: runtime.userID)
+            : message.kind == "text" ? message.text : Localization.text("chat.live." + message.kind)
+    }
     override func reloadRows() {
+        summaryTask?.cancel()
         let generation = UUID()
         renderGeneration = generation
         let matches = runtime.visibleSortedConversations.filter {
@@ -388,8 +450,13 @@ final class ConversationListViewController: LiveChatListController {
         }
         configurePinnedToggle(matches.filter { runtime.preference($0.id).isPinned })
         let displayed = matches.filter { !query.isEmpty || !runtime.pinnedConversationsCollapsed || !runtime.preference($0.id).isPinned }
-        rows = displayed.map {
-            LiveChatRow(
+        let now = Date()
+        let locale = Locale(identifier: Localization.localizationController.currentLocale.identifier)
+        let baseRows = displayed.map {
+            let activity = runtime.listStates[$0.id]?.activityAt ?? 0
+            let time = ConversationListTime(milliseconds: activity > 0 ? activity : $0.latestMessage?.createdAt,
+                                            now: now, locale: locale)
+            return LiveChatRow(
                 id: $0.id, title: runtime.title($0),
                 subtitle: runtime.draftPreviews[$0.id].map(draftSubtitle) ?? ($0.closed
                     ? Localization.text("chat.live.closed")
@@ -402,43 +469,59 @@ final class ConversationListViewController: LiveChatListController {
                 manuallyUnread: runtime.listStates[$0.id]?.manuallyUnread == true,
                 isDraft: runtime.draftPreviews[$0.id] != nil,
                 avatarUser: $0.kind == "direct" ? $0.members.first { $0.id != runtime.userID }?.id : nil,
-                avatarAsset: $0.kind == "direct" ? $0.members.first { $0.id != runtime.userID }.flatMap { runtime.avatarAsset(user: $0.id, fallback: $0.profile) } : nil)
+                avatarAsset: $0.kind == "direct" ? $0.members.first { $0.id != runtime.userID }.flatMap { runtime.avatarAsset(user: $0.id, fallback: $0.profile) } : nil,
+                timeText: time.text, timeAccessibilityText: time.accessibilityText)
+        }
+        // 同步状态通知到来时继续显示已读出的摘要；新摘要读取完成后再替换。
+        rows = baseRows.map { row in
+            var row = row
+            if !row.isDraft, let message = summaryMessages[row.id] { row.subtitle = messageSubtitle(message) }
+            return row
         }
         let state = ChatListContentState.resolve(
             hasSnapshot: runtime.hasSnapshot, synchronization: runtime.synchronization,
             storageFailure: runtime.failure != nil, totalCount: runtime.visibleSortedConversations.count,
             matchCount: matches.count, searching: !query.isEmpty)
-        if state == .storageFailure { rows = [] }
+        if state == .storageFailure { rows = []; summaryMessages = [:] }
         if state == .content {
-            list.backgroundView = nil
+            if list.backgroundView != nil { list.backgroundView = nil }
         } else {
             stateView.content.configure(state)
             list.backgroundView = stateView
         }
         let hasCachedContent = runtime.hasSnapshot || !runtime.conversations.isEmpty
-        navigationItem.prompt = runtime.failure == nil && hasCachedContent
-            ? (runtime.synchronization == .failed ? Localization.text("chat.list.syncFailed")
-               : runtime.synchronization == .syncing ? Localization.text("chat.list.syncing") : nil)
-            : nil
+        // 自动重试期间保留失败提示，成功后再移除，避免离线时每轮同步改变导航栏高度。
+        switch runtime.synchronization {
+        case .failed: synchronizationFailed = true
+        case .synced, .idle: synchronizationFailed = false
+        case .syncing: break
+        }
+        let prompt = runtime.failure == nil && hasCachedContent && synchronizationFailed
+            ? Localization.text("chat.list.syncFailed") : nil
+        if navigationItem.prompt != prompt { navigationItem.prompt = prompt }
         updateViewport()
-        Task { [weak self] in
+        guard state != .storageFailure else { return }
+        summaryTask = Task { [weak self] in
             guard let self, let store = runtime.engine?.store else { return }
-            var values = rows
+            var values = baseRows
+            var messages = summaryMessages
             for i in values.indices {
-                guard !values[i].isDraft else { continue }
-                if let message = try? await store.latestVisibleMessage(values[i].id) {
-                    values[i].subtitle =
-                        message.revoked
-                        ? Localization.text("chat.live.revoked")
-                        : message.kind == "system" ? ChatSystemNotice.text(message, userID: runtime.userID)
-                        : message.kind == "text" ? message.text : Localization.text("chat.live." + message.kind)
+                guard !Task.isCancelled else { return }
+                let id = values[i].id
+                do {
+                    messages[id] = try await store.latestVisibleMessage(id)
+                } catch {
+                    // 暂时读取失败保留已显示的摘要，成功读到 nil 才清除。
                 }
+                if !values[i].isDraft, let message = messages[id] { values[i].subtitle = messageSubtitle(message) }
             }
-            guard renderGeneration == generation, runtime.engine?.store === store else { return }
+            guard !Task.isCancelled, renderGeneration == generation, runtime.engine?.store === store else { return }
+            let visibleIDs = Set(values.map(\.id))
+            summaryMessages = messages.filter { visibleIDs.contains($0.key) }
             rows = values
         }
     }
-    deinit { NotificationCenter.default.removeObserver(self) }
+    deinit { summaryTask?.cancel(); NotificationCenter.default.removeObserver(self) }
 }
 #if DEBUG
     @available(iOS 17.0, *)
@@ -448,8 +531,8 @@ final class ConversationListViewController: LiveChatListController {
     let controller = LiveChatListController(runtime: ChatRuntime(session: .configured()))
     controller.loadViewIfNeeded()
     controller.rows = [
-        LiveChatRow(id: "pinned", title: "周末去海边", subtitle: "[草稿] 我们周六见", isPinned: true, manuallyUnread: true, isDraft: true),
-        LiveChatRow(id: "ordinary", title: "林沐", subtitle: "照片", badge: "3")
+        LiveChatRow(id: "pinned", title: "周末去海边", subtitle: "[草稿] 我们周六见", isPinned: true, manuallyUnread: true, isDraft: true, timeText: "20:10"),
+        LiveChatRow(id: "ordinary", title: "林沐", subtitle: "照片", badge: "3", timeText: "9/28")
     ]
     return controller
 }

@@ -58,6 +58,7 @@ class ContactDirectoryController: LocalizedQuickLayoutHostingController, UISearc
         let footer: String
         let appearance: String
         let online: Bool
+        let state: ChatListContentState
     }
     private var presentation: Presentation?
     private var rowVersions: [String: UInt64] = [:]
@@ -153,13 +154,14 @@ class ContactDirectoryController: LocalizedQuickLayoutHostingController, UISearc
         if abs(list.contentInset.bottom - bottom) > 0.5 { list.contentInset.bottom = bottom }
         // 横向安全区域已由 HStack 消费；纵向只使用列表已合并导航栏／底部栏的 inset。
         let adjusted = list.adjustedContentInset
-        sectionIndex.contentInsets = UIEdgeInsets(top: adjusted.top, left: 0, bottom: adjusted.bottom, right: 0)
+        let indexInsets = UIEdgeInsets(top: adjusted.top, left: 0, bottom: adjusted.bottom, right: 0)
+        if sectionIndex.contentInsets != indexInsets { sectionIndex.contentInsets = indexInsets }
         var inset = list.adjustedContentInset
         if mode == .contacts, search.searchBar.text?.isEmpty != false,
            let frame = list.layoutAttributesForItem(at: IndexPath(item: 0, section: 0))?.frame {
             inset.top += max(0, frame.maxY - list.contentOffset.y - inset.top)
         }
-        stateView.viewportInsets = inset
+        if stateView.viewportInsets != inset { stateView.viewportInsets = inset }
     }
     override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
         super.traitCollectionDidChange(previousTraitCollection)
@@ -205,28 +207,35 @@ class ContactDirectoryController: LocalizedQuickLayoutHostingController, UISearc
         let pending = runtime.contacts.filter { $0.requestState == "pending" && $0.requesterID != runtime.userID && !$0.isBlocked }.count
         let state = ChatListContentState.resolve(hasSnapshot: runtime.hasContactSnapshot, synchronization: runtime.synchronization,
             storageFailure: runtime.failure != nil, totalCount: all.count, matchCount: matches.count, searching: !query.isEmpty)
-        stateView.content.configure(state)
-        if state == .empty {
-            let key = mode == .contacts ? "chat.live.emptyContacts" : mode == .requests ? "contacts.noRequests" : "contacts.noBlocked"
-            stateView.content.titleLabel.text = Localization.text(key)
-            stateView.content.detailLabel.text = mode == .contacts ? Localization.text("chat.live.addHelp") : ""
-        }
-        switch state {
-        case .loading: stateView.content.titleLabel.text = Localization.text("contacts.loading")
-        case .failed: stateView.content.titleLabel.text = Localization.text("contacts.loadFailed")
-        case .noResults: stateView.content.titleLabel.text = Localization.text("contacts.noResults")
-        default: break
-        }
-        list.backgroundView = state == .content ? nil : stateView
         let count = Localization.text("contacts.count", all.count)
         let footer = [mode == .contacts ? count : "", runtime.online ? "" : Localization.text("chat.live.offline")]
             .filter { !$0.isEmpty }.joined(separator: "\n")
         let appearance = locale.identifier + ":" + traitCollection.preferredContentSizeCategory.rawValue
             + ":\(traitCollection.userInterfaceStyle.rawValue):\(traitCollection.accessibilityContrast.rawValue):\(Localization.currentUIKitDirection.rawValue)"
         let next = Presentation(groups: groups, pending: pending, busy: busy, query: query,
-            searching: isSearching, footer: footer, appearance: appearance, online: runtime.online)
+            searching: isSearching, footer: footer, appearance: appearance, online: runtime.online, state: state)
+        // 同步通知没有可见变化时，连背景提示和布局也保持不动；状态变化单独参与比较。
         guard presentation != next else { return }
         let previous = presentation
+        if state == .content {
+            if list.backgroundView != nil { list.backgroundView = nil }
+        } else {
+            if previous?.state != state || previous?.appearance != appearance {
+                stateView.content.configure(state)
+                if state == .empty {
+                    let key = mode == .contacts ? "chat.live.emptyContacts" : mode == .requests ? "contacts.noRequests" : "contacts.noBlocked"
+                    stateView.content.titleLabel.text = Localization.text(key)
+                    stateView.content.detailLabel.text = mode == .contacts ? Localization.text("chat.live.addHelp") : ""
+                }
+                switch state {
+                case .loading: stateView.content.titleLabel.text = Localization.text("contacts.loading")
+                case .failed: stateView.content.titleLabel.text = Localization.text("contacts.loadFailed")
+                case .noResults: stateView.content.titleLabel.text = Localization.text("contacts.noResults")
+                default: break
+                }
+            }
+            if list.backgroundView !== stateView { list.backgroundView = stateView }
+        }
         let oldRows = Dictionary(uniqueKeysWithValues: (previous?.groups.flatMap(\.contacts) ?? []).map { ($0.peer.id, $0) })
         let changed = matches.filter {
             oldRows[$0.peer.id] != $0 || previous?.appearance != appearance

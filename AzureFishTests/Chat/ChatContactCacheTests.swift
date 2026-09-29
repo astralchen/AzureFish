@@ -45,6 +45,49 @@ private actor ContactCacheTransport: HTTPTransport {
 @MainActor
 @Suite("通讯录缓存与资料更新", .serialized)
 struct ChatContactCacheTests {
+    @Test func unchangedNotificationsKeepEmptyDirectoryLayoutAndStateTransitions() async throws {
+        guard #available(iOS 16.0, *) else { return }
+        for mode: ContactDirectoryController.Mode in [.contacts, .requests, .blocked] {
+            let runtime = ChatRuntime(previewContacts: [])
+            let controller = ContactDirectoryController(runtime: runtime, mode: mode)
+            let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+            window.rootViewController = UINavigationController(rootViewController: controller)
+            window.isHidden = false
+            defer { window.isHidden = true }
+            controller.loadViewIfNeeded()
+            for _ in 0..<100 where controller.list.backgroundView == nil {
+                try await Task.sleep(for: .milliseconds(20))
+            }
+            window.layoutIfNeeded()
+            let state = try #require(controller.list.backgroundView as? ChatListStateView)
+            #expect(state.content.accessibilityIdentifier == "chat.list.state.empty")
+            let title = state.content.titleLabel.text
+            state.layoutIfNeeded(); state.content.layoutIfNeeded()
+            #expect(!state.content.layer.needsLayout())
+            for _ in 0..<3 {
+                runtime.publish()
+                #expect(controller.list.backgroundView === state)
+                #expect(state.content.titleLabel.text == title)
+                #expect(!state.content.layer.needsLayout())
+            }
+            let search = try #require(controller.navigationItem.searchController)
+            search.searchBar.text = "NoSuchContact"
+            controller.updateSearchResults(for: search)
+            #expect(state.content.accessibilityIdentifier == "chat.list.state.noResults")
+            state.layoutIfNeeded(); state.content.layoutIfNeeded()
+            runtime.publish()
+            #expect(search.searchBar.text == "NoSuchContact")
+            #expect(!state.content.layer.needsLayout())
+            // 联系人和连接状态不变时，快照失效仍必须将提示切换为加载状态。
+            runtime.stop()
+            #expect(state.content.accessibilityIdentifier == "chat.list.state.loading")
+            state.layoutIfNeeded(); state.content.layoutIfNeeded()
+            runtime.publish()
+            #expect(!state.content.layer.needsLayout())
+            #expect(search.searchBar.text == "NoSuchContact")
+        }
+    }
+
     private struct Fixture {
         let root: URL
         let transport: ContactCacheTransport
@@ -69,8 +112,10 @@ struct ChatContactCacheTests {
             refreshToken: base.refreshToken, refreshExpiresAt: base.refreshExpiresAt, refreshGeneration: 1)
         let credentialStore = CredentialStore(values: keys, environmentID: credentials.environmentID)
         try credentialStore.save(StoredSession(credentials))
+        let repository = UserRepository(root: root.appendingPathComponent("profile"), keys: keys, environment: credentials.environmentID)
+        try repository.save(AccountProfile(userID: owner, accountName: "fixture_user", nickname: "Fixture", bio: "", version: 1))
         let session = SessionCoordinator(service: LiveAccountService(api: AccountAPI(environment: try .localTesting(), transport: transport)),
-            store: credentialStore, repository: UserRepository(root: root.appendingPathComponent("profile"), keys: keys, environment: credentials.environmentID))
+            store: credentialStore, repository: repository)
         await session.restore()
         try #require(session.phase == .signedIn)
         let database = try ChatStore(url: root.appendingPathComponent("db"), key: Data(repeating: 7, count: 32), environment: credentials.environmentID, userID: owner)
@@ -183,9 +228,16 @@ struct ChatContactCacheTests {
         }
         let cell = try #require(controller.list.visibleCells.compactMap { $0 as? ContactDirectoryCell }.first)
         let avatar = cell.avatar
-        f.runtime.publish(); f.runtime.publish()
-        window.layoutIfNeeded()
-        #expect(controller.list.visibleCells.contains { ($0 as? ContactDirectoryCell)?.avatar === avatar })
+        let image = avatar.image
+        let offset = controller.list.contentOffset
+        for _ in 0..<3 {
+            f.runtime.publish()
+            try await Task.sleep(nanoseconds: 30_000_000)
+            window.layoutIfNeeded()
+            #expect(controller.list.visibleCells.contains { $0 === cell })
+            #expect(cell.avatar === avatar && avatar.image === image)
+            #expect(controller.list.contentOffset == offset)
+        }
         let search = try #require(controller.navigationItem.searchController)
         search.searchBar.text = "Before"
         controller.updateSearchResults(for: search)
