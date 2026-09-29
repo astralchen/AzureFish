@@ -6,13 +6,15 @@
 
 AzureFish 是 iOS 客户端；仓库根目录下的 `AzureFishServer/` 是独立 Swift 服务端。登录和用户模块首期共用一个服务端进程，后续 IM 复用身份和会话。客户端数据库与服务端数据库各有职责，不共享文件。
 
+> 2026-09-29：新增默认自动登录、活跃会话续期与上次账号入口，验证记录见[自动登录实施](Implementation/2026-09-29-auto-login.md)。
+
 ## 阅读入口
 
 | 文档 | 内容 |
 | --- | --- |
 | [客户端接入](client-integration.md) | URLSession、Protobuf、Keychain、认证状态机、账号切换与生成产物同步 |
 | [本地网络包](../Networking/README.md) | Swift 6.3 的 AzureFishProtocol／AzureFishNetwork／AzureFishAPI、测试及调用方式 |
-| [苹果风格 UI／UX](ui-ux.md) | 登录、注册、资料、账号安全、错误、无障碍和系统兼容 |
+| [登录与个人中心 UI／UX](ui-ux.md) | 登录、注册、资料、账号安全、错误、无障碍和系统兼容 |
 | [数据安全](../Security/README.md) | HTTPS、SQLCipher、媒体加密、Keychain 与数据恢复 |
 | [多设备规范](../Design/README.md) | iPhone、iPad、iOS 27.1 Duo 的布局与状态连续性 |
 | [四语言规范](../Internationalization/README.md) | 简中、繁中、英文、阿拉伯语、跟随系统与 RTL |

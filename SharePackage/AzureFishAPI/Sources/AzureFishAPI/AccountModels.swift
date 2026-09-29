@@ -44,7 +44,7 @@ public struct SessionCredentials: Sendable, Equatable, CustomStringConvertible, 
     public let accessExpiresAt: Date
     /// 当前代次的刷新凭据；刷新请求将其写入 Protobuf 正文。
     public let refreshToken: SessionToken
-    /// 会话刷新凭据的绝对截止时间，须为有限日期且不早于 accessExpiresAt。
+    /// 当前刷新凭据的截止时间，成功刷新可延长，须为有限日期且不早于 accessExpiresAt。
     public let refreshExpiresAt: Date
     /// 服务端确认的正数刷新代次，用于防止旧凭据覆盖较新结果。
     public let refreshGeneration: Int64
@@ -59,7 +59,7 @@ public struct SessionCredentials: Sendable, Equatable, CustomStringConvertible, 
     ///   - accessToken: 访问令牌的已校验格式值。
     ///   - accessExpiresAt: 访问到期时间，须有限、晚于 Unix epoch 且不晚于刷新截止。
     ///   - refreshToken: 与访问令牌同一代次的刷新令牌。
-    ///   - refreshExpiresAt: 有限的会话刷新绝对截止时间。
+    ///   - refreshExpiresAt: 有限的当前刷新截止时间。
     ///   - refreshGeneration: 大于 0 的刷新代次。
     /// - Throws: 环境、代次或日期关系无效时抛出 `APIClientError.invalidCredentials`。
     public init(environmentID: String, userID: UUID, deviceID: UUID, sessionID: UUID,

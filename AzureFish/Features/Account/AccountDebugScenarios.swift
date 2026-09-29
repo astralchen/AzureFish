@@ -3,7 +3,7 @@ import UIKit
 import QuickLayoutKit
 import QuickLayout
 
-/// 与设计归档的 93 个业务状态一一对应；此目录不会构建到 Release。
+/// 提供设计状态与认证回归入口；此目录不会构建到 Release。
 struct AccountDebugScenario {
     let id: String
     let titleKey: String
@@ -11,6 +11,7 @@ struct AccountDebugScenario {
     var actions: [(String, String)] { Self.links[id] ?? [] }
     static let all: [Self] = [
         .init(id: "welcome", titleKey: "account.design.welcome", messageKey: "account.design.operationError"),
+        .init(id: "login.remembered", titleKey: "account.design.login", messageKey: "account.design.operationError"),
         .init(id: "login.empty", titleKey: "account.design.login", messageKey: "account.design.operationError"),
         .init(id: "login.filled", titleKey: "account.design.login", messageKey: "account.design.operationError"),
         .init(id: "login.focused", titleKey: "account.design.login", messageKey: "account.design.operationError"),
@@ -212,6 +213,10 @@ struct AccountDebugScenario {
         let session = SessionCoordinator(service: nil, store: CredentialStore(values: keys, environmentID: "preview"),
             repository: UserRepository(root: FileManager.default.temporaryDirectory.appendingPathComponent("AccountPreview"), keys: keys, environment: "preview"))
         if id == "welcome" || id.hasPrefix("welcome.") { return WelcomeViewController(session: session) }
+        if id == "login.remembered" {
+            return AuthenticationViewController(session: session, register: false,
+                remembered: .init(environmentID: "preview", userID: UUID(uuidString: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")!, accountName: "fictional_user"))
+        }
         if id.hasPrefix("login.") || id.hasPrefix("register.") {
             let controller = AuthenticationViewController(session: session, register: id.hasPrefix("register."))
             controller.loadViewIfNeeded(); controller.applyDebugState(id)

@@ -78,6 +78,10 @@ public actor ChatTransferQueue {
     private var stopped = false
     public func stop() async {
         stopped = true
+        await pause()
+    }
+    /// 暂停传输而保留用户已经提交的队列；认证确认后可再次 resume。
+    public func pause() async {
         let activeDownloads = Array(downloads.values)
         activeDownloads.forEach { $0.cancel() }
         generation = UUID()

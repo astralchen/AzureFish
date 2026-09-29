@@ -78,7 +78,7 @@ final class ProfileViewController: AccountScreen {
         name.text = session.profile?.nickname
         account.text = session.profile.map { "@" + $0.accountName }
         bio.text = session.profile?.bio
-        notice.text = session.readOnly ? Localization.text("account.design.offlineProfile") : session.noticeKey.map { Localization.text($0) } ?? ((session.profile?.bio.isEmpty == true) ? Localization.text("account.design.incomplete") : nil)
+        notice.text = session.readOnly ? Localization.text(session.connectivity == .checking ? "account.connection.checking" : "account.connection.offline") : session.noticeKey.map { Localization.text($0) } ?? ((session.profile?.bio.isEmpty == true) ? Localization.text("account.design.incomplete") : nil)
         if let profile = session.profile { avatar.configure(session: session, user: profile.userID, asset: profile.avatarID) }
         for label in [name, account, bio, notice] {
             label.textAlignment = Localization.currentUIKitDirection == .rightToLeft ? .right : .left

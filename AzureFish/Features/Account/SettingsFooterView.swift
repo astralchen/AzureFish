@@ -18,6 +18,11 @@ final class SettingsFooterView: QuickLayoutCollectionReusableView {
         // Supplementary 的初始高度只是估值，不能用它限制多行说明的测量。
         label.resizable(axis: .horizontal).fixedSize(axis: .vertical).padding(.horizontal, 16).padding(.vertical, 8)
     }
+    override func sizeThatFits(_ size: CGSize) -> CGSize {
+        // UIKit 首次只给 estimated 高度；按实际宽度无高度上限测量，避免长说明溢出 supplementary。
+        let text = label.sizeThatFits(CGSize(width: max(1, size.width - 32), height: .greatestFiniteMagnitude))
+        return CGSize(width: size.width, height: ceil(text.height) + 16)
+    }
     func configure(key: String) {
         label.text = Localization.text(key)
         label.textAlignment = Localization.currentUIKitDirection == .rightToLeft ? .right : .left

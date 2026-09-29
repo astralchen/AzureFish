@@ -46,7 +46,7 @@ extension ComposerView {
     /// 按草稿内容类型转发发送动作，并在上层受理后清空对应内容。
     @objc func sendButtonDidTap() {
         performPresentationUpdate(animated: false) { [self] in
-            guard !self.textView.isInputSuspended, hasSendableContent else { return }
+            guard submissionAllowed, !self.textView.isInputSuspended, hasSendableContent else { return }
             let text = plainDraftText
             let accepted: Bool
             let segments = draftSegments

@@ -56,15 +56,87 @@ actor AccountTestTransport: HTTPTransport {
     }
 }
 
-@Suite("会话协调器")
+@Suite("会话协调器", .serialized)
 @MainActor
 struct SessionCoordinatorTests {
-    private func fixture(_ transport: AccountTestTransport, keys: MemorySecureValues) throws -> (SessionCoordinator, CredentialStore, URL) {
+    private func fixture(_ transport: AccountTestTransport, keys: MemorySecureValues, cached: Bool = true) throws -> (SessionCoordinator, CredentialStore, URL) {
         let store = CredentialStore(values: keys, environmentID: "local-development")
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         let service = LiveAccountService(api: AccountAPI(environment: try APIEnvironment.localTesting(), transport: transport))
-        return (SessionCoordinator(service: service, store: store, repository: UserRepository(root: root, keys: keys, environment: "local-development")), store, root)
+        let repository = UserRepository(root: root, keys: keys, environment: "local-development")
+        if cached {
+            try repository.save(AccountProfile(userID: sampleCredentials().userID, accountName: "fictional_user",
+                nickname: "Fictional", bio: "", version: 1))
+        }
+        return (SessionCoordinator(service: service, store: store, repository: repository), store, root)
     }
+    @Test func cachedColdStartPublishesBeforeNetworkValidationAndPreservesIdentity() async throws {
+        let transport = AccountTestTransport(), keys = MemorySecureValues()
+        let (first, store, root) = try fixture(transport, keys: keys)
+        defer { try? FileManager.default.removeItem(at: root) }
+        try store.save(StoredSession(sampleCredentials()))
+        await first.restore()
+        let second = SessionCoordinator(service: first.service, store: store,
+            repository: UserRepository(root: root, keys: keys, environment: "local-development"))
+        await transport.setSlow(true)
+        var states: [(SessionCoordinator.Phase, SessionCoordinator.Connectivity)] = []
+        second.didChange = { states.append((second.phase, second.connectivity)) }
+        await second.restore()
+        #expect(states.contains { $0.0 == .signedIn && $0.1 == .checking })
+        #expect(second.connectivity == .online && second.profile == first.profile)
+        #expect(second.rememberedAccount?.accountName == "fictional_user")
+        #expect(!second.canCreateBusinessCache)
+        await transport.setOffline(true)
+        await second.restore()
+        #expect(second.phase == .signedIn && second.connectivity == .offline)
+        await #expect(throws: APISessionError.verificationRequired) { try await second.sessionManager!.credentials() }
+        await transport.setOffline(false)
+        await second.restore()
+        #expect(second.connectivity == .online)
+        second.didChange = nil
+    }
+
+    @Test func localLogoutRetainsAccountHintButNeverRestoresAuthentication() async throws {
+        let transport = AccountTestTransport()
+        let (coordinator, store, root) = try fixture(transport, keys: MemorySecureValues())
+        defer { try? FileManager.default.removeItem(at: root) }
+        try store.save(StoredSession(sampleCredentials()))
+        await coordinator.restore()
+        let hint = coordinator.rememberedAccount
+        try await coordinator.logout(localOnly: true)
+        await coordinator.restore()
+        #expect(coordinator.phase == .welcome && coordinator.profile == nil)
+        #expect(coordinator.rememberedAccount == hint && hint != nil)
+        #expect(try store.load() == nil)
+        try store.forgetAccount(user: hint!.userID)
+        #expect(coordinator.rememberedAccount == nil)
+    }
+
+    @Test func damagedProfileNeverBecomesAnEmptyAuthenticatedProfile() async throws {
+        let transport = AccountTestTransport(), keys = MemorySecureValues()
+        let (coordinator, store, root) = try fixture(transport, keys: keys)
+        defer { try? FileManager.default.removeItem(at: root) }
+        try store.save(StoredSession(sampleCredentials()))
+        await coordinator.restore()
+        for key in keys.data.keys where key.hasPrefix("profile-key.") { keys.data[key] = nil }
+        await coordinator.restore()
+        #expect(coordinator.phase == .recovery && coordinator.profile == nil)
+        #expect(try store.load() != nil)
+    }
+
+    @Test(arguments: [false, true]) func noCacheRequiresRecoveryEvenWhenOnline(offline: Bool) async throws {
+        let transport = AccountTestTransport()
+        let (coordinator, store, root) = try fixture(transport, keys: MemorySecureValues(), cached: false)
+        defer { try? FileManager.default.removeItem(at: root) }
+        try store.save(StoredSession(sampleCredentials()))
+        await transport.setOffline(offline)
+        await coordinator.restore()
+        #expect(coordinator.phase == .recovery && coordinator.profile == nil)
+        #expect(try store.load() != nil)
+        #expect(await transport.requests.isEmpty)
+        #expect(!FileManager.default.fileExists(atPath: root.path))
+    }
+
     @Test func rejectedRefreshReturnsToWelcomeAndClearsSession() async throws {
         let transport = AccountTestTransport()
         let (coordinator, store, root) = try fixture(transport, keys: MemorySecureValues())
@@ -84,9 +156,9 @@ struct SessionCoordinatorTests {
         try store.save(StoredSession(sampleCredentials(accessExpired: true), pendingRefreshID: id))
         let restoration = Task { await coordinator.restore() }
         while await transport.requests.isEmpty { await Task.yield() }
-        async let a: Void = coordinator.reloadProfile()
-        async let b: Void = coordinator.reloadProfile()
-        try await a; try await b; await restoration.value
+        async let a = coordinator.sessionManager!.refresh()
+        async let b = coordinator.sessionManager!.refresh()
+        _ = try await a; _ = try await b; await restoration.value
         let requests = await transport.requests.filter { $0.url.path.hasSuffix("refresh") }
         #expect(requests.count == 1)
         #expect(try RefreshRequest(serializedBytes: requests[0].body!).operationID == id.uuidString.lowercased())
@@ -129,6 +201,23 @@ struct SessionCoordinatorTests {
         #expect(coordinator.profile?.nickname == "Fictional")
         #expect(await transport.requests.filter { $0.method == .patch }.count == 1)
     }
+    @Test func cancellationDuringCredentialWriteRemovesLateStoredSession() async throws {
+        let transport = AccountTestTransport(), keys = MemorySecureValues()
+        let (coordinator, store, root) = try fixture(transport, keys: keys)
+        defer { try? FileManager.default.removeItem(at: root) }
+        await coordinator.restore()
+        keys.onWrite = { [weak coordinator] key in
+            if key.hasPrefix("session.") { coordinator?.cancelAuthentication() }
+        }
+        let input = AuthenticationInput(register: false, account: "fictional", password: "Fictional-Password-123", nickname: "")
+        await #expect(throws: CancellationError.self) { try await coordinator.authenticate(input) }
+        #expect(coordinator.phase == .welcome && coordinator.profile == nil)
+        #expect(try store.load() == nil)
+        keys.onWrite = nil
+        await coordinator.restore()
+        #expect(coordinator.phase == .welcome)
+    }
+
     @Test func cancelledLoginCannotInstallLateResponse() async throws {
         let transport = AccountTestTransport(); await transport.setSlow(true)
         let (coordinator, store, root) = try fixture(transport, keys: MemorySecureValues())

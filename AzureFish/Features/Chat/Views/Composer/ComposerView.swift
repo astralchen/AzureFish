@@ -14,6 +14,11 @@ import UIKit
 @available(iOS 26.0, *)
 final class ComposerView: QuickLayoutView, UITextViewDelegate {
 
+    /// 是否允许提交草稿；默认 true，关闭时仍可编辑并保留当前草稿。
+    var submissionAllowed = true {
+        didSet { if oldValue != submissionAllowed { updateComposerState() } }
+    }
+
     /// 启用 TextKit 2、承载文字与内联附件的文本编辑器。
     let textView = ComposerTextView(usingTextLayoutManager: true)
     lazy var inputBinding = Localization.inputContext(for: self)

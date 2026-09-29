@@ -22,7 +22,18 @@ final class AccountField: QuickLayoutView {
         reveal.setImage(UIImage(systemName: "eye"), for: .normal)
         reveal.addAction(UIAction { [weak self] _ in
             guard let self else { return }
+            let text = self.input.text
+            let selection = self.input.selectedTextRange.map {
+                (self.input.offset(from: self.input.beginningOfDocument, to: $0.start),
+                 self.input.offset(from: self.input.beginningOfDocument, to: $0.end))
+            }
             self.input.isSecureTextEntry.toggle()
+            self.input.text = text
+            if let selection,
+               let start = self.input.position(from: self.input.beginningOfDocument, offset: selection.0),
+               let end = self.input.position(from: self.input.beginningOfDocument, offset: selection.1) {
+                self.input.selectedTextRange = self.input.textRange(from: start, to: end)
+            }
             self.reloadText()
         }, for: .touchUpInside)
         fill.backgroundColor = .secondarySystemBackground; fill.layer.cornerRadius = 14
@@ -61,15 +72,28 @@ class AccountScreen: LocalizedQuickLayoutHostingController {
     var grouped = false
     private weak var focusedInput: UIView?
     private var width: CGFloat { min(maximumWidth, max(0, view.bounds.width - 48)) }
+    private var scrollsActions: Bool { traitCollection.preferredContentSizeCategory.isAccessibilityCategory }
+    private func actionHeight(_ action: UIView) -> CGFloat {
+        guard let button = action as? UIButton, let title = button.titleLabel else { return 52 }
+        let insets = button.configuration?.contentInsets ?? .zero
+        let size = title.sizeThatFits(CGSize(width: max(1, width - insets.leading - insets.trailing), height: .greatestFiniteMagnitude))
+        return max(52, ceil(size.height + insets.top + insets.bottom))
+    }
+    private var actionStack: Layout {
+        VStack(spacing: 12) {
+            ForEach(actions) { $0.resizable(axis: .horizontal).frame(height: actionHeight($0)).frame(maxWidth: .infinity) }
+        }.frame(width: width).padding(.bottom, 12)
+    }
     override var body: Layout {
         VStack(spacing: 16) {
             ScrollView(scroll) {
                 VStack(alignment: .leading, spacing: 20) {
                     ForEach(content) { $0.resizable(axis: .horizontal).frame(maxWidth: .infinity, alignment: .leading) }
+                    // 无障碍字号下动作与表单一同滚动，避免底部动作挤占全部可用高度。
+                    if scrollsActions { actionStack }
                 }.frame(width: width).padding(.vertical, 20)
             }.frame(maxWidth: .infinity, maxHeight: .infinity)
-            VStack(spacing: 12) { ForEach(actions) { $0.resizable(axis: .horizontal).frame(maxWidth: .infinity, minHeight: 52) } }
-                .frame(width: width).padding(.bottom, 12)
+            if !scrollsActions { actionStack }
         }.safeAreaPadding(.all, 0)
     }
     override func viewDidLoad() {
@@ -150,6 +174,7 @@ class AccountScreen: LocalizedQuickLayoutHostingController {
             UIBarButtonItem(image: UIImage(systemName: "globe"), primaryAction: nil, menu: Localization.languageMenu())
         ]
         navigationItem.rightBarButtonItems?[0].accessibilityLabel = Localization.text("account.design.appearance")
+        navigationItem.rightBarButtonItems?[1].accessibilityIdentifier = "demo.language.menu"
         navigationItem.rightBarButtonItems?[1].accessibilityLabel = Localization.text("account.design.language")
     }
 }

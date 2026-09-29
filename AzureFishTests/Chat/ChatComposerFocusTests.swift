@@ -6,6 +6,24 @@ import QuickLayoutKit
 @MainActor
 @Suite(.serialized, .enabled(if: ChatTestAvailability.isSupported))
 struct ChatComposerFocusTests {
+    @Test func authenticationGateKeepsDraftEditableWithoutSubmitting() {
+        guard #available(iOS 26.0, *) else { return }
+        let composer = ComposerView(frame: CGRect(x: 0, y: 0, width: 390, height: 80))
+        composer.configure(strings: ConversationPreviewData.composerStrings)
+        composer.textView.text = "An unsent draft"
+        composer.textViewDidChange(composer.textView)
+        var submitted = 0
+        composer.actionRequested = { _ in submitted += 1; return true }
+        composer.submissionAllowed = false
+        composer.sendButtonDidTap()
+        #expect(submitted == 0 && composer.plainDraftText == "An unsent draft")
+        #expect(composer.textView.isEditable && !composer.sendButton.isEnabled)
+        composer.submissionAllowed = true
+        #expect(submitted == 0 && composer.plainDraftText == "An unsent draft")
+        composer.sendButtonDidTap()
+        #expect(submitted == 1)
+    }
+
     @Test func singleLineCaretAndPlaceholderStayVerticallyCentered() throws {
         guard #available(iOS 26.0, *) else { return }
         let scene = try #require(

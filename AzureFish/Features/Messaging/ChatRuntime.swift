@@ -11,6 +11,8 @@ final class ChatRuntime {
         init(_ value: ChatRuntime) { self.value = value }
     }
     private static var instances: [WeakRuntime] = []
+    // 新账号首次打开数据库时，让其他窗口等待文件初始化完成，再建立各自连接。
+    private static var storeOpenings: [String: Task<ChatStore, Error>] = [:]
     private func registerInstance() {
         Self.instances.removeAll { $0.value == nil }
         Self.instances.append(WeakRuntime(self))
@@ -100,7 +102,7 @@ final class ChatRuntime {
     private var observers: [UUID: () -> Void] = [:]
     private var task: Task<Void, Never>?
     private var generation = UUID()
-    var api: IMAPI? { session.sessionManager.map(IMAPI.init) }
+    var api: IMAPI? { session.readOnly ? nil : session.sessionManager.map(IMAPI.init) }
     var userID: String { session.profile?.userID.uuidString.lowercased() ?? "" }
     init(session: SessionCoordinator) { self.session = session; registerInstance() }
     #if DEBUG
@@ -147,6 +149,31 @@ final class ChatRuntime {
     }
     func remove(_ id: UUID) { observers[id] = nil }
     func publish() { observers.values.forEach { $0() } }
+    private var networkTransition: Task<Void, Never>?
+    /// 保留已打开的本地存储与页面，仅暂停或恢复联网任务。
+    func authenticationDidChange() {
+        let previous = networkTransition
+        networkTransition = Task { [weak self] in
+            await previous?.value
+            guard let self, !Task.isCancelled, let engine else { return }
+            if session.readOnly {
+                await engine.stop()
+                await transfers?.pause()
+                online = false
+            } else {
+                await engine.start()
+                await engine.setForegroundNotificationsEnabled(foreground)
+                await transfers?.resume()
+            }
+            publish()
+        }
+    }
+    static func stopInvalidSession(user: UUID, environment: String) {
+        for runtime in instances.compactMap(\.value)
+            where runtime.session.profile?.userID == user && runtime.session.store.environmentID == environment {
+            runtime.stop()
+        }
+    }
     func start() {
         guard task == nil, let manager = session.sessionManager, let user = session.profile?.userID
         else { return }
@@ -161,7 +188,13 @@ final class ChatRuntime {
                 var root = FileManager.default.urls(
                     for: .applicationSupportDirectory, in: .userDomainMask)[0]
                     .appendingPathComponent("ChatAccounts/" + directoryName, isDirectory: true)
+                if let opening = Self.storeOpenings[scope] { _ = try await opening.value }
+                guard self.generation == generation else { return }
                 let exists = FileManager.default.fileExists(atPath: root.path)
+                let databaseURL = root.appendingPathComponent("main.sqlite")
+                // 恢复只打开既有库；残留目录缺少数据库同样需要明确恢复。
+                guard exists ? FileManager.default.fileExists(atPath: databaseURL.path) : session.canCreateBusinessCache
+                else { throw AccountFailure.damagedCache }
                 @MainActor func key(_ purpose: String) throws -> Data {
                     let name = "chat." + purpose + "." + scope
                     if let value = try session.store.values.read(name) {
@@ -183,12 +216,16 @@ final class ChatRuntime {
                 var values = URLResourceValues()
                 values.isExcludedFromBackup = true
                 try root.setResourceValues(values)
-                let databaseURL = root.appendingPathComponent("main.sqlite")
                 let environmentID = manager.environment.identifier
                 // FTS 回填可能读取较多历史文字，不占用场景的主线程。
-                let store = try await Task.detached {
+                let opening = Task.detached {
                     try ChatStore(url: databaseURL, key: databaseKey, environment: environmentID, userID: user)
-                }.value
+                }
+                Self.storeOpenings[scope] = opening
+                let store: ChatStore
+                do { store = try await opening.value }
+                catch { Self.storeOpenings[scope] = nil; throw error }
+                Self.storeOpenings[scope] = nil
                 let media = try ChatMediaStore(
                     root: root.appendingPathComponent("media", isDirectory: true), key: mediaKey,
                     environment: manager.environment.identifier, userID: user)
@@ -204,13 +241,18 @@ final class ChatRuntime {
                 self.pageLeaseRoot = pages
                 self.originalDraftStore = AccountChatDraftStore(store: store, media: media)
                 self.engine = engine
+                session.didOpenBusinessCache()
                 observeDraftSaves(engine: engine)
                 self.media = media
                 let transfers = ChatTransferQueue(
                     store: store, media: media, session: manager, engine: engine)
                 self.transfers = transfers
                 try await restoreDirectory(engine: engine)
-                await transfers.resume()
+                self.conversations = try await store.conversations()
+                self.preferences = try await store.allConversationPreferences()
+                self.hasSnapshot = self.hasContactSnapshot
+                try await refreshListStates()
+                publish()
                 incomingTask = Task { [weak self, engine] in
                     let stream = await engine.incomingMessages()
                     for await messages in stream {
@@ -220,15 +262,15 @@ final class ChatRuntime {
                 }
                 await engine.setForegroundNotificationsEnabled(foreground)
                 let changes = await engine.updates()
-                await engine.start()
+                authenticationDidChange()
                 for await update in changes {
                     guard self.generation == generation, !Task.isCancelled else { break }
-                    self.online = update.online
+                    self.online = update.online && !session.readOnly
                     self.synchronization = update.synchronization
                     try await restoreDirectory(engine: engine)
                     let conversations = try await store.conversations()
                     guard self.generation == generation, !Task.isCancelled else { break }
-                    self.online = update.online
+                    self.online = update.online && !session.readOnly
                     self.synchronization = update.synchronization
                     self.hasSnapshot = self.hasContactSnapshot
                     self.preferences = try await store.allConversationPreferences()
@@ -237,7 +279,7 @@ final class ChatRuntime {
                         return left == right ? $0.id < $1.id : left > right
                     }
                     try await self.refreshListStates()
-                    if update.ownProfileVersion > (session.profile?.version ?? 0) {
+                    if !session.readOnly && update.ownProfileVersion > (session.profile?.version ?? 0) {
                         try? await session.reloadProfile()
                         guard self.generation == generation, !Task.isCancelled else { break }
                         self.publish()
@@ -249,12 +291,13 @@ final class ChatRuntime {
                         }
                         try? await store.acknowledgeMediaInvalidations(removed)
                     }
-                    if update.online { await transfers.resume() }
+                    if update.online && !session.readOnly { await transfers.resume() }
                 }
             } catch {
                 guard self.generation == generation else { return }
                 self.failure = "chat.live.storageFailure"
                 self.publish()
+                session.storageUnavailable()
             }
         }
     }
@@ -270,6 +313,7 @@ final class ChatRuntime {
     func stop() {
         guard stopping == nil else { return }
         generation = UUID()
+        networkTransition?.cancel()
         incomingTask?.cancel(); incomingTask = nil
         preferences = [:]
         listStates = [:]
@@ -314,7 +358,7 @@ final class ChatRuntime {
         let engine = engine
         Task {
             await engine?.setForegroundNotificationsEnabled(enabled)
-            if enabled { try? await engine?.synchronize() }
+            if enabled && !session.readOnly { try? await engine?.synchronize() }
         }
     }
     func preference(_ id: String) -> ConversationLocalPreferences { preferences[id] ?? .init() }
@@ -428,6 +472,10 @@ final class ChatRuntime {
         return memberName(peer)
     }
     func canSend(_ conversation: ChatConversation) -> Bool {
+        !session.readOnly && canCompose(conversation)
+    }
+    /// 本地草稿编辑不要求联网确认，但仍遵守会话成员与关闭状态。
+    func canCompose(_ conversation: ChatConversation) -> Bool {
         let conversation = conversations.first { $0.id == conversation.id } ?? conversation
         return !conversation.closed
             && conversation.members.contains { $0.id == userID && $0.active }
@@ -437,9 +485,12 @@ final class ChatRuntime {
                         && $0.peer.id == conversation.members.first(where: { $0.id != userID })?.id
                 })
     }
-    func refresh() { Task { try? await engine?.synchronize() } }
+    func refresh() { Task { await refreshAndWait() } }
     /// 等待共享同步结束，供刷新控件结束动画；存储不可用时不创建替代数据库。
-    func refreshAndWait() async { try? await engine?.synchronize() }
+    func refreshAndWait() async {
+        if session.readOnly { await session.restore() }
+        if !session.readOnly { try? await engine?.synchronize() }
+    }
     func changed() {
         guard let engine else { return }
         Task {

@@ -124,6 +124,26 @@ struct AccountTests {
         }
     }
 
+    @Test func activeSessionsRenewAndOldReplayRemainsDetectable() async throws {
+        try await withServer { (app: Application, fixture: Fixture) async throws in
+            let first = try await auth(app)
+            fixture.clock.advance(29 * 24 * 60 * 60)
+            let request = refresh(first.refreshToken)
+            let response = try await send(app, .POST, "/v1/auth/refresh", request)
+            let second = try decode(AuthResponse.self, response)
+            #expect(second.refreshExpiresAtMs == Int64(fixture.clock.now().timeIntervalSince1970 * 1000) + 2_592_000_000)
+            fixture.clock.advance(60)
+            #expect(try await send(app, .POST, "/v1/auth/refresh", request).body == response.body)
+            fixture.clock.advance(29 * 24 * 60 * 60)
+            let third = try decode(AuthResponse.self, await send(app, .POST, "/v1/auth/refresh", refresh(second.refreshToken)))
+            #expect(third.refreshExpiresAtMs > second.refreshExpiresAtMs)
+            let used = try await UsedRefreshRecord.query(on: app.db).all()
+            #expect(used.count == 2 && used.allSatisfy { $0.expiresAt == third.refreshExpiresAtMs })
+            #expect(try errorCode(await send(app, .POST, "/v1/auth/refresh", refresh(first.refreshToken))) == "REFRESH_REPLAY")
+            #expect(try await me(app, third.accessToken).status == .unauthorized)
+        }
+    }
+
     @Test func concurrentDuplicateRefreshIssuesOneGeneration() async throws {
         try await withServer { (app: Application, _: Fixture) async throws in
             let first = try await auth(app)
@@ -239,7 +259,7 @@ struct AccountTests {
             fixture.clock.advance(300)
             #expect(try await me(app, result.accessToken).status == .unauthorized)
             let renewed = try decode(AuthResponse.self, await send(app, .POST, "/v1/auth/refresh", refresh(result.refreshToken)))
-            #expect(renewed.refreshExpiresAtMs == result.refreshExpiresAtMs)
+            #expect(renewed.refreshExpiresAtMs == result.refreshExpiresAtMs + 901_000)
             fixture.clock.advance(30 * 24 * 60 * 60)
             #expect(try await send(app, .POST, "/v1/auth/refresh", refresh(renewed.refreshToken)).status == .unauthorized)
         }

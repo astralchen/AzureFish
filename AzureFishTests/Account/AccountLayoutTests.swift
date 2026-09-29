@@ -34,4 +34,29 @@ struct AccountLayoutTests {
             }
         }
     }
+
+    @Test func accessibilityLoginActionsScrollWithoutOverlapping() {
+        guard #available(iOS 17.0, *) else { return }
+        let controller = AuthenticationViewController(session: .configured(), register: false,
+            remembered: .init(environmentID: "preview", userID: UUID(), accountName: "fictional_user"))
+        controller.traitOverrides.preferredContentSizeCategory = .accessibilityExtraExtraExtraLarge
+        controller.loadViewIfNeeded()
+        controller.view.frame = CGRect(x: 0, y: 0, width: 390, height: 844)
+        controller.setNeedsQuickLayout(); controller.view.layoutIfNeeded()
+        let frames = controller.actions.map { $0.convert($0.bounds, to: controller.scroll) }
+        #expect(controller.actions.allSatisfy { $0.isDescendant(of: controller.scroll) })
+        for (previous, next) in zip(frames, frames.dropFirst()) {
+            #expect(previous.maxY <= next.minY)
+        }
+        #expect(frames.allSatisfy { $0.height >= 52 && $0.width > 300 })
+    }
+
+    @Test func settingsFooterIgnoresEstimatedHeightWhenMeasuringLongText() {
+        let footer = SettingsFooterView(frame: .zero)
+        footer.configure(key: "account.design.appearanceHelp")
+        let estimated = footer.sizeThatFits(CGSize(width: 160, height: 44))
+        let unlimited = footer.sizeThatFits(CGSize(width: 160, height: CGFloat.greatestFiniteMagnitude))
+        #expect(estimated == unlimited)
+        #expect(estimated.height > 44)
+    }
 }

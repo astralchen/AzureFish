@@ -85,14 +85,16 @@ final class AccountSettingsViewController: LocalizedQuickLayoutHostingController
                     }.onSelect { [weak self] _, _ in self?.open(.appearance) }
                 }.footer(SettingsFooterView.self, id: "appearance-help") { footer, _ in
                     footer.configure(key: "account.design.appearanceHelp")
-                }.layout(Self.sectionLayout(id: "appearance"))
+                }.boundarySupplementaryLayout(kind: UICollectionView.elementKindSectionFooter, alignment: .bottom, extendsBoundary: true)
+                    .layout(Self.sectionLayout(id: "appearance"))
                 ListSection("language") {
                     Row("account.design.language", model: language, cell: UICollectionViewListCell.self) { cell, value, _ in
                         Self.configure(cell, id: "account.design.language", title: Localization.text("account.design.language"), value: value, stackValue: stackValue)
                     }.onSelect { [weak self] _, _ in self?.open(.language) }
                 }.footer(SettingsFooterView.self, id: "language-help") { footer, _ in
                     footer.configure(key: "account.design.languageHelp")
-                }.layout(Self.sectionLayout(id: "language"))
+                }.boundarySupplementaryLayout(kind: UICollectionView.elementKindSectionFooter, alignment: .bottom, extendsBoundary: true)
+                    .layout(Self.sectionLayout(id: "language"))
             }
         case .privacy:
             adapter.apply(transaction: .disabled) {
@@ -118,7 +120,8 @@ final class AccountSettingsViewController: LocalizedQuickLayoutHostingController
                     }
                 }.footer(SettingsFooterView.self, id: "appearance-help") { footer, _ in
                     footer.configure(key: "account.design.appearanceHelp")
-                }.layout(Self.sectionLayout(id: "appearance-options"))
+                }.boundarySupplementaryLayout(kind: UICollectionView.elementKindSectionFooter, alignment: .bottom, extendsBoundary: true)
+                    .layout(Self.sectionLayout(id: "appearance-options"))
             }
         case .language:
             let controller = Localization.localizationController
@@ -144,7 +147,8 @@ final class AccountSettingsViewController: LocalizedQuickLayoutHostingController
                     }
                 }.footer(SettingsFooterView.self, id: "language-help") { footer, _ in
                     footer.configure(key: "account.design.languageHelp")
-                }.layout(Self.sectionLayout(id: "language-options"))
+                }.boundarySupplementaryLayout(kind: UICollectionView.elementKindSectionFooter, alignment: .bottom, extendsBoundary: true)
+                    .layout(Self.sectionLayout(id: "language-options"))
             }
         }
     }

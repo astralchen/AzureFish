@@ -73,6 +73,13 @@ struct StoredSession: Codable, Sendable, CustomStringConvertible {
     }
 }
 
+/// 登录页使用的账号提示，不是认证凭据，也不能授权打开账号存储。
+struct RememberedLoginAccount: Codable, Equatable {
+    let environmentID: String
+    let userID: UUID
+    let accountName: String
+}
+
 @MainActor
 final class CredentialStore {
     let values: any SecureValueStoring
@@ -100,6 +107,20 @@ final class CredentialStore {
         try values.write(JSONEncoder().encode(value), key: sessionKey)
     }
     func clear() throws { try values.remove(sessionKey) }
+    private var rememberedKey: String { "remembered-login." + environmentID }
+    func rememberedAccount() throws -> RememberedLoginAccount? {
+        guard let data = try values.read(rememberedKey) else { return nil }
+        let value = try JSONDecoder().decode(RememberedLoginAccount.self, from: data)
+        guard value.environmentID == environmentID else { throw AccountFailure.storage }
+        return value
+    }
+    func remember(_ profile: AccountProfile) throws {
+        let value = RememberedLoginAccount(environmentID: environmentID, userID: profile.userID, accountName: profile.accountName)
+        try values.write(JSONEncoder().encode(value), key: rememberedKey)
+    }
+    func forgetAccount(user: UUID) throws {
+        if try rememberedAccount()?.userID == user { try values.remove(rememberedKey) }
+    }
     func revocations() throws -> [LogoutRevocation] {
         guard let data = try values.read(revocationKey) else { return [] }
         do { return try JSONDecoder().decode([LogoutRevocation].self, from: data) }

@@ -175,7 +175,7 @@ struct AccountAPITests {
         var wrongEnvironment = authMessage(); wrongEnvironment.environmentID = "wrong"
         var wrongUser = authMessage(); wrongUser.profile.userID = UUID().uuidString
         var wrongDevice = authMessage(); wrongDevice.deviceID = UUID().uuidString
-        var wrongExpiry = authMessage(generation: 2); wrongExpiry.refreshExpiresAtMs += 1_000
+        var wrongExpiry = authMessage(generation: 2); wrongExpiry.refreshExpiresAtMs -= 1_000
         let replies = try [wrongEnvironment, wrongUser, wrongDevice, authMessage(), wrongExpiry].map { try $0.serializedData() }
         let transport = MockHTTPTransport { _, count in HTTPResponse(statusCode: 200, headers: ["Content-Type": "application/protobuf"], body: replies[count - 1]) }
         let api = AccountAPI(environment: try environment(), transport: transport)
@@ -187,7 +187,9 @@ struct AccountAPITests {
     }
 
     @Test func validRefreshAndEmptyLogoutResponse() async throws {
-        let auth = try authMessage(generation: 2).serializedData()
+        var renewedMessage = authMessage(generation: 2)
+        renewedMessage.refreshExpiresAtMs += 86_400_000
+        let auth = try renewedMessage.serializedData()
         let transport = MockHTTPTransport { _, count in
             HTTPResponse(statusCode: 200, headers: ["Content-Type": "application/protobuf"], body: count == 1 ? auth : Data())
         }

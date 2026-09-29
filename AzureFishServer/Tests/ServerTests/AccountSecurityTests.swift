@@ -69,6 +69,7 @@ struct AccountSecurityTests {
             #expect(try await send(app, .POST, "/v1/me/security/delete_account", request, token: a.accessToken).status == .accepted)
             #expect(try await send(app, .POST, "/v1/me/security/delete_account", request, token: a.accessToken).status == .accepted)
             #expect(try await me(app, a.accessToken).status == .unauthorized)
+            #expect(try await send(app, .POST, "/v1/auth/refresh", refresh(a.refreshToken)).status == .unauthorized)
             var get = ContactGetRequest(); get.peerUserID = a.userID
             let contact = try await imCall(app, "contacts/get", get, ContactRelationship.self, b)
             #expect(contact.peer.deleted && !contact.availableActions.contains("send"))

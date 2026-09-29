@@ -57,6 +57,7 @@ enum AccountFailure: Error, Equatable {
     }
     static func key(for error: Error) -> String {
         if let failure = error as? Self { return failure.key }
+        if let error = error as? APISessionError, error == .verificationRequired { return "account.connection.checking" }
         if error is CancellationError { return Self.cancelled.key }
         if let api = error as? APIClientError {
             switch api {

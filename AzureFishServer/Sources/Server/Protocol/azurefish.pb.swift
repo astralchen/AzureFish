@@ -123,7 +123,7 @@ public nonisolated struct LoginRequest: Sendable {
 
 /// 轮换同一会话的访问与刷新凭据所需的输入。
 ///
-/// 发送至 POST /v1/auth/refresh，成功返回下一代 AuthResponse，保持会话绝对截止不变。
+/// 发送至 POST /v1/auth/refresh，成功返回下一代 AuthResponse，将刷新截止续期至服务器当前时间起 30 天；相同操作重试返回原截止。
 /// 同一会话应合并并发刷新；已消费的 refresh 换操作 ID 重放会撤销整个会话。
 public nonisolated struct RefreshRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
@@ -248,7 +248,7 @@ public nonisolated struct AuthResponse: @unchecked Sendable {
     set {_uniqueStorage()._accessToken = newValue}
   }
 
-  /// 访问凭据到期时间，单位为 Unix 毫秒；最长 15 分钟且不超过会话绝对截止，刷新后旧访问凭据失效。
+  /// 访问凭据到期时间，单位为 Unix 毫秒；最长 15 分钟且不超过当前刷新截止，刷新后旧访问凭据失效。
   public var accessExpiresAtMs: Int64 {
     get {_storage._accessExpiresAtMs}
     set {_uniqueStorage()._accessExpiresAtMs = newValue}
@@ -260,7 +260,7 @@ public nonisolated struct AuthResponse: @unchecked Sendable {
     set {_uniqueStorage()._refreshToken = newValue}
   }
 
-  /// 会话绝对截止，单位为 Unix 毫秒；从建立起 30 天，刷新不延期，不是剩余有效秒数。
+  /// 当前刷新截止，单位为 Unix 毫秒；登录或成功刷新起 30 天，相同操作重试不重复续期，不是剩余有效秒数。
   public var refreshExpiresAtMs: Int64 {
     get {_storage._refreshExpiresAtMs}
     set {_uniqueStorage()._refreshExpiresAtMs = newValue}

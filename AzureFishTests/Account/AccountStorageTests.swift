@@ -7,10 +7,12 @@ import AzureFishAPI
 final class MemorySecureValues: SecureValueStoring {
     var data: [String: Data] = [:]
     var failWrites = false
+    var onWrite: ((String) -> Void)?
     func read(_ key: String) throws -> Data? { data[key] }
     func write(_ bytes: Data, key: String) throws {
         if failWrites { throw AccountFailure.storage }
         data[key] = bytes
+        onWrite?(key)
     }
     func remove(_ key: String) throws {
         if failWrites { throw AccountFailure.storage }
@@ -21,6 +23,27 @@ final class MemorySecureValues: SecureValueStoring {
 @Suite("账号输入与安全快照")
 @MainActor
 struct AccountStorageTests {
+    @Test func rememberedAccountIsEnvironmentScopedAndSurvivesCredentialClear() throws {
+        let keys = MemorySecureValues()
+        let first = CredentialStore(values: keys, environmentID: "first")
+        let second = CredentialStore(values: keys, environmentID: "second")
+        let profile = AccountProfile(userID: UUID(), accountName: "fictional", nickname: "Not stored", bio: "Not stored", version: 1)
+        try first.remember(profile)
+        try first.clear()
+        #expect(try first.rememberedAccount()?.userID == profile.userID)
+        #expect(try second.rememberedAccount() == nil)
+        let data = try #require(keys.data["remembered-login.first"])
+        #expect(!String(decoding: data, as: UTF8.self).contains("Not stored"))
+        keys.failWrites = true
+        #expect(throws: (any Error).self) { try first.remember(.init(userID: UUID(), accountName: "another", nickname: "", bio: "", version: 1)) }
+        #expect(keys.data["remembered-login.first"] == data)
+        keys.failWrites = false
+        try first.forgetAccount(user: UUID())
+        #expect(try first.rememberedAccount() != nil)
+        try first.forgetAccount(user: profile.userID)
+        #expect(try first.rememberedAccount() == nil)
+    }
+
     @Test func validationUsesCharactersAndUTF8Separately() {
         #expect(AccountValidation.account(" Fictional_USER "))
         #expect(!AccountValidation.account("用户abc"))

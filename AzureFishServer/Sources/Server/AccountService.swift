@@ -94,9 +94,16 @@ final class AccountService: Sendable {
                 }
                 guard let session = try await SessionRecord.query(on: db).filter(\.$refreshDigest == digest).first(),
                       !session.revoked, session.refreshExpiry > self.now,
-                      let user = try await UserRecord.find(session.userID, on: db) else {
+                      let user = try await UserRecord.find(session.userID, on: db),
+                      try self.payload(user).deleted != true else {
                     throw APIError(.unauthorized, "UNAUTHENTICATED")
                 }
+                session.refreshExpiry = self.now + self.refreshLifetime
+                // 摘要和操作墓碑随会话续期；结果恢复窗口仍保持原值，不再次开放旧结果。
+                try await UsedRefreshRecord.query(on: db).filter(\.$sessionID == session.requireID())
+                    .set(\.$expiresAt, to: session.refreshExpiry).update()
+                try await OperationRecord.query(on: db).filter(\.$sessionID == session.requireID())
+                    .set(\.$retentionExpiry, to: session.refreshExpiry).update()
                 let used = UsedRefreshRecord()
                 used.id = UUID(); used.digest = digest; used.sessionID = try session.requireID(); used.expiresAt = session.refreshExpiry
                 try await used.create(on: db)

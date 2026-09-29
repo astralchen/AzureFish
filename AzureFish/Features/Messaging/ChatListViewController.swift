@@ -23,6 +23,7 @@ struct LiveChatRow: Sendable, Equatable {
 /// 通讯录、会话和成员选择共享的原生列表，实体身份不随语言改变。
 class LiveChatListController: LocalizedQuickLayoutHostingController, UISearchResultsUpdating {
     let runtime: ChatRuntime
+    let connectionLabel = UILabel()
     let list = UICollectionView(frame: .zero, collectionViewLayout: UICollectionViewFlowLayout())
     private lazy var adapter = CollectionListAdapter<String>(collectionView: list)
     var rows: [LiveChatRow] = [] { didSet { renderRows() } }
@@ -37,11 +38,19 @@ class LiveChatListController: LocalizedQuickLayoutHostingController, UISearchRes
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
     override var body: Layout {
-        list.resizable().frame(maxWidth: .infinity, maxHeight: .infinity)
+        VStack(spacing: 0) {
+            if runtime.session.readOnly { connectionLabel.resizable(axis: .horizontal).padding(16) }
+            list.resizable().frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
     }
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .systemBackground
+        connectionLabel.font = .preferredFont(forTextStyle: .footnote)
+        connectionLabel.adjustsFontForContentSizeCategory = true
+        connectionLabel.numberOfLines = 0
+        connectionLabel.textColor = .secondaryLabel
+        connectionLabel.accessibilityIdentifier = "account.connection.status"
         list.backgroundColor = .clear
         list.contentInsetAdjustmentBehavior = .automatic
         list.alwaysBounceVertical = true
@@ -81,6 +90,8 @@ class LiveChatListController: LocalizedQuickLayoutHostingController, UISearchRes
     func reloadRows() { renderRows() }
     private func renderRows() {
         guard isViewLoaded else { return }
+        connectionLabel.text = Localization.text(runtime.session.connectivity == .checking ? "account.connection.checking" : "account.connection.offline")
+        setNeedsQuickLayout()
         let values = rows
         adapter.apply(transaction: .disabled) {
             ListSection("content") {
@@ -201,14 +212,13 @@ final class ConversationListViewController: LiveChatListController {
     private var showsPinnedToggle = false
     private var savingPinnedToggle = false
     override var body: Layout {
-        if showsPinnedToggle {
-            VStack(spacing: 0) {
+        VStack(spacing: 0) {
+            if runtime.session.readOnly { connectionLabel.resizable(axis: .horizontal).padding(16) }
+            if showsPinnedToggle {
                 pinnedToggle.resizable(axis: .horizontal).frame(minHeight: 44).padding(.horizontal, 16)
-                list.resizable().frame(maxWidth: .infinity, maxHeight: .infinity)
-            }.safeAreaPadding(.top, 0)
-        } else {
+            }
             list.resizable().frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
+        }.safeAreaPadding(.top, 0)
     }
     override var localizedTitleKey: String? { "account.design.chat" }
     override var showsSeparators: Bool { false }

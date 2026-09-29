@@ -6,6 +6,8 @@ import QuickLayoutKit
 /// 只在认证阶段改变时切换根容器，外观和语言变化保持当前导航栈。
 final class AccountRootViewController: LocalizedViewController, UITabBarControllerDelegate {
     private let session: SessionCoordinator
+    private var sessionObserver: UUID?
+    private let sceneIdentity = UUID()
     private var renderedIdentity: String?
     private var renderedPhase: SessionCoordinator.Phase?
     private var current: UIViewController?
@@ -17,16 +19,25 @@ final class AccountRootViewController: LocalizedViewController, UITabBarControll
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
     override func viewDidLoad() {
         super.viewDidLoad()
-        session.didChange = { [weak self] in self?.render() }
+        sessionObserver = session.observe { [weak self] in self?.render() }
         render()
-        Task { await session.restore() }
+        if session.phase == .restoring { Task { await session.restore() } }
     }
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         bannerCoordinator?.updateActivity()
     }
+    func setSceneActive(_ active: Bool) { session.setActive(active, scene: sceneIdentity) }
+    deinit {
+        let session = session, observer = sessionObserver, identity = sceneIdentity
+        Task { @MainActor in
+            if let observer { session.removeObserver(observer) }
+            session.setActive(false, scene: identity)
+        }
+    }
     private func render() {
         guard renderedPhase != session.phase || renderedIdentity != session.sessionIdentity else {
+            chatRuntime?.authenticationDidChange()
             chatRuntime?.publish()
             (current as? UINavigationController)?.viewControllers.compactMap { $0 as? AccountRecoveryViewController }.forEach { $0.reloadLocalizedContent() }
             return
@@ -36,7 +47,10 @@ final class AccountRootViewController: LocalizedViewController, UITabBarControll
         renderedIdentity = session.sessionIdentity
         let next: UIViewController
         switch session.phase {
-        case .welcome: next = UINavigationController(rootViewController: WelcomeViewController(session: session))
+        case .welcome:
+            if let remembered = session.rememberedAccount {
+                next = UINavigationController(rootViewController: AuthenticationViewController(session: session, register: false, remembered: remembered))
+            } else { next = UINavigationController(rootViewController: WelcomeViewController(session: session)) }
         case .restoring, .recovery: next = UINavigationController(rootViewController: AccountRecoveryViewController(session: session))
         case .signedIn:
             let tabs = UITabBarController()

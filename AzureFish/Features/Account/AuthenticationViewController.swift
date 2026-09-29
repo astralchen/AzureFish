@@ -31,6 +31,7 @@ final class WelcomeViewController: AccountScreen {
 final class AuthenticationViewController: AccountScreen {
     private let session: SessionCoordinator
     private let register: Bool
+    private let remembered: RememberedLoginAccount?
     private let account = AccountField(key: "account.design.account", identifier: "account.input.name")
     private let password = AccountField(key: "account.design.password", secure: true, identifier: "account.input.password")
     private let confirmation = AccountField(key: "account.design.confirmPassword", secure: true, identifier: "account.input.confirm")
@@ -39,8 +40,8 @@ final class AuthenticationViewController: AccountScreen {
     private var feedbackKey: String?
     private var submit: UIButton!
     private var task: Task<Void, Never>?
-    init(session: SessionCoordinator, register: Bool) {
-        self.session = session; self.register = register
+    init(session: SessionCoordinator, register: Bool, remembered: RememberedLoginAccount? = nil) {
+        self.session = session; self.register = register; self.remembered = remembered
         super.init(nibName: nil, bundle: nil)
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
@@ -57,18 +58,48 @@ final class AuthenticationViewController: AccountScreen {
         content = [label("account.design.\(register ? "register" : "login")", style: .title1),
                    label("account.design.\(register ? "registerHelp" : "loginHelp")", secondary: true), account]
         if register { content.append(label("account.design.accountRule", style: .footnote, secondary: true)) }
+        if let remembered {
+            account.input.text = remembered.accountName
+            account.input.isEnabled = false
+        }
+        if register { content += [nickname, label("account.design.nicknameRule", style: .footnote, secondary: true)] }
         content.append(password)
         if register {
-            content += [label("account.design.passwordRule", style: .footnote, secondary: true), confirmation, nickname,
-                        label("account.design.nicknameRule", style: .footnote, secondary: true)]
+            content += [label("account.design.passwordRule", style: .footnote, secondary: true), confirmation]
         }
         content.append(feedback)
         submit = button("account.design.\(register ? "register" : "signIn")", primary: true) { [weak self] in self?.send() }
         actions = [submit]
+        if !register {
+            if remembered != nil {
+                actions.append(button("account.login.other") { [weak self] in
+                    self?.discardThen { [weak self] in self?.openForm(register: false) }
+                })
+            }
+            actions.append(button("account.design.register") { [weak self] in
+                self?.discardThen { [weak self] in self?.openForm(register: true) }
+            })
+        }
+        let fields = register ? [account, nickname, password, confirmation] : remembered == nil ? [account, password] : [password]
+        for (index, field) in fields.enumerated() {
+            field.input.returnKeyType = index == fields.count - 1 ? .go : .next
+            let next = index + 1 < fields.count ? fields[index + 1].input : nil
+            field.input.addAction(UIAction { [weak self, weak next] _ in
+                if let next { next.becomeFirstResponder() }
+                else { self?.send() }
+            }, for: .editingDidEndOnExit)
+        }
+        settingsMenus()
+        if let notice = session.noticeKey { showFeedback(notice) }
         navigationItem.hidesBackButton = true
         navigationItem.leftBarButtonItem = UIBarButtonItem(title: Localization.text("account.design.cancel"), primaryAction: UIAction { [weak self] _ in self?.cancel() })
+        if remembered != nil { navigationItem.leftBarButtonItem = nil }
         navigationController?.interactivePopGestureRecognizer?.isEnabled = false
         setNeedsQuickLayout()
+    }
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        navigationController?.interactivePopGestureRecognizer?.isEnabled = false
     }
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
@@ -76,6 +107,7 @@ final class AuthenticationViewController: AccountScreen {
     }
     override func reloadLocalizedContent() {
         super.reloadLocalizedContent()
+        settingsMenus()
         [account, password, confirmation, nickname].forEach { $0.reloadText() }
         #if DEBUG
         if navigationItem.prompt != nil { navigationItem.prompt = Localization.text("account.debug.only") }
@@ -92,7 +124,12 @@ final class AuthenticationViewController: AccountScreen {
         else if register && input.password != confirmation.input.text { errorKey = "account.design.mismatch" }
         else if register && !AccountValidation.nickname(input.nickname) { errorKey = "account.design.nicknameRule" }
         else { errorKey = nil }
-        if let errorKey { showFeedback(errorKey); return }
+        if let errorKey {
+            showFeedback(errorKey)
+            let field = errorKey == "account.design.accountRule" ? account : errorKey == "account.design.nicknameRule" ? nickname : errorKey == "account.design.mismatch" ? confirmation : password
+            field.input.becomeFirstResponder()
+            return
+        }
         submit.isEnabled = false; submit.configuration?.showsActivityIndicator = true
         [account, password, confirmation, nickname].forEach { $0.input.isEnabled = false }
         showFeedback(nil)
@@ -101,8 +138,12 @@ final class AuthenticationViewController: AccountScreen {
             defer {
                 self.task = nil; self.submit.isEnabled = true; self.submit.configuration?.showsActivityIndicator = false
                 [self.account, self.password, self.confirmation, self.nickname].forEach { $0.input.isEnabled = true }
+                self.account.input.isEnabled = self.remembered == nil
             }
-            do { try await self.session.authenticate(input) }
+            do {
+                try await self.session.authenticate(input)
+                self.password.input.text = nil; self.confirmation.input.text = nil
+            }
             catch { self.showFeedback(AccountFailure.key(for: error)) }
         }
     }
@@ -124,13 +165,22 @@ final class AuthenticationViewController: AccountScreen {
     }
     #endif
 
+    private func openForm(register: Bool) {
+        navigationController?.pushViewController(AuthenticationViewController(session: session, register: register), animated: true)
+    }
     private func cancel() {
-        let changed = [account, password, confirmation, nickname].contains { !($0.input.text ?? "").isEmpty }
-        guard changed || task != nil else { navigationController?.popViewController(animated: true); return }
+        discardThen { [weak self] in self?.navigationController?.popViewController(animated: true) }
+    }
+    private func discardThen(_ action: @escaping () -> Void) {
+        let fields = remembered == nil ? [account, password, confirmation, nickname] : [password]
+        let changed = fields.contains { !($0.input.text ?? "").isEmpty }
+        guard changed || task != nil else { action(); return }
         let alert = UIAlertController(title: Localization.text("account.design.discard"), message: Localization.text("account.cancel.auth"), preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: Localization.text("account.design.keepEditing"), style: .cancel))
         alert.addAction(UIAlertAction(title: Localization.text("account.design.discard"), style: .destructive) { [weak self] _ in
-            self?.task?.cancel(); self?.session.cancelAuthentication(); self?.navigationController?.popViewController(animated: true)
+            self?.task?.cancel(); self?.session.cancelAuthentication()
+            self?.password.input.text = nil; self?.confirmation.input.text = nil
+            action()
         })
         present(alert, animated: true)
     }
@@ -141,4 +191,12 @@ final class AuthenticationViewController: AccountScreen {
 #Preview("Welcome · 方案 2") { UINavigationController(rootViewController: WelcomeViewController(session: .configured())) }
 @available(iOS 17.0, *)
 #Preview("Registration") { UINavigationController(rootViewController: AuthenticationViewController(session: .configured(), register: true)) }
+#endif
+
+#if DEBUG
+@available(iOS 17.0, *)
+#Preview("Remembered account") {
+    UINavigationController(rootViewController: AuthenticationViewController(session: .configured(), register: false,
+        remembered: .init(environmentID: "preview", userID: UUID(uuidString: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")!, accountName: "fictional_user")))
+}
 #endif

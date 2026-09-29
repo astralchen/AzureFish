@@ -34,12 +34,18 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     /// 解除已断开窗口的本地化登记。
     func sceneDidDisconnect(_ scene: UIScene) {
+        (window?.rootViewController as? AccountRootViewController)?.setSceneActive(false)
         if let window { Localization.unregister(window: window) }
     }
 
     /// 场景激活时同步最新语言及界面方向。
     func sceneDidBecomeActive(_ scene: UIScene) {
         if let window { Localization.synchronize(window: window) }
+        (window?.rootViewController as? AccountRootViewController)?.setSceneActive(true)
+    }
+
+    func sceneWillResignActive(_ scene: UIScene) {
+        (window?.rootViewController as? AccountRootViewController)?.setSceneActive(false)
     }
 
     /// 返回前台时检查系统首选语言是否变化。

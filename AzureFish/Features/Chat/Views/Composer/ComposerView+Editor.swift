@@ -30,7 +30,7 @@ extension ComposerView {
     /// 要求处于音频预览、没有媒体组及普通文本，并且输入未暂停。
     var canSendAudioDraft: Bool {
         guard case .audioPreview = composerState else { return false }
-        return mediaDraft == nil && plainDraftText.isEmpty && !textView.isInputSuspended
+        return submissionAllowed && mediaDraft == nil && plainDraftText.isEmpty && !textView.isInputSuspended
     }
 
     /// 将整批内容替换到当前选区；附件异步更新不会再改变插入位置。

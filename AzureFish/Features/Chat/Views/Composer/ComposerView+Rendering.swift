@@ -233,7 +233,7 @@ extension ComposerView {
         let canSend = !textView.isInputSuspended && hasSendableContent
         // 导入进度只改变发送权限，不切换系统玻璃按钮的灰色/蓝色外观。
         // 隐藏期间也保留蓝色，首次出现与追加媒体都不会先闪过禁用色。
-        sendButton.isEnabled = !isShowingRecordingUnavailableHint
+        sendButton.isEnabled = submissionAllowed && !isShowingRecordingUnavailableHint
         sendButton.isUserInteractionEnabled = canSend
         if canSend {
             sendButton.accessibilityTraits.remove(.notEnabled)

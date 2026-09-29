@@ -387,11 +387,12 @@ final class LiveConversationViewController: LocalizedQuickLayoutHostingControlle
                 render()
                 guard runtime.engine === engine, generation == reloadGeneration else { return }
                 let allowed = runtime.canSend(conversation) && !reediting && !submitting
-                editor.isEditable = allowed
+                editor.isEditable = runtime.canCompose(conversation) && !reediting && !submitting
                 sendButton.isEnabled = allowed
-                attachmentButton.isEnabled = allowed
-                voiceButton.isEnabled = allowed
-                notice.text =
+                attachmentButton.isEnabled = runtime.canCompose(conversation) && !reediting && !submitting
+                voiceButton.isEnabled = runtime.canCompose(conversation) && !reediting && !submitting
+                notice.text = runtime.session.readOnly
+                    ? Localization.text(runtime.session.connectivity == .checking ? "account.connection.checking" : "account.connection.offline") :
                     !allowed
                     ? Localization.text(
                         conversation.closed ? "chat.live.closed" : "chat.live.friendRequired")

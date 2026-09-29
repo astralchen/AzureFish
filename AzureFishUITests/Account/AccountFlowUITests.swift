@@ -2,6 +2,38 @@ import XCTest
 
 /// 账号界面与显式回环联调入口；不在测试中启用真实账号服务。
 final class AccountFlowUITests: XCTestCase {
+    @MainActor func testRememberedAccountSwitchAndRegistrationReturn() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["-account-scenario", "login.remembered", "-azurefish.locale.identifier", "en"]
+        app.launch()
+        let account = app.textFields["account.input.name"]
+        XCTAssertTrue(account.waitForExistence(timeout: 15))
+        XCTAssertEqual(account.value as? String, "fictional_user")
+        XCTAssertFalse(account.isEnabled)
+        let capture = XCTAttachment(screenshot: app.screenshot())
+        capture.name = "remembered-login"; capture.lifetime = .keepAlways; add(capture)
+        let other = app.buttons["account.login.other"]
+        for _ in 0..<8 where !other.isHittable { app.scrollViews["account.form.scroll"].swipeUp() }
+        XCTAssertLessThanOrEqual(app.buttons["account.design.signIn"].frame.maxY, other.frame.minY)
+        XCTAssertLessThanOrEqual(other.frame.maxY, app.buttons["account.design.register"].frame.minY)
+        let actions = XCTAttachment(screenshot: app.screenshot())
+        actions.name = "remembered-login-actions"; actions.lifetime = .keepAlways; add(actions)
+        other.tap()
+        XCTAssertTrue(account.isEnabled)
+        XCTAssertNotEqual(account.value as? String, "fictional_user")
+        app.navigationBars.buttons["Cancel"].tap()
+        XCTAssertFalse(account.isEnabled)
+        app.buttons["account.design.register"].tap()
+        let nickname = app.textFields["account.input.nickname"]
+        XCTAssertTrue(nickname.waitForExistence(timeout: 5))
+        XCTAssertTrue(account.isEnabled)
+        XCTAssertLessThan(nickname.frame.minY, app.secureTextFields["account.input.password"].frame.minY)
+        app.navigationBars.buttons["Cancel"].tap()
+        XCTAssertEqual(account.value as? String, "fictional_user")
+        XCTAssertFalse(account.isEnabled)
+    }
+
     @MainActor func testSecurityListActionsLanguagesAndThemes() {
         continueAfterFailure = false
         let app = XCUIApplication()
@@ -180,6 +212,7 @@ final class AccountFlowUITests: XCTestCase {
             XCTAssertLessThanOrEqual(cell.frame.maxX, app.frame.maxX - 23)
         }
         XCTAssertTrue(app.staticTexts["account.design.appearanceHelp"].exists)
+        XCTAssertGreaterThanOrEqual(app.staticTexts["account.design.appearanceHelp"].frame.minY, appearance.frame.maxY)
         let overview = XCTAttachment(screenshot: app.screenshot())
         overview.name = "settings-large-overview"; overview.lifetime = .keepAlways; add(overview)
         let language = app.cells["account.design.language"]
@@ -314,6 +347,8 @@ final class AccountFlowUITests: XCTestCase {
         let username = "ui_" + UUID().uuidString.replacingOccurrences(of: "-", with: "").prefix(12)
         let name = app.textFields["account.input.name"]
         XCTAssertTrue(name.waitForExistence(timeout: 5)); name.tap(); name.typeText(username)
+        let nickname = app.textFields["account.input.nickname"]
+        nickname.tap(); nickname.typeText("Fictional UI")
         let fictionalPassword = "fictionalpassword"
         let password = app.secureTextFields["account.input.password"]
         password.tap()
@@ -329,9 +364,6 @@ final class AccountFlowUITests: XCTestCase {
         dismissPasswordSuggestion(in: app)
         XCTAssertTrue(app.keys["f"].waitForExistence(timeout: 5))
         app.typeText(fictionalPassword)
-        let nickname = app.textFields["account.input.nickname"]
-        for _ in 0..<3 where !nickname.isHittable { app.scrollViews.firstMatch.swipeUp() }
-        nickname.tap(); nickname.typeText("Fictional UI")
         register.tap()
         XCTAssertTrue(app.tabBars.buttons["Me"].waitForExistence(timeout: 20))
         app.tabBars.buttons["Me"].tap()
@@ -357,7 +389,12 @@ final class AccountFlowUITests: XCTestCase {
         XCTAssertTrue(app.cells["account.design.editProfile"].waitForExistence(timeout: 15))
         let attachment = XCTAttachment(screenshot: app.screenshot()); attachment.name = "profile-saved-live"; attachment.lifetime = .keepAlways; add(attachment)
         app.cells["account.design.signOut"].tap(); app.alerts.buttons["Sign out"].tap()
-        XCTAssertTrue(app.buttons["account.design.accountLogin"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.buttons["account.login.other"].waitForExistence(timeout: 15))
+        app.terminate(); app.launch()
+        XCTAssertTrue(app.buttons["account.login.other"].waitForExistence(timeout: 15))
+        XCTAssertEqual(app.textFields["account.input.name"].value as? String, String(username).lowercased())
+        XCTAssertFalse(app.textFields["account.input.name"].isEnabled)
+        XCTAssertFalse(app.tabBars.firstMatch.exists)
     }
 
     @MainActor func testLivePasswordLogoutAllAndDeletion() throws {
@@ -394,14 +431,15 @@ final class AccountFlowUITests: XCTestCase {
             XCTAssertTrue(app.cells["account.design.security"].waitForExistence(timeout: 10))
         }
         func login() {
-            XCTAssertTrue(app.buttons["account.design.accountLogin"].waitForExistence(timeout: 20)); app.buttons["account.design.accountLogin"].tap()
-            type("account.input.name", String(username), secure: false); type("account.input.password", newPassword)
+            XCTAssertTrue(app.buttons["account.login.other"].waitForExistence(timeout: 20))
+            XCTAssertEqual(app.textFields["account.input.name"].value as? String, String(username).lowercased())
+            type("account.input.password", newPassword)
             app.buttons["account.design.signIn"].tap(); me()
         }
         XCTAssertTrue(app.buttons["account.design.register"].waitForExistence(timeout: 20)); app.buttons["account.design.register"].tap()
         type("account.input.name", String(username), secure: false)
-        type("account.input.password", oldPassword); type("account.input.confirm", oldPassword)
         type("account.input.nickname", "Fictional Closure", secure: false)
+        type("account.input.password", oldPassword); type("account.input.confirm", oldPassword)
         app.buttons["account.design.register"].tap(); me()
         if ProcessInfo.processInfo.environment["AZUREFISH_AVATAR_UI_LIVE"] == "1" {
             app.cells["account.design.editProfile"].tap()

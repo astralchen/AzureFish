@@ -64,7 +64,7 @@ message LoginRequest {
 
 // 轮换同一会话的访问与刷新凭据所需的输入。
 //
-// 发送至 POST /v1/auth/refresh，成功返回下一代 AuthResponse，保持会话绝对截止不变。
+// 发送至 POST /v1/auth/refresh，成功返回下一代 AuthResponse，将刷新截止续期至服务器当前时间起 30 天；相同操作重试返回原截止。
 // 同一会话应合并并发刷新；已消费的 refresh 换操作 ID 重放会撤销整个会话。
 message RefreshRequest {
     // 本次刷新动作的全局唯一 UUID，须为 36 字符；响应丢失时使用同一 ID 和原字节恢复结果，不创建第二个刷新动作。
@@ -125,11 +125,11 @@ message AuthResponse {
     string session_id = 4;
     // 当前代次的随机不透明访问凭据，通过 Authorization: Bearer 原样发送，不在客户端解析内部身份。
     string access_token = 5;
-    // 访问凭据到期时间，单位为 Unix 毫秒；最长 15 分钟且不超过会话绝对截止，刷新后旧访问凭据失效。
+    // 访问凭据到期时间，单位为 Unix 毫秒；最长 15 分钟且不超过当前刷新截止，刷新后旧访问凭据失效。
     int64 access_expires_at_ms = 6;
     // 当前代次的随机不透明刷新凭据，每次成功刷新替换；应与同一响应中的访问凭据一起更新。
     string refresh_token = 7;
-    // 会话绝对截止，单位为 Unix 毫秒；从建立起 30 天，刷新不延期，不是剩余有效秒数。
+    // 当前刷新截止，单位为 Unix 毫秒；登录或成功刷新起 30 天，相同操作重试不重复续期，不是剩余有效秒数。
     int64 refresh_expires_at_ms = 8;
     // 刷新代次，从 1 开始，成功刷新加 1；默认 0 无效，客户端不得用旧代结果覆盖新凭据。
     int64 refresh_generation = 9;

@@ -1,6 +1,93 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "account.login.other" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "登录其他账号"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "登入其他帳號"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Log in to another account"
+          }
+        },
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تسجيل الدخول إلى حساب آخر"
+          }
+        }
+      }
+    },
+    "account.connection.checking" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在验证登录状态，暂时只能查看本地内容。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在驗證登入狀態，暫時只能檢視本機內容。"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verifying your session. Local content is available to view."
+          }
+        },
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "جارٍ التحقق من جلسة تسجيل الدخول. يمكنك عرض المحتوى المحلي مؤقتًا."
+          }
+        }
+      }
+    },
+    "account.connection.offline" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "当前离线，可以查看本地内容。联网后重试。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "目前離線，可以檢視本機內容。連線後重試。"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You’re offline. You can view local content and retry when connected."
+          }
+        },
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "أنت غير متصل. يمكنك عرض المحتوى المحلي وإعادة المحاولة عند الاتصال."
+          }
+        }
+      }
+    },
     "account.avatar.choose" : {
       "extractionState" : "manual",
       "localizations" : {

@@ -70,6 +70,54 @@ private actor Gate {
 
 @Suite("共享会话与实时提示", .timeLimit(.minutes(1)))
 struct SessionRealtimeTests {
+    @Test func rejectedRefreshPublishesReauthenticationToAllConsumers() async throws {
+        let fixture = SessionFixture(), store = MemorySessionStore()
+        let transport = MockHTTPTransport { _, _ in try failure() }
+        let manager = APISessionManager(api: AccountAPI(environment: fixture.environment, transport: transport), store: store)
+        try await manager.install(fixture.credentials())
+        await #expect(throws: (any Error).self) { try await manager.refresh() }
+        #expect(await manager.state.requiresReauthentication)
+        await #expect(throws: APISessionError.verificationRequired) { try await manager.credentials() }
+        try await manager.clearLocalSession()
+        #expect(await store.records.isEmpty)
+        try await manager.install(fixture.credentials())
+        #expect(try await manager.credentials().userID == fixture.user)
+    }
+
+    @Test func localClockExpiryRequestsServerConfirmationInsteadOfDiscardingSession() async throws {
+        let fixture = SessionFixture(), store = MemorySessionStore()
+        let transport = MockHTTPTransport { request, _ in
+            request.url.path.hasSuffix("refresh") ? try fixture.auth() : try fixture.profileResponse()
+        }
+        let manager = APISessionManager(api: AccountAPI(environment: fixture.environment, transport: transport), store: store)
+        try await manager.install(fixture.credentials())
+        #expect(try await manager.validateSession(now: Date(timeIntervalSince1970: 2_000_000_000)).userID == fixture.user)
+        #expect(await manager.state.refreshGeneration == 2)
+        #expect(await transport.requests.filter { $0.url.path.hasSuffix("refresh") }.count == 1)
+    }
+
+    @Test func localRestoreDoesNotSendPendingRefreshAndBlocksBusinessRequests() async throws {
+        let fixture = SessionFixture(), store = MemorySessionStore()
+        let operation = UUID()
+        try await store.save(.init(credentials: fixture.credentials(), pendingRefreshOperationID: operation), environmentID: "test")
+        let transport = MockHTTPTransport { request, _ in
+            request.url.path.hasSuffix("refresh") ? try fixture.auth() : try fixture.profileResponse()
+        }
+        let manager = APISessionManager(api: AccountAPI(environment: fixture.environment, transport: transport), store: store)
+        await manager.setNetworkAccessAllowed(false)
+        try await manager.restoreLocal()
+        #expect(await transport.requests.isEmpty)
+        #expect(try await manager.localIdentity().userID == fixture.user)
+        await #expect(throws: APISessionError.verificationRequired) { try await manager.profile() }
+        #expect(try await manager.validateSession().userID == fixture.user)
+        let requests = await transport.requests
+        #expect(requests.filter { $0.url.path.hasSuffix("refresh") }.count == 1)
+        #expect(try RefreshRequest(serializedBytes: requests[0].body!).operationID == operation.uuidString.lowercased())
+        await #expect(throws: APISessionError.verificationRequired) { try await manager.credentials() }
+        await manager.setNetworkAccessAllowed(true)
+        #expect(try await manager.profile().userID == fixture.user)
+    }
+
     @Test func concurrentHTTPAndWebSocketConfirmationShareRefresh() async throws {
         let fixture = SessionFixture(), store = MemorySessionStore(), gate = Gate()
         let transport = MockHTTPTransport { request, _ in

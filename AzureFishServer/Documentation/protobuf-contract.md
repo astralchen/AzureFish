@@ -24,13 +24,13 @@ proto 中维护中文消息与字段注释，并设置 `option swift_prefix = ""
 
 ## 会话、刷新与重试
 
-- 令牌为独立的 256 位随机不透明值。access 最长 15 分钟，refresh 从会话建立起绝对 30 天，刷新不延期；access 同样不得超过 refresh 截止。`refresh_generation` 从 1 开始，每次成功刷新加 1。
+- 令牌为独立的 256 位随机不透明值。access 最长 15 分钟，refresh 在登录或每次成功刷新后有效 30 天；相同操作重试返回原截止，过期或撤销会话不能续期；access 同样不得超过 refresh 截止。`refresh_generation` 从 1 开始，每次成功刷新加 1。
 - 每次刷新同时替换 access／refresh，旧 access 立即失效。客户端每个 session 只允许一个共享刷新任务。
-- 成功写动作保存加密结果，恢复窗口 10 分钟（受会话绝对截止限制）。注册、登录、刷新在原会话有效且代次仍相同时可重放相同结果，支持服务重启恢复。
+- 成功写动作保存加密结果，恢复窗口 10 分钟（受当次刷新截止限制）。注册、登录、刷新在原会话有效且代次仍相同时可重放相同结果，支持服务重启恢复。
 - 操作 ID 全局唯一。已有 ID 搭配不同路由／会话或不同请求字节返回 `OPERATION_CONFLICT`，不执行业务。资料及退出重试作用域绑定 session，不绑定某个 access，因此普通资料重试可跨刷新。
 - 已完成的刷新以相同操作 ID 重试，若会话又推进到更高代次，返回 `REFRESH_SUPERSEDED`，不撤销新会话。注册／登录旧结果的代次失效返回 `AUTH_ATTEMPT_EXPIRED`。
 - 消费过的 refresh 搭配其他操作 ID 使用，撤销整个 session，提交撤销事务后返回 `REFRESH_REPLAY`。无法识别、已撤销或已过期的令牌返回 `UNAUTHENTICATED`。
-- 恢复窗口过期不会重新执行已知动作；认证返回 `AUTH_ATTEMPT_EXPIRED`，资料／退出返回 `OPERATION_RESULT_EXPIRED`。结果和去重记录当前保留在加密／摘要形式的本地开发库中，尚无自动物理清理任务；后续清理需保留足够墓碑防止旧动作再次执行。
+- 恢复窗口过期不会重新执行已知动作；认证返回 `AUTH_ATTEMPT_EXPIRED`，资料／退出返回 `OPERATION_RESULT_EXPIRED`。结果和去重记录当前保留在加密／摘要形式的本地开发库中，尚无自动物理清理任务；续期时同步延长旧 refresh 摘要和操作墓碑的保留截止，但不延长结果恢复窗口，后续清理不能在活跃会话结束前删除这些记录。
 - 退出响应丢失时，在原 access 尚未过期、恢复窗口内可使用相同操作 ID 重试已撤销的退出；其他 API 不能使用此会话。旧 access 已被刷新替换时无法执行退出，客户端须用当前 access。
 
 客户端收到业务 401 时只对 `UNAUTHENTICATED` 尝试共享刷新；`INVALID_CREDENTIALS` 是密码失败，`REFRESH_REPLAY` 终止会话。离线不等同于账号失效。需要最近身份确认的敏感动作尚未开放。

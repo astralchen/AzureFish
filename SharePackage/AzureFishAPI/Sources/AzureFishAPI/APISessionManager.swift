@@ -22,7 +22,7 @@ public protocol APISessionStore: Sendable {
 }
 
 public enum APISessionError: Error, Sendable, Equatable {
-    case noSession, sessionChanged, storageFailure
+    case noSession, sessionChanged, storageFailure, verificationRequired
 }
 
 /// 不携带令牌的会话变化通知；generation 在恢复、替换和清理时变化。
@@ -31,6 +31,8 @@ public struct APISessionState: Sendable, Equatable {
     public let userID: UUID?
     public let sessionID: UUID?
     public let refreshGeneration: Int64?
+    /// 服务器已明确拒绝会话；调用方应结束该账号的界面和本地会话访问。
+    public var requiresReauthentication: Bool = false
 }
 
 /// 统一账号凭据持久化、HTTP 认证重试与 WebSocket 刷新协作。
@@ -44,6 +46,8 @@ public actor APISessionManager {
     private var epoch = UUID()
     private var record: APISessionRecord?
     private var endingSession = false
+    private var networkAccessAllowed = true
+    private var requiresReauthentication = false
     private var refreshTask: Task<SessionCredentials, any Error>?
     private var refreshID: UUID?
     private var requests: [UUID: @Sendable () -> Void] = [:]
@@ -54,7 +58,7 @@ public actor APISessionManager {
     public var state: APISessionState {
         let visible = endingSession ? nil : record?.credentials
         return APISessionState(generation: epoch, userID: visible?.userID,
-                               sessionID: visible?.sessionID, refreshGeneration: visible?.refreshGeneration)
+                               sessionID: visible?.sessionID, refreshGeneration: visible?.refreshGeneration, requiresReauthentication: requiresReauthentication)
     }
 
     public func changes() -> AsyncStream<APISessionState> {
@@ -67,13 +71,48 @@ public actor APISessionManager {
 
     /// 恢复完整记录；遇到未完成刷新时复用原操作身份，网络失败保留恢复记录。
     public func restore() async throws {
+        try await restoreLocal()
+        if record?.pendingRefreshOperationID != nil { _ = try await refresh() }
+    }
+
+    /// 只恢复本地身份和未决操作，不等待网络；调用方须在验证期间关闭业务网络访问。
+    public func restoreLocal() async throws {
         let generation = invalidate()
         let store = store, environment = environment.identifier
         let loaded = try await persistence.submit { try await store.load(environmentID: environment) }.value
         try check(generation)
         if let loaded, loaded.credentials.environmentID != environment { throw APIClientError.credentialsMismatch }
         record = loaded; publish()
-        if loaded?.pendingRefreshOperationID != nil { _ = try await refresh() }
+    }
+
+    /// 控制普通 HTTP 和实时连接能否取用凭据；本地身份与显式认证校验仍可用。
+    public func setNetworkAccessAllowed(_ allowed: Bool) {
+        networkAccessAllowed = allowed
+        if !allowed { requests.values.forEach { $0() } }
+    }
+
+    /// 校验已恢复会话；本地到期判断仅触发刷新，是否失效由服务器确认。
+    public func validateSession(now: Date = Date()) async throws -> UserProfile {
+        guard !endingSession, let record else { throw APISessionError.noSession }
+        let generation = epoch
+        var credentials = record.credentials
+        if record.pendingRefreshOperationID != nil || credentials.accessExpiresAt <= now || credentials.refreshExpiresAt <= now {
+            credentials = try await refresh()
+        }
+        try check(generation)
+        do {
+            let current = credentials
+            let profile = try await tracked { [api] in try await api.profile(using: current) }
+            try check(generation)
+            return profile
+        } catch {
+            try check(generation)
+            guard isUnauthenticated(error) else { throw error }
+            let renewed = try await refresh()
+            let profile = try await tracked { [api] in try await api.profile(using: renewed) }
+            try check(generation)
+            return profile
+        }
     }
 
     /// 先停止旧会话，再持久化新凭据；存储失败时不会发布新会话。
@@ -82,7 +121,7 @@ public actor APISessionManager {
         let generation = invalidate(), value = APISessionRecord(credentials: credentials)
         try await save(value)
         try check(generation)
-        record = value; publish()
+        record = value; networkAccessAllowed = true; publish()
     }
 
     /// 返回当前身份供离线草稿绑定；不保证访问令牌有效，也不发起刷新。
@@ -93,6 +132,7 @@ public actor APISessionManager {
     /// 返回当前凭据；有 pending refresh 时先完成其恢复，避免使用已被消费的旧代次。
     public func credentials() async throws -> SessionCredentials {
         guard !endingSession, let record else { throw APISessionError.noSession }
+        guard networkAccessAllowed, !requiresReauthentication else { throw APISessionError.verificationRequired }
         if record.pendingRefreshOperationID != nil || refreshTask != nil { return try await refresh() }
         return record.credentials
     }
@@ -111,7 +151,11 @@ public actor APISessionManager {
                 let credentials = try await self.performRefresh(record.credentials, operationID: operationID, generation: generation)
                 await self.finishRefresh(id)
                 return credentials
-            } catch { await self.finishRefresh(id); throw error }
+            } catch {
+                await self.noteAuthenticationFailure(error, generation: generation)
+                await self.finishRefresh(id)
+                throw error
+            }
         }
         refreshTask = task
         return try await waitForSharedNetworkTask(task)
@@ -150,7 +194,7 @@ public actor APISessionManager {
     /// 立即停止旧任务与实时订阅，再撤销服务端会话。失败保留存储，调用方可重试相同 operationID。
     public func logout(operationID: UUID = UUID()) async throws {
         let sourceGeneration = epoch
-        let old = endingSession ? record?.credentials : try await credentials()
+        let old = record?.credentials
         try check(sourceGeneration)
         guard let old else { throw APISessionError.noSession }
         let operation = try api.prepareLogout(operationID: operationID, using: old)
@@ -187,16 +231,23 @@ public actor APISessionManager {
         try check(generation)
         do {
             let value = try await tracked { try await work(initial) }
-            try check(generation); return value
+            try check(generation)
+            guard networkAccessAllowed else { throw APISessionError.verificationRequired }
+            return value
         } catch {
             try check(generation)
+            guard networkAccessAllowed else { throw APISessionError.verificationRequired }
             guard isUnauthenticated(error) else { throw error }
             let latest = try await credentials()
             try check(generation)
             let retry = latest != initial ? latest : try await refresh()
             try check(generation)
-            let value = try await tracked { try await work(retry) }
-            try check(generation); return value
+            do {
+                let value = try await tracked { try await work(retry) }
+                try check(generation)
+                guard networkAccessAllowed else { throw APISessionError.verificationRequired }
+                return value
+            } catch { noteAuthenticationFailure(error, generation: generation); throw error }
         }
     }
 
@@ -231,7 +282,7 @@ public actor APISessionManager {
     }
     @discardableResult
     private func invalidate() -> UUID {
-        epoch = UUID(); record = nil; endingSession = false
+        epoch = UUID(); record = nil; endingSession = false; requiresReauthentication = false
         refreshTask?.cancel(); refreshTask = nil; refreshID = nil
         for cancel in requests.values { cancel() }; requests.removeAll()
         publish()
@@ -242,6 +293,14 @@ public actor APISessionManager {
         try Task.checkCancellation()
     }
     private func finishRefresh(_ id: UUID) { if refreshID == id { refreshID = nil; refreshTask = nil } }
+    private func noteAuthenticationFailure(_ error: any Error, generation: UUID) {
+        guard epoch == generation, !endingSession,
+              case APIClientError.service(let failure) = error,
+              [.unauthenticated, .refreshReplay, .refreshSuperseded, .authAttemptExpired].contains(failure.code) else { return }
+        requiresReauthentication = true
+        networkAccessAllowed = false
+        publish()
+    }
     private func isUnauthenticated(_ error: any Error) -> Bool {
         if case APIClientError.service(let failure) = error { return failure.isUnauthenticated }
         return false

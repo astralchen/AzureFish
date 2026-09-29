@@ -69,7 +69,7 @@ public struct AccountAPI: Sendable {
 
     /// 用当前刷新令牌准备一次会话轮换操作，不在此处保存或替换凭据。
     ///
-    /// 执行时不额外传入 Bearer。响应必须保持用户、设备、会话和绝对刷新截止一致，
+    /// 执行时不额外传入 Bearer。响应必须保持用户、设备和会话一致，刷新截止不能早于旧截止，
     /// 且刷新代次恰好递增 1。同一会话的并发刷新应由调用方合并；需要重启恢复时，
     /// 由应用层按认证设计持久化动作 ID 和对应旧凭据，此方法不会访问 Keychain。
     ///
@@ -88,7 +88,7 @@ public struct AccountAPI: Sendable {
             let result = try Self.auth(data, environment: environment, expectedDevice: credentials.deviceID)
             guard result.credentials.userID == credentials.userID, result.credentials.sessionID == credentials.sessionID,
                   result.credentials.refreshGeneration == credentials.refreshGeneration + 1,
-                  result.credentials.refreshExpiresAt == credentials.refreshExpiresAt else { throw APIClientError.invalidResponse }
+                  result.credentials.refreshExpiresAt >= credentials.refreshExpiresAt else { throw APIClientError.invalidResponse }
             return result
         }
     }
