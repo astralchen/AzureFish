@@ -11,29 +11,33 @@ struct ContactSection: Equatable {
     let contacts: [ChatContact]
 }
 
-/// 通讯录排序与分组只使用显示语言；用户身份及账号规范化不变。
+/// 通讯录按显示名称的中文拼音排序，使用 A–Z 分组，其他首字符归入末尾的 `#`。
+///
+/// 索引不随界面语言变化；备注优先级、用户身份及账号规范化不变。
 enum ContactDirectoryPresentation {
-    static func sections(_ contacts: [ChatContact], query: String, locale: Locale) -> [ContactSection] {
-        let values = contacts.filter { $0.isContact && !$0.isBlocked && $0.matches(query) }.sorted {
-            let order = $0.displayName.compare($1.displayName, options: [.caseInsensitive, .diacriticInsensitive], locale: locale)
-            return order == .orderedSame ? $0.peer.id < $1.peer.id : order == .orderedAscending
-        }
-        let groups = Dictionary(grouping: values) { contact -> String in
+    static func sections(_ contacts: [ChatContact], query: String) -> [ContactSection] {
+        let locale = Locale(identifier: "en_US_POSIX")
+        let values = contacts.filter { $0.isContact && !$0.isBlocked && $0.matches(query) }.map { contact in
             var name = contact.displayName.trimmingCharacters(in: .whitespacesAndNewlines)
-            if locale.identifier.hasPrefix("zh") { name = name.applyingTransform(.toLatin, reverse: false) ?? name }
-            name = name.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: locale).uppercased(with: locale)
-            guard let first = name.first, first.isLetter else { return "#" }
-            return String(first)
+            name = name.applyingTransform(.mandarinToLatin, reverse: false) ?? name
+            name = name.folding(options: [.diacriticInsensitive, .caseInsensitive, .widthInsensitive], locale: locale).uppercased(with: locale)
+            let section = name.first.map { ("A"..."Z").contains($0) ? String($0) : "#" } ?? "#"
+            return (contact: contact, name: name, section: section)
+        }.sorted {
+            let order = $0.name.compare($1.name, locale: locale)
+            return order == .orderedSame ? $0.contact.peer.id < $1.contact.peer.id : order == .orderedAscending
         }
+        let groups = Dictionary(grouping: values, by: \.section)
         return groups.keys.sorted {
             if $0 == "#" { return false }; if $1 == "#" { return true }
-            return $0.compare($1, locale: locale) == .orderedAscending
-        }.map { ContactSection(id: $0, contacts: groups[$0]!) }
+            return $0 < $1
+        }.map { ContactSection(id: $0, contacts: groups[$0]!.map(\.contact)) }
     }
 }
 
 /// 好友、申请和黑名单的专属列表，共享权威投影及 ListKit 分组索引。
 class ContactDirectoryController: LocalizedQuickLayoutHostingController, UISearchResultsUpdating, UISearchControllerDelegate {
+    private static let indexWidth: CGFloat = 44
     enum Mode { case contacts, requests, blocked }
     let runtime: ChatRuntime
     let mode: Mode
@@ -65,7 +69,6 @@ class ContactDirectoryController: LocalizedQuickLayoutHostingController, UISearc
     private struct GroupingInput: Equatable {
         let contacts: [ChatContact]
         let query: String
-        let locale: String
     }
     private var groupingInput: GroupingInput?
     private var cachedGroups: [ContactSection] = []
@@ -76,10 +79,11 @@ class ContactDirectoryController: LocalizedQuickLayoutHostingController, UISearc
         switch mode { case .contacts: "chat.live.contacts"; case .requests: "chat.live.newFriends"; case .blocked: "contacts.blacklist" }
     }
     override var body: Layout {
-        HStack(spacing: 0) {
+        // 索引覆盖列表尾侧，避免缩窄整行背景及偏移页脚中心。
+        ZStack(alignment: .trailing) {
             list.resizable().frame(maxWidth: .infinity, maxHeight: .infinity)
             if mode == .contacts && !sectionIndex.titles.isEmpty {
-                sectionIndex.resizable().frame(width: 44).frame(maxHeight: .infinity)
+                sectionIndex.resizable().frame(width: Self.indexWidth).frame(maxHeight: .infinity)
             }
         }.safeAreaPadding(.horizontal)
     }
@@ -152,7 +156,7 @@ class ContactDirectoryController: LocalizedQuickLayoutHostingController, UISearc
         let systemBottom = max(0, list.adjustedContentInset.bottom - list.contentInset.bottom)
         let bottom = max(0, overlap - systemBottom)
         if abs(list.contentInset.bottom - bottom) > 0.5 { list.contentInset.bottom = bottom }
-        // 横向安全区域已由 HStack 消费；纵向只使用列表已合并导航栏／底部栏的 inset。
+        // 横向安全区域已由容器消费；纵向只使用列表已合并导航栏／底部栏的 inset。
         let adjusted = list.adjustedContentInset
         let indexInsets = UIEdgeInsets(top: adjusted.top, left: 0, bottom: adjusted.bottom, right: 0)
         if sectionIndex.contentInsets != indexInsets { sectionIndex.contentInsets = indexInsets }
@@ -194,9 +198,9 @@ class ContactDirectoryController: LocalizedQuickLayoutHostingController, UISearc
         case .requests: all = runtime.contacts.filter { !$0.requestID.isEmpty }
         case .blocked: all = runtime.contacts.filter(\.isBlocked)
         }
-        let grouping = GroupingInput(contacts: all, query: query, locale: locale.identifier)
+        let grouping = GroupingInput(contacts: all, query: query)
         if groupingInput != grouping {
-            cachedGroups = mode == .contacts ? ContactDirectoryPresentation.sections(all, query: query, locale: locale)
+            cachedGroups = mode == .contacts ? ContactDirectoryPresentation.sections(all, query: query)
                 : [ContactSection(id: "records", contacts: all.filter { $0.matches(query) }.sorted {
                     $0.requestUpdatedAt == $1.requestUpdatedAt ? $0.peer.id < $1.peer.id : $0.requestUpdatedAt > $1.requestUpdatedAt
                 })]
@@ -240,6 +244,7 @@ class ContactDirectoryController: LocalizedQuickLayoutHostingController, UISearc
         let changed = matches.filter {
             oldRows[$0.peer.id] != $0 || previous?.appearance != appearance
                 || previous?.busy.contains($0.peer.id) != busy.contains($0.peer.id)
+                || previous?.searching != isSearching || previous?.query.isEmpty != query.isEmpty
                 || (previous?.online == false && runtime.online)
         }.map(\.peer.id)
         let surviving = Set(matches.map(\.peer.id))
@@ -257,6 +262,7 @@ class ContactDirectoryController: LocalizedQuickLayoutHostingController, UISearc
         }
         presentation = next
         let showEntry = mode == .contacts && query.isEmpty
+        let showsIndex = showEntry && !isSearching && !groups.isEmpty
         adapter.apply(transaction: transaction, completion: { [weak self] _ in
             self?.setNeedsQuickLayout()
         }) {
@@ -267,7 +273,8 @@ class ContactDirectoryController: LocalizedQuickLayoutHostingController, UISearc
                         c.text = Localization.text("chat.live.newFriends")
                         c.image = UIImage(systemName: "person.badge.plus"); c.imageProperties.tintColor = .systemBlue
                         c.directionalLayoutMargins = .init(top: 20, leading: 20, bottom: 20, trailing: 20)
-                        cell.contentConfiguration = c; cell.accessories = [.disclosureIndicator()]
+                        cell.contentConfiguration = c; cell.accessories = []
+                        cell.directionalLayoutMargins = .init(top: 0, leading: 20, bottom: 0, trailing: 20 + (showsIndex ? Self.indexWidth : 0))
                         if count > 0 {
                             let badge = UnreadCountBadgeView(text: count > 99 ? "99+" : String(count))
                             cell.accessories.insert(.customView(configuration: .init(customView: badge, placement: .trailing(), reservedLayoutWidth: .actual, maintainsFixedSize: true)), at: 0)
@@ -311,6 +318,11 @@ class ContactDirectoryController: LocalizedQuickLayoutHostingController, UISearc
                         Footer(UICollectionViewListCell.self, id: group.id + ".footer." + footer) { cell, _ in
                             var c = UIListContentConfiguration.groupedFooter()
                             c.text = footer; c.textProperties.alignment = .center; c.textProperties.numberOfLines = 0
+                            // 对称留出索引空间，使多行说明保持页面居中且不与索引重叠。
+                            if showsIndex {
+                                c.directionalLayoutMargins.leading += Self.indexWidth
+                                c.directionalLayoutMargins.trailing += Self.indexWidth
+                            }
                             cell.contentConfiguration = c
                             cell.accessibilityIdentifier = "contacts.footer"
                         }.layout(extendsBoundary: true)
@@ -333,14 +345,18 @@ class ContactDirectoryController: LocalizedQuickLayoutHostingController, UISearc
         c.secondaryTextProperties.color = .secondaryLabel
         c.directionalLayoutMargins = .init(top: 12, leading: 20, bottom: 12, trailing: 20)
         if !contact.remark.isEmpty { c.secondaryText = contact.peer.nickname }
-        cell.contentConfiguration = c; cell.accessories = [.disclosureIndicator()]
+        cell.contentConfiguration = c; cell.accessories = []
+        let showsIndex = mode == .contacts && !isSearching && search.searchBar.text?.isEmpty != false
+        cell.directionalLayoutMargins = .init(top: 0, leading: 20, bottom: 0, trailing: 20 + (showsIndex ? Self.indexWidth : 0))
         let avatar = cell.avatar
         if let user = UUID(uuidString: contact.peer.id) {
             avatar.configure(session: runtime.session, user: user, asset: contact.peer.deleted == true ? nil : contact.peer.avatarID)
         } else { avatar.reset() }
-        avatar.frame.size = CGSize(width: 44, height: 44); avatar.contentMode = .scaleAspectFit
+        avatar.contentMode = .scaleAspectFit
         avatar.isAccessibilityElement = false
-        cell.accessories.append(.customView(configuration: .init(customView: avatar, placement: .leading(), reservedLayoutWidth: .actual, maintainsFixedSize: true)))
+        cell.accessories.append(.customView(configuration: .init(customView: cell.avatarAccessoryView, placement: .leading(), reservedLayoutWidth: .actual, maintainsFixedSize: true)))
+        // 无 disclosure accessory 时，显式声明整行可点击，避免继承头像的图片语义。
+        cell.accessibilityTraits = .button
         cell.accessibilityIdentifier = "contacts.peer." + contact.peer.id
     }
 
@@ -348,6 +364,8 @@ class ContactDirectoryController: LocalizedQuickLayoutHostingController, UISearc
         ListCustomSectionLayout(id: id) { _, _, environment in
             var config = UICollectionLayoutListConfiguration(appearance: .plain)
             config.backgroundColor = .clear; config.headerMode = header ? .supplementary : .none
+            config.separatorConfiguration.topSeparatorInsets.trailing = 0
+            config.separatorConfiguration.bottomSeparatorInsets.trailing = 0
             return NSCollectionLayoutSection.list(using: config, layoutEnvironment: environment)
         }
     }
@@ -355,9 +373,18 @@ class ContactDirectoryController: LocalizedQuickLayoutHostingController, UISearc
         if let observation { let runtime = runtime; Task { @MainActor in runtime.remove(observation) } }
     }
 }
-/// 头像由 Cell 持有并随身份重新配置；系统 accessory 负责几何布局。
+/// 在固定尺寸的 accessory 容器中显示头像，使图片切换不改变整行的垂直对齐。
 final class ContactDirectoryCell: UICollectionViewListCell {
     let avatar = AccountAvatarView()
+    let avatarAccessoryView = UIView(frame: CGRect(x: 0, y: 0, width: 44, height: 44))
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        // 系统只布局普通容器，避免直接使用图片 accessory 时受图片对齐信息影响。
+        avatar.frame = avatarAccessoryView.bounds
+        avatar.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        avatarAccessoryView.addSubview(avatar)
+    }
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
     override func prepareForReuse() { super.prepareForReuse(); avatar.reset() }
 }
 
@@ -436,8 +463,7 @@ extension UIViewController {
     content.text = ConversationPreviewData.contact.displayName
     content.secondaryText = ConversationPreviewData.contact.peer.nickname
     cell.contentConfiguration = content
-    cell.avatar.frame.size = CGSize(width: 44, height: 44)
-    cell.accessories = [.customView(configuration: .init(customView: cell.avatar, placement: .leading()))]
+    cell.accessories = [.customView(configuration: .init(customView: cell.avatarAccessoryView, placement: .leading(), reservedLayoutWidth: .actual, maintainsFixedSize: true))]
     return QuickLayoutHostingController { cell.resizable(axis: .horizontal).frame(height: 72) }
 }
 @available(iOS 17.0, *)

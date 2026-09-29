@@ -10,25 +10,31 @@ final class ChatContactsUITests: XCTestCase {
         XCTAssertTrue(index.waitForExistence(timeout: 25))
         XCTAssertTrue(index.isHittable)
         XCTAssertGreaterThanOrEqual(index.frame.minY, app.searchFields.firstMatch.frame.maxY)
+        let list = app.collectionViews["contacts.list"]
+        let listWidth = list.frame.width
+        XCTAssertEqual(index.frame.maxX, list.frame.maxX, accuracy: 1)
+        XCTAssertEqual(contact(app, "index-A-0").frame.width, listWidth, accuracy: 1)
         capture(app, name: "通讯录-字母索引首页")
         // 27 项按最多 22 pt 居中排列；在实际控件 frame 内选择末项。
         let height = min(22, (index.frame.height - 16) / 27)
         let bottom = index.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).withOffset(CGVector(dx: 0, dy: 13 * height))
         bottom.tap()
-        XCTAssertTrue(app.cells["contacts.peer.index-#-2"].isHittable)
+        XCTAssertTrue(contact(app, "index-#-2").isHittable)
         XCTAssertEqual(index.value as? String, "#")
         capture(app, name: "通讯录-字母索引末组")
         let dragHeight = min(22, (index.frame.height - 16) / 27)
         let dragBottom = index.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).withOffset(CGVector(dx: 0, dy: 13 * dragHeight))
         let dragTop = index.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).withOffset(CGVector(dx: 0, dy: -13 * dragHeight))
         dragBottom.press(forDuration: 0.2, thenDragTo: dragTop)
-        XCTAssertTrue(app.cells["contacts.peer.index-A-0"].isHittable)
+        XCTAssertTrue(contact(app, "index-A-0").isHittable)
         XCTAssertEqual(index.value as? String, "A")
         let search = app.searchFields.firstMatch
         search.tap(); search.typeText("A Contact")
         let hidden = expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: index)
         wait(for: [hidden], timeout: 5)
-        XCTAssertTrue(app.cells["contacts.peer.index-A-0"].isHittable)
+        XCTAssertTrue(contact(app, "index-A-0").isHittable)
+        XCTAssertEqual(list.frame.width, listWidth, accuracy: 1)
+        XCTAssertEqual(contact(app, "index-A-0").frame.width, listWidth, accuracy: 1)
         search.buttons.firstMatch.tap()
         capture(app, name: "通讯录-清空搜索")
         let close = app.buttons["关闭"]
@@ -49,8 +55,9 @@ final class ChatContactsUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["-chat-details-ui-test", "-contacts-list", "-details-dark", "-azurefish.locale.identifier", "zh-Hans"]
         app.launch()
-        let peer = app.cells["contacts.peer.00000000-0000-0000-0000-000000000012"]
+        let peer = contact(app, "00000000-0000-0000-0000-000000000012")
         XCTAssertTrue(peer.waitForExistence(timeout: 25))
+        capture(app, name: "通讯录-头像垂直居中")
         peer.tap()
         let avatar = app.images["contacts.profile.avatar"]
         XCTAssertTrue(avatar.waitForExistence(timeout: 5))
@@ -66,9 +73,9 @@ final class ChatContactsUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["-chat-details-ui-test", "-contacts-list", "-azurefish.locale.identifier", "en"]
         app.launch()
-        XCTAssertTrue(app.cells["contacts.peer.00000000-0000-0000-0000-000000000012"].waitForExistence(timeout: 25))
+        XCTAssertTrue(contact(app, "00000000-0000-0000-0000-000000000012").waitForExistence(timeout: 25))
         guard app.windows.firstMatch.frame.width >= 700 else { throw XCTSkip("iPad 窄宽窗口回归") }
-        app.cells["contacts.peer.00000000-0000-0000-0000-000000000012"].tap()
+        contact(app, "00000000-0000-0000-0000-000000000012").tap()
         app.buttons["contacts.remark"].tap()
         let editor = app.textFields["contacts.editor"]
         XCTAssertTrue(editor.waitForExistence(timeout: 5))
@@ -95,9 +102,9 @@ final class ChatContactsUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["-chat-details-ui-test", "-contacts-list", "-azurefish.locale.identifier", "zh-Hans"]
         app.launch()
-        let peer = app.cells["contacts.peer.00000000-0000-0000-0000-000000000012"]
+        let peer = contact(app, "00000000-0000-0000-0000-000000000012")
         XCTAssertTrue(peer.waitForExistence(timeout: 25))
-        XCTAssertFalse(app.cells["contacts.peer.fixture-blocked"].exists)
+        XCTAssertFalse(contact(app, "fixture-blocked").exists)
         XCTAssertEqual(app.descendants(matching: .any).matching(identifier: "contacts.footer").count, 1)
         capture(app, name: "通讯录-分组与备注")
         peer.tap()
@@ -119,7 +126,7 @@ final class ChatContactsUITests: XCTestCase {
         app.buttons["应用设置"].firstMatch.tap()
         app.cells["contacts.privacy"].tap()
         app.cells["contacts.blacklist"].tap()
-        XCTAssertTrue(app.cells["contacts.peer.fixture-blocked"].waitForExistence(timeout: 5))
+        XCTAssertTrue(contact(app, "fixture-blocked").waitForExistence(timeout: 5))
         capture(app, name: "通讯录-黑名单")
     }
     @MainActor func testFourLanguagesRequestsAndSearch() throws {
@@ -134,15 +141,19 @@ final class ChatContactsUITests: XCTestCase {
             XCTAssertTrue(index.waitForExistence(timeout: 5))
             XCTAssertTrue(index.isHittable)
             let list = app.collectionViews["contacts.list"]
-            if language == "ar" { XCTAssertLessThanOrEqual(index.frame.maxX, list.frame.minX + 1) }
-            else { XCTAssertGreaterThanOrEqual(index.frame.minX, list.frame.maxX - 1) }
+            if language == "ar" { XCTAssertEqual(index.frame.minX, list.frame.minX, accuracy: 1) }
+            else { XCTAssertEqual(index.frame.maxX, list.frame.maxX, accuracy: 1) }
+            XCTAssertEqual(app.cells["contacts.requests"].frame.width, list.frame.width, accuracy: 1)
+            let peer = contact(app, "00000000-0000-0000-0000-000000000012")
+            XCTAssertEqual(peer.frame.width, list.frame.width, accuracy: 1)
+            XCTAssertTrue(app.staticTexts["L"].exists)
             capture(app, name: "通讯录-\(language)")
             app.cells["contacts.requests"].tap()
-            XCTAssertTrue(app.cells["contacts.peer.fixture-incoming"].waitForExistence(timeout: 5))
+            XCTAssertTrue(contact(app, "fixture-incoming").waitForExistence(timeout: 5))
             XCTAssertTrue(app.buttons["contacts.accept.fixture-incoming"].exists)
             let footer = app.descendants(matching: .any).matching(identifier: "contacts.footer").firstMatch
             XCTAssertTrue(footer.exists)
-            XCTAssertGreaterThanOrEqual(footer.frame.minY, app.cells["contacts.peer.fixture-incoming"].frame.maxY - 1)
+            XCTAssertGreaterThanOrEqual(footer.frame.minY, contact(app, "fixture-incoming").frame.maxY - 1)
             capture(app, name: "新的朋友-\(language)")
             let search = app.searchFields.firstMatch
             search.tap(); search.typeText("NoSuchPerson")
@@ -151,6 +162,10 @@ final class ChatContactsUITests: XCTestCase {
             app.terminate()
         }
     }
+    @MainActor private func contact(_ app: XCUIApplication, _ id: String) -> XCUIElement {
+        app.descendants(matching: .any).matching(identifier: "contacts.peer." + id).firstMatch
+    }
+
     @MainActor private func waitForOrientation(_ app: XCUIApplication, landscape: Bool) {
         let settled = expectation(for: NSPredicate { _, _ in
             let frame = app.windows.firstMatch.frame

@@ -1,0 +1,65 @@
+[
+  {
+    "configurationName": "Test Scheme Action",
+    "deviceId": "505FE0AF-BD0B-4257-A44A-A3BA1364CF5C",
+    "deviceName": "iPhone 17 Pro",
+    "exportedFileName": "7E0949EA-673D-4638-A03F-60BF87567DBB.png",
+    "isAssociatedWithFailure": false,
+    "suggestedHumanReadableName": "通讯录-ar_0_97FE186B-BD41-435E-B387-28D9DE5BB8B7.png",
+    "timestamp": 1790690630.593,
+    "file": "contacts-rtl.png",
+    "testIdentifier": "ChatContactsUITests/testFourLanguagesRequestsAndSearch()",
+    "resultBundle": "/tmp/AzureFish-CellWidth-Pinyin-Final.xcresult"
+  },
+  {
+    "configurationName": "Test Scheme Action",
+    "deviceId": "505FE0AF-BD0B-4257-A44A-A3BA1364CF5C",
+    "deviceName": "iPhone 17 Pro",
+    "exportedFileName": "A75EB863-CE2E-4C89-A10B-1EA05A463A49.png",
+    "isAssociatedWithFailure": false,
+    "suggestedHumanReadableName": "通讯录-en_0_78461F72-604E-46BC-884C-11B0374C9E07.png",
+    "timestamp": 1790690602.05,
+    "file": "contacts-en.png",
+    "testIdentifier": "ChatContactsUITests/testFourLanguagesRequestsAndSearch()",
+    "resultBundle": "/tmp/AzureFish-CellWidth-Pinyin-Final.xcresult"
+  },
+  {
+    "configurationName": "Test Scheme Action",
+    "deviceId": "505FE0AF-BD0B-4257-A44A-A3BA1364CF5C",
+    "deviceName": "iPhone 17 Pro",
+    "exportedFileName": "BFA574B4-933A-4AEB-83CA-34E28273286C.png",
+    "isAssociatedWithFailure": false,
+    "suggestedHumanReadableName": "通讯录-字母索引恢复_0_BD4E0975-AFE6-48F1-9923-188460491676.png",
+    "timestamp": 1790690676.376,
+    "file": "index-restored.png",
+    "testIdentifier": "ChatContactsUITests/testSectionIndexTapDragAndSearch()",
+    "resultBundle": "/tmp/AzureFish-CellWidth-Pinyin-Final.xcresult"
+  },
+  {
+    "file": "contacts-no-arrows.png",
+    "deviceName": "iPhone 17 Pro",
+    "osVersion": "iOS 26.5",
+    "captureMethod": "xcrun simctl io screenshot",
+    "source": "/tmp/azurefish-contacts-edge-separators.png",
+    "launchArguments": [
+      "-chat-details-ui-test",
+      "-contacts-list",
+      "-details-dark",
+      "-azurefish.locale.identifier",
+      "en"
+    ],
+    "verifiedBuildResult": "/tmp/AzureFish-Contacts-EdgeSeparators.xcresult"
+  },
+  {
+    "configurationName": "Test Scheme Action",
+    "deviceId": "505FE0AF-BD0B-4257-A44A-A3BA1364CF5C",
+    "deviceName": "iPhone 17 Pro",
+    "exportedFileName": "DD2C0249-DA7A-4414-97AD-E2DD847867C6.png",
+    "isAssociatedWithFailure": false,
+    "suggestedHumanReadableName": "通讯录-头像垂直居中_0_B74E5521-831A-4751-BA0A-51F5C1613B8E.png",
+    "timestamp": 1790692398.833,
+    "file": "contacts-vertically-centered.png",
+    "testIdentifier": "ChatContactsUITests/testProfileAvatarHasSquareBounds()",
+    "resultBundle": "/tmp/AzureFish-ContactAvatarContainer.xcresult"
+  }
+]

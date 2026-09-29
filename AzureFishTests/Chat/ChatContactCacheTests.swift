@@ -158,7 +158,7 @@ struct ChatContactCacheTests {
         let f = try await fixture()
         var contact = f.contact
         contact.remark = ""; f.runtime.receivedContact(contact, engine: f.engine)
-        #expect(ContactDirectoryPresentation.sections(f.runtime.contacts, query: "Before", locale: Locale(identifier: "en")).count == 1)
+        #expect(ContactDirectoryPresentation.sections(f.runtime.contacts, query: "Before").count == 1)
         contact.peer.version += 1; contact.peer.nickname = "After"; contact.peer.avatarID = nil
         f.runtime.receivedContact(contact, engine: f.engine)
         f.runtime.receivedContact(f.contact, engine: f.engine)
@@ -167,11 +167,11 @@ struct ChatContactCacheTests {
         profile.loadViewIfNeeded()
         let names = profile.fields.compactMap { ($0 as? UILabel)?.text }
         #expect(names.contains("After"))
-        #expect(ContactDirectoryPresentation.sections(f.runtime.contacts, query: "Before", locale: Locale(identifier: "en")).isEmpty)
-        #expect(ContactDirectoryPresentation.sections(f.runtime.contacts, query: "After", locale: Locale(identifier: "en")).map(\.id) == ["A"])
+        #expect(ContactDirectoryPresentation.sections(f.runtime.contacts, query: "Before").isEmpty)
+        #expect(ContactDirectoryPresentation.sections(f.runtime.contacts, query: "After").map(\.id) == ["A"])
         contact.revision += 1; contact.remark = "Zulu"
         f.runtime.receivedContact(contact, engine: f.engine)
-        #expect(ContactDirectoryPresentation.sections(f.runtime.contacts, query: "", locale: Locale(identifier: "en")).map(\.id) == ["Z"])
+        #expect(ContactDirectoryPresentation.sections(f.runtime.contacts, query: "").map(\.id) == ["Z"])
         contact.peer.version += 1; contact.peer.deleted = true; contact.peer.avatarID = "old"
         f.runtime.receivedContact(contact, engine: f.engine)
         #expect(f.runtime.avatarAsset(user: contact.peer.id, fallback: f.contact.peer) == nil)

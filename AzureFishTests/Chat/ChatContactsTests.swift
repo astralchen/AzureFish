@@ -28,8 +28,13 @@ struct ChatContactsTests {
                 let index = controller.sectionIndex.frame
                 let list = controller.list.frame
                 #expect(index.width == 44)
-                if direction == .forceLeftToRight { #expect(index.minX >= list.maxX) }
-                else { #expect(index.maxX <= list.minX) }
+                #expect(list.minX == 0 && list.width == width)
+                if direction == .forceLeftToRight { #expect(index.maxX == list.maxX) }
+                else { #expect(index.minX == list.minX) }
+                controller.list.layoutIfNeeded()
+                for cell in controller.list.visibleCells {
+                    #expect(abs(cell.frame.width - list.width) < 1)
+                }
             }
         }
         let search = try #require(controller.navigationItem.searchController)
@@ -46,6 +51,95 @@ struct ChatContactsTests {
             try await Task.sleep(for: .milliseconds(20))
         }
         #expect(controller.sectionIndex.titles.count == 27)
+    }
+
+    @Test func indexedCellsFillListAndKeepContentOutsideIndex() async throws {
+        guard #available(iOS 16.0, *) else { return }
+        let controller = ContactsViewController(runtime: ChatRuntime(previewContacts: ConversationPreviewData.contacts))
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 402, height: 874))
+        window.rootViewController = UINavigationController(rootViewController: controller)
+        window.isHidden = false
+        defer { window.isHidden = true }
+        for _ in 0..<100 where controller.sectionIndex.titles.isEmpty {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        window.layoutIfNeeded(); controller.view.layoutIfNeeded(); controller.list.layoutIfNeeded()
+        let cell = try #require(controller.list.visibleCells.first { $0 is ContactDirectoryCell })
+        cell.isSelected = true
+        cell.layoutIfNeeded()
+        #expect(abs(cell.frame.width - controller.list.bounds.width) < 1)
+        #expect(cell.accessibilityTraits.contains(.button))
+        #expect(!cell.accessibilityTraits.contains(.image))
+        let index = controller.sectionIndex.convert(controller.sectionIndex.bounds, to: cell)
+        func visibleContent(in view: UIView) -> [UIView] {
+            view.subviews.flatMap { child -> [UIView] in
+                guard !child.isHidden, child.alpha > 0 else { return [] }
+                if child is UILabel || child is UIImageView { return [child] }
+                return visibleContent(in: child)
+            }
+        }
+        let content = visibleContent(in: cell)
+        #expect(!content.isEmpty)
+        for view in content {
+            #expect(view.convert(view.bounds, to: cell).maxX <= index.minX)
+        }
+        let footer = try #require(controller.list.visibleSupplementaryViews(ofKind: UICollectionView.elementKindSectionFooter).first)
+        #expect(abs(footer.frame.midX - controller.list.bounds.midX) < 1)
+    }
+
+    @Test func contactAvatarsAndTextStayVerticallyCenteredInRealList() async throws {
+        guard #available(iOS 16.0, *) else { return }
+        let controller = ContactsViewController(runtime: ChatRuntime(previewContacts: ConversationPreviewData.contacts))
+        let navigation = UINavigationController(rootViewController: controller)
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 402, height: 1000))
+        window.rootViewController = navigation
+        window.isHidden = false
+        defer { window.isHidden = true }
+        for _ in 0..<100 where controller.sectionIndex.titles.isEmpty {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        func labels(in view: UIView) -> [UILabel] {
+            view.subviews.flatMap { child -> [UILabel] in
+                if let label = child as? UILabel { return label.isHidden ? [] : [label] }
+                return labels(in: child)
+            }
+        }
+        let photo = UIGraphicsImageRenderer(size: CGSize(width: 120, height: 60)).image { context in
+            UIColor.systemBlue.setFill()
+            context.fill(CGRect(x: 0, y: 0, width: 120, height: 60))
+        }
+        for category: UIContentSizeCategory in [.large, .accessibilityExtraExtraExtraLarge] {
+            navigation.setOverrideTraitCollection(UITraitCollection(preferredContentSizeCategory: category), forChild: controller)
+            for direction: UISemanticContentAttribute in [.forceLeftToRight, .forceRightToLeft] {
+                controller.view.semanticContentAttribute = direction
+                for width: CGFloat in [320, 768] {
+                    window.frame.size.width = width
+                    controller.setNeedsQuickLayout()
+                    try await Task.sleep(for: .milliseconds(100))
+                    window.layoutIfNeeded(); controller.view.layoutIfNeeded(); controller.list.layoutIfNeeded()
+                    let cells = controller.list.visibleCells.compactMap { $0 as? ContactDirectoryCell }
+                    #expect(cells.count == 2)
+                    for cell in cells {
+                        for selected in [false, true] {
+                            cell.isSelected = selected
+                            for image in [UIImage(systemName: "person.crop.circle.fill"), photo] {
+                                cell.avatar.image = image
+                                cell.setNeedsLayout(); cell.layoutIfNeeded()
+                                try await Task.sleep(for: .milliseconds(20))
+                                let avatar = cell.avatar.convert(cell.avatar.bounds, to: cell)
+                                #expect(abs(avatar.width - 44) < 0.01 && abs(avatar.height - 44) < 0.01)
+                                #expect(abs(avatar.midY - cell.bounds.midY) < 1)
+                                #expect(avatar.minY >= cell.bounds.minY && avatar.maxY <= cell.bounds.maxY)
+                                let text = labels(in: cell.contentView).filter { $0.text?.isEmpty == false }
+                                    .reduce(CGRect.null) { $0.union($1.convert($1.bounds, to: cell)) }
+                                #expect(!text.isNull)
+                                #expect(abs(text.midY - cell.bounds.midY) < 1)
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     @Test func indexConsumesHorizontalSafeAreaOnceAndUsesListVerticalInsets() async throws {
@@ -73,6 +167,9 @@ struct ChatContactsTests {
             #expect(rail.minX >= safe.minX - 1)
             #expect(rail.maxX <= safe.maxX + 1)
             #expect(rail.width == 44)
+            let list = controller.list.convert(controller.list.bounds, to: controller.view)
+            #expect(abs(list.minX - safe.minX) < 1)
+            #expect(abs(list.maxX - safe.maxX) < 1)
             #expect(index.contentInsets.left == 0 && index.contentInsets.right == 0)
             #expect(index.contentInsets.top == controller.list.adjustedContentInset.top)
             #expect(index.contentInsets.bottom == controller.list.adjustedContentInset.bottom)
@@ -172,14 +269,35 @@ struct ChatContactsTests {
     @Test func displayNamesFilteringAndStableSections() {
         guard #available(iOS 16.0, *) else { return }
         let fixture = ConversationPreviewData.contacts
-        let sections = ContactDirectoryPresentation.sections(fixture, query: "", locale: Locale(identifier: "zh-Hans"))
+        let sections = ContactDirectoryPresentation.sections(fixture, query: "")
         #expect(sections.map(\.id) == ["A", "L"])
         #expect(sections.flatMap(\.contacts).count == 2)
-        #expect(ContactDirectoryPresentation.sections(fixture, query: "设计", locale: Locale(identifier: "zh-Hant")).flatMap(\.contacts).first?.peer.nickname == "林沐")
-        #expect(ContactDirectoryPresentation.sections(fixture, query: "不存在", locale: Locale(identifier: "en")).isEmpty)
+        #expect(ContactDirectoryPresentation.sections(fixture, query: "设计").flatMap(\.contacts).first?.peer.nickname == "林沐")
+        #expect(ContactDirectoryPresentation.sections(fixture, query: "不存在").isEmpty)
         var first = fixture[0], second = first
         first.peer.id = "a"; second.peer.id = "b"
-        #expect(ContactDirectoryPresentation.sections([second, first], query: "", locale: Locale(identifier: "ar")).flatMap(\.contacts).map(\.peer.id) == ["a", "b"])
+        #expect(ContactDirectoryPresentation.sections([second, first], query: "").flatMap(\.contacts).map(\.peer.id) == ["a", "b"])
+    }
+
+    @Test func directoryUsesPinyinAndOnlyLatinIndexTitles() {
+        guard #available(iOS 16.0, *) else { return }
+        let names = ["小林", "林沐", "吕布", "李安", "陳晨", "张三", "Zoe", "Émile", "Ａlice", "123", "علي", "😀", ""]
+        let contacts = names.enumerated().map { index, name in
+            var contact = ConversationPreviewData.contact
+            contact.peer.id = String(index)
+            contact.peer.nickname = name
+            contact.remark = ""
+            return contact
+        }
+        let sections = ContactDirectoryPresentation.sections(contacts, query: "")
+        #expect(sections.map(\.id) == ["A", "C", "E", "L", "X", "Z", "#"])
+        #expect(sections.first { $0.id == "L" }?.contacts.map(\.displayName) == ["李安", "林沐", "吕布"])
+        #expect(sections.first { $0.id == "Z" }?.contacts.map(\.displayName) == ["张三", "Zoe"])
+        #expect(sections.first { $0.id == "X" }?.contacts.map(\.displayName) == ["小林"])
+        #expect(sections.last?.contacts.count == 4)
+        var remarked = contacts[0]
+        remarked.remark = "阿林"
+        #expect(ContactDirectoryPresentation.sections([remarked], query: "小林").map(\.id) == ["A"])
     }
     @Test func oldCacheCannotEnableNewMutations() throws {
         let bytes = Data(#"{"id":"old","peer":{"id":"peer","nickname":"名字","version":1},"state":"friend","requesterID":"me","revision":3,"updatedAt":100}"#.utf8)
