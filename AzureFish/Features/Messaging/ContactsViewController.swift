@@ -36,7 +36,7 @@ enum ContactDirectoryPresentation {
 }
 
 /// 好友、申请和黑名单的专属列表，共享权威投影及 ListKit 分组索引。
-class ContactDirectoryController: LocalizedQuickLayoutHostingController, UISearchResultsUpdating, UISearchControllerDelegate {
+class ContactDirectoryController: LocalizedQuickLayoutHostingController, UISearchResultsUpdating, UISearchControllerDelegate, UIScrollViewDelegate {
     private static let indexWidth: CGFloat = 44
     enum Mode { case contacts, requests, blocked }
     let runtime: ChatRuntime
@@ -94,6 +94,7 @@ class ContactDirectoryController: LocalizedQuickLayoutHostingController, UISearc
         list.backgroundColor = .clear; list.alwaysBounceVertical = true
         list.contentInsetAdjustmentBehavior = .automatic
         list.collectionViewLayout = adapter.makeCompositionalLayout()
+        adapter.scrollDelegate = self
         list.accessibilityIdentifier = "contacts.list"
         if mode == .contacts { adapter.sectionIndexView = sectionIndex }
         sectionIndex.accessibilityIdentifier = "contacts.index"
@@ -137,6 +138,10 @@ class ContactDirectoryController: LocalizedQuickLayoutHostingController, UISearc
     }
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
+        list.layoutIfNeeded()
+        updateViewport()
+    }
+    func scrollViewDidScroll(_ scrollView: UIScrollView) {
         updateViewport()
     }
     @objc private func keyboardChanged(_ notification: Notification) {
@@ -156,15 +161,14 @@ class ContactDirectoryController: LocalizedQuickLayoutHostingController, UISearc
         let systemBottom = max(0, list.adjustedContentInset.bottom - list.contentInset.bottom)
         let bottom = max(0, overlap - systemBottom)
         if abs(list.contentInset.bottom - bottom) > 0.5 { list.contentInset.bottom = bottom }
-        // 横向安全区域已由容器消费；纵向只使用列表已合并导航栏／底部栏的 inset。
-        let adjusted = list.adjustedContentInset
-        let indexInsets = UIEdgeInsets(top: adjusted.top, left: 0, bottom: adjusted.bottom, right: 0)
-        if sectionIndex.contentInsets != indexInsets { sectionIndex.contentInsets = indexInsets }
         var inset = list.adjustedContentInset
         if mode == .contacts, search.searchBar.text?.isEmpty != false,
            let frame = list.layoutAttributesForItem(at: IndexPath(item: 0, section: 0))?.frame {
             inset.top += max(0, frame.maxY - list.contentOffset.y - inset.top)
         }
+        // 横向安全区域已由容器消费；索引同时避开导航栏、底部栏及仍可见的申请入口，避免遮住数量徽标。
+        let indexInsets = UIEdgeInsets(top: inset.top, left: 0, bottom: inset.bottom, right: 0)
+        if sectionIndex.contentInsets != indexInsets { sectionIndex.contentInsets = indexInsets }
         if stateView.viewportInsets != inset { stateView.viewportInsets = inset }
     }
     override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
@@ -274,7 +278,7 @@ class ContactDirectoryController: LocalizedQuickLayoutHostingController, UISearc
                         c.image = UIImage(systemName: "person.badge.plus"); c.imageProperties.tintColor = .systemBlue
                         c.directionalLayoutMargins = .init(top: 20, leading: 20, bottom: 20, trailing: 20)
                         cell.contentConfiguration = c; cell.accessories = []
-                        cell.directionalLayoutMargins = .init(top: 0, leading: 20, bottom: 0, trailing: 20 + (showsIndex ? Self.indexWidth : 0))
+                        cell.directionalLayoutMargins = .init(top: 0, leading: 20, bottom: 0, trailing: 20)
                         if count > 0 {
                             let badge = UnreadCountBadgeView(text: count > 99 ? "99+" : String(count))
                             cell.accessories.insert(.customView(configuration: .init(customView: badge, placement: .trailing(), reservedLayoutWidth: .actual, maintainsFixedSize: true)), at: 0)

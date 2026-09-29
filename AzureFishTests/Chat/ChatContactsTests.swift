@@ -142,6 +142,48 @@ struct ChatContactsTests {
         }
     }
 
+    @Test func requestBadgeStaysAtTrailingMarginAndOutsideIndex() async throws {
+        guard #available(iOS 16.0, *) else { return }
+        let contacts = ConversationPreviewData.indexedContacts + ConversationPreviewData.contacts
+        let controller = ContactsViewController(runtime: ChatRuntime(previewContacts: contacts))
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 402, height: 874))
+        window.rootViewController = UINavigationController(rootViewController: controller)
+        window.isHidden = false
+        defer { window.isHidden = true }
+        for _ in 0..<100 where controller.sectionIndex.titles.isEmpty {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        func badge(in view: UIView) -> UnreadCountBadgeView? {
+            if let badge = view as? UnreadCountBadgeView { return badge }
+            return view.subviews.lazy.compactMap { badge(in: $0) }.first
+        }
+        for direction: UISemanticContentAttribute in [.forceLeftToRight, .forceRightToLeft] {
+            controller.reloadLayoutDirection(direction == .forceRightToLeft ? .rightToLeft : .leftToRight)
+            controller.list.semanticContentAttribute = direction
+            for width: CGFloat in [320, 768] {
+                window.frame.size.width = width
+                controller.setNeedsQuickLayout()
+                try await Task.sleep(for: .milliseconds(300))
+                window.layoutIfNeeded(); controller.view.layoutIfNeeded(); controller.list.layoutIfNeeded()
+                let cell = try #require(controller.list.visibleCells.first { $0.accessibilityIdentifier == "contacts.requests" })
+                let count = try #require(badge(in: cell))
+                let frame = count.convert(count.bounds, to: cell)
+                let margin = direction == .forceLeftToRight ? cell.bounds.maxX - frame.maxX : frame.minX
+                #expect(abs(margin - 20) < 1)
+                #expect(abs(frame.midY - cell.bounds.midY) < 1)
+                let firstTitle = controller.sectionIndex.convert(controller.sectionIndex.rectForTitle(at: 0), to: cell)
+                #expect(firstTitle.minY >= cell.bounds.maxY)
+            }
+        }
+        controller.list.setContentOffset(CGPoint(x: 0, y: 500), animated: false)
+        #expect(controller.sectionIndex.contentInsets.top == controller.list.adjustedContentInset.top)
+        try await Task.sleep(for: .milliseconds(300))
+        controller.list.layoutIfNeeded()
+        // 窄宽切换后的导航栏可能重新调整滚动位置；索引始终跟随入口实际可见范围。
+        let entry = try #require(controller.list.layoutAttributesForItem(at: IndexPath(item: 0, section: 0)))
+        #expect(controller.sectionIndex.contentInsets.top == max(controller.list.adjustedContentInset.top, entry.frame.maxY - controller.list.contentOffset.y))
+    }
+
     @Test func indexConsumesHorizontalSafeAreaOnceAndUsesListVerticalInsets() async throws {
         guard #available(iOS 16.0, *) else { return }
         let controller = ContactsViewController(runtime: ChatRuntime(previewContacts: ConversationPreviewData.indexedContacts))
@@ -156,6 +198,7 @@ struct ChatContactsTests {
         for direction: UISemanticContentAttribute in [.forceLeftToRight, .forceRightToLeft] {
             controller.view.semanticContentAttribute = direction
             controller.setNeedsQuickLayout()
+            try await Task.sleep(for: .milliseconds(300))
             window.layoutIfNeeded()
             controller.view.layoutIfNeeded()
             let index = controller.sectionIndex
@@ -171,7 +214,8 @@ struct ChatContactsTests {
             #expect(abs(list.minX - safe.minX) < 1)
             #expect(abs(list.maxX - safe.maxX) < 1)
             #expect(index.contentInsets.left == 0 && index.contentInsets.right == 0)
-            #expect(index.contentInsets.top == controller.list.adjustedContentInset.top)
+            let entry = try #require(controller.list.layoutAttributesForItem(at: IndexPath(item: 0, section: 0)))
+            #expect(index.contentInsets.top == max(controller.list.adjustedContentInset.top, entry.frame.maxY - controller.list.contentOffset.y))
             #expect(index.contentInsets.bottom == controller.list.adjustedContentInset.bottom)
             let first = index.convert(index.rectForTitle(at: 0), to: controller.view)
             let last = index.convert(index.rectForTitle(at: 26), to: controller.view)

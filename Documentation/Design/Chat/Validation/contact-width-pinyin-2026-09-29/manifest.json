@@ -61,5 +61,17 @@
     "file": "contacts-vertically-centered.png",
     "testIdentifier": "ChatContactsUITests/testProfileAvatarHasSquareBounds()",
     "resultBundle": "/tmp/AzureFish-ContactAvatarContainer.xcresult"
+  },
+  {
+    "configurationName": "Test Scheme Action",
+    "deviceId": "505FE0AF-BD0B-4257-A44A-A3BA1364CF5C",
+    "deviceName": "iPhone 17 Pro",
+    "exportedFileName": "FE4E8269-AE49-42E1-BAFE-568EB9F5968D.png",
+    "isAssociatedWithFailure": false,
+    "suggestedHumanReadableName": "通讯录-头像垂直居中_0_B25A4620-82EF-42C8-B63E-AC34799EA9BB.png",
+    "timestamp": 1790693399.82,
+    "file": "contacts-badge-trailing.png",
+    "testIdentifier": "ChatContactsUITests/testProfileAvatarHasSquareBounds()",
+    "resultBundle": "/tmp/AzureFish-ContactBadgePlacement-Final.xcresult"
   }
 ]

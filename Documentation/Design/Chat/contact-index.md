@@ -7,7 +7,7 @@
 - 索引按 A–Z 列出当前有联系人的分组，中文显示名称使用系统普通话转写并去除声调，英文字母忽略大小写、重音及全半角；其他首字符归入末尾的 `#`。组内按同一拼音排序键排列，相同键以用户 ID 稳定排序。规则不随界面语言变化，备注仍优先于昵称；点击或沿索引滑动定位对应分组，末组按列表实际滚动范围限制，不触发联系人导航。
 - 滑动时在列表一侧显示当前字母提示，松手或取消后收起；采用系统语义颜色，无透明玻璃仿制。
 - 搜索激活、搜索文字非空或没有联系人分组时隐藏索引；退出搜索后恢复，避免被键盘遮挡。新的朋友和黑名单不显示字母索引。
-- QuickLayout 的 ZStack 将 44 pt 索引覆盖在列表语义尾侧，列表、cell 背景和居中页脚保持完整容器宽度；行内容尾侧为索引额外预留 44 pt，居中页脚对称留白，搜索隐藏索引时恢复；分隔线尾侧 inset 固定为 0，延伸到 cell 边缘。父容器通过 `.safeAreaPadding(.horizontal)` 处理横向安全区域；索引只使用列表 `adjustedContentInset` 的 top／bottom 避开导航栏与底部栏，不再叠加 `safeAreaInsets`。ListKit 控件不依赖 QuickLayoutKit，宿主负责布局。
+- QuickLayout 的 ZStack 将 44 pt 索引覆盖在列表语义尾侧，列表、cell 背景和居中页脚保持完整容器宽度；联系人行内容尾侧为索引额外预留 44 pt，居中页脚对称留白，搜索隐藏索引时恢复；“新的朋友”入口使用正常 20 pt 尾侧间距；分隔线尾侧 inset 固定为 0，延伸到 cell 边缘。父容器通过 `.safeAreaPadding(.horizontal)` 处理横向安全区域；索引使用列表 `adjustedContentInset` 的 top／bottom 避开导航栏与底部栏，并随滚动避开仍可见的“新的朋友”入口，防止遮住数量徽标；不再叠加 `safeAreaInsets`。ListKit 控件不依赖 QuickLayoutKit，宿主负责布局。
 - 联系人行及“新的朋友”入口不显示跳转箭头；点击整行仍进入原有页面，头像和申请数量徽标保留。联系人头像放入固定 44 × 44 pt 的普通 accessory 容器，图片填满容器，隔离图片自身的对齐信息；容器与文字布局由 UIKit 管理。
 - 短窗口中稀疏绘制字母，避免重叠；触摸与辅助功能仍覆盖全部分组。
 - VoiceOver 将索引呈现为可调整控件，逐项增减即可定位；辅助功能名称由 AzureFish 四语言 String Catalog 提供。
@@ -16,6 +16,18 @@
 ListKit 远程 main 已确认包含 `7c453c49660574a0028bb78825af8b09cf459aa3`（`新增 Collection 分组触摸索引`）。AzureFish 已移除临时 `../ListKit` 本地 package 覆盖，恢复远程依赖，并在 `Package.resolved` 锁定该提交；无需同时检出 ListKit 仓库。其他远程依赖版本不变。
 
 切换远程依赖后，已再次通过锁定版本解析及应用／测试目标 `build-for-testing` 编译，日志分别为 `/tmp/azurefish-listkit-remote-resolve.log` 和 `/tmp/azurefish-listkit-remote-build.log`。下表运行测试使用的是同一提交的本地源码；本次仅切换依赖来源，未重复执行运行测试。
+
+## 2026-09-29 申请数量徽标尾侧位置修复
+
+“新的朋友”入口原先复用了联系人行的 44 pt 索引避让，导致数量徽标离尾侧过远。入口现使用正常 20 pt 尾侧间距；索引在列表完成布局后排除仍可见的入口区域，并通过 ListKit 滚动代理持续更新，避免完整 A–Z 索引覆盖徽标。
+
+- 编译：通过。
+- 单元／组件：`ChatContactsTests` 13 项通过；新增检查覆盖 320／768 pt、LTR／RTL、徽标尾侧间距与垂直居中、完整索引避让及滚动更新。
+- 模拟器 UI：资料页点击、索引点击／拖动及搜索隐藏／恢复，共 2 项通过。iPhone 17 Pro／iOS 26.5 深色截图视觉检查通过：[徽标尾侧位置](Validation/contact-width-pinyin-2026-09-29/contacts-badge-trailing.png)。
+- 文档链接、Markdown 及 `git diff --check`：通过。
+- 四语言完整流程、iPad 实际页面、旧系统、真机、真实服务及辅助功能人工验收：此次未执行。
+
+组件最终结果为 `/tmp/AzureFish-ContactBadgeVerified.xcresult`，日志为 `/tmp/azurefish-contact-badge-verified.log`。UI 与截图来自 `/tmp/AzureFish-ContactBadgePlacement-Final.xcresult` 中通过的 2 项 UI 测试；该次组件测试仍有一项测试假设失败，随后仅修正测试并完成上述 13 项复跑，应用代码未再改变。早期检查还发现自适应行布局完成前索引位置滞后，已通过先完成列表布局再更新视口修复；RTL 检查使用页面方向更新入口并同步列表方向。尺寸切换后导航栏可能调整滚动位置，最终断言同时验证滚动回调和实际可见入口范围，不假定导航栏调整后的 contentOffset 保持不变。
 
 ## 2026-09-29 联系人头像垂直居中修复
 
