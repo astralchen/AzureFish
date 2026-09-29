@@ -9,6 +9,10 @@ protocol ChatSessionProviding: AnyObject {
     func stop()
     func refresh()
     func loadHistory()
+    /// 先将消息写入本地发送队列，再启动网络发送。
+    ///
+    /// `completion(true)` 表示本地事务已提交，可以消费草稿，不代表服务端已确认。
+    /// 落库失败返回 `false`，调用方保留草稿。
     func send(_ contents: [MessageContent], completion: @escaping (Bool) -> Void)
     func retry(_ messageID: Int)
     func delete(_ messageID: Int)

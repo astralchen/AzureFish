@@ -18,7 +18,7 @@ extension ComposerView {
             title: mediaStrings.photo,
             image: UIImage(systemName: "photo.on.rectangle")
         ) { [weak self] _ in
-            guard let self, !isShowingRecordingUnavailableHint else { return }
+            guard let self, !textView.isInputSuspended else { return }
             _ = actionRequested?(
                 .requestAttachment(kind: .photo)
             )
@@ -27,17 +27,17 @@ extension ComposerView {
             title: strings.audio,
             image: UIImage(systemName: "waveform")
         ) { [weak self] _ in
-            guard let self, !isShowingRecordingUnavailableHint else { return }
+            guard let self, !textView.isInputSuspended else { return }
             _ = actionRequested?(
                 .requestAttachment(kind: .audio)
             )
         }
         let fileAction = UIAction(title: strings.file, image: UIImage(systemName: "folder")) { [weak self] _ in
-            guard let self, !isShowingRecordingUnavailableHint else { return }
+            guard let self, !textView.isInputSuspended else { return }
             _ = actionRequested?(.requestAttachment(kind: .file))
         }
         let linkAction = UIAction(title: strings.link, image: UIImage(systemName: "link")) { [weak self] _ in
-            guard let self, !isShowingRecordingUnavailableHint else { return }
+            guard let self, !textView.isInputSuspended else { return }
             _ = actionRequested?(.requestAttachment(kind: .link))
         }
         attachmentButton.menu = UIMenu(children: [photoAction, audioAction, fileAction, linkAction])
@@ -46,7 +46,7 @@ extension ComposerView {
     /// 按草稿内容类型转发发送动作，并在上层受理后清空对应内容。
     @objc func sendButtonDidTap() {
         performPresentationUpdate(animated: false) { [self] in
-            guard !isShowingRecordingUnavailableHint, hasSendableContent else { return }
+            guard !self.textView.isInputSuspended, hasSendableContent else { return }
             let text = plainDraftText
             let accepted: Bool
             let segments = draftSegments
@@ -73,7 +73,7 @@ extension ComposerView {
 
     /// 根据当前听写状态转发开始或停止听写动作。
     @objc func dictationButtonDidTap() {
-        guard !isShowingRecordingUnavailableHint else { return }
+        guard !self.textView.isInputSuspended else { return }
         switch composerState {
         case .preparingSpeech, .dictating:
             _ = actionRequested?(.stopDictation)

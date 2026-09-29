@@ -6,7 +6,7 @@ import Testing
 import UIKit
 @testable import AzureFish
 
-@Suite("原版聊天真实数据适配")
+@Suite("原版聊天真实数据适配", .serialized)
 @MainActor
 struct ChatOriginalUIIntegrationTests {
     @Test func encryptedDraftRoundTripPreservesFormattingAndResources() async throws {
@@ -77,11 +77,25 @@ struct ChatOriginalUIIntegrationTests {
         #expect(page.navigationItem.titleView == nil)
         #expect(page.title == "真实会话导航")
         #expect(page.navigationItem.rightBarButtonItem != nil)
+        #expect(page.composerView.textView.becomeFirstResponder())
+        page.isSubmittingComposition = true
+        live.refresh()
+        await live.reloadTask?.value
+        #expect(page.composerView.isUserInteractionEnabled)
+        #expect(page.composerView.textView.isFirstResponder)
+        #expect(page.composerView.textView.isInputSuspended)
+        page.isSubmittingComposition = false
         let rich = MessageText(runs: [.init("真实富文本", style: .bold)])
-        let accepted = await withCheckedContinuation { continuation in
-            live.send([.richText(rich)]) { continuation.resume(returning: $0) }
+        page.composerView.restoreDraft(segments: [.richText(rich)], documents: [:])
+        page.composerView.sendButtonDidTap()
+        for _ in 0..<500 where page.isSubmittingComposition {
+            try await Task.sleep(for: .milliseconds(10))
         }
-        #expect(accepted)
+        #expect(!page.isSubmittingComposition)
+        #expect(page.composerView.textView.text.isEmpty)
+        #expect(page.composerView.textView.isFirstResponder)
+        // 网络离线时，落库后的气泡仍可显示，输入框已能接收下一条草稿。
+        page.composerView.textView.insertText("继续输入下一条")
         let outgoing = try #require(await database.pending().first?.outgoing)
         for _ in 0..<100 where page.viewModel.messages.isEmpty { try await Task.sleep(for: .milliseconds(10)) }
         let before = try #require(page.viewModel.messages.first?.id)
@@ -100,6 +114,8 @@ struct ChatOriginalUIIntegrationTests {
         #expect(page.viewModel.messages.first?.id == before)
         #expect(page.viewModel.messages.first?.deliveryState == .delivered)
         #expect(page.viewModel.pendingReplies.isEmpty)
+        #expect(page.composerView.textView.text == "继续输入下一条")
+        #expect(page.composerView.textView.isFirstResponder)
         var noticeJSON = messageJSON
         noticeJSON["id"] = UUID().uuidString.lowercased()
         noticeJSON["senderID"] = ""
@@ -115,7 +131,11 @@ struct ChatOriginalUIIntegrationTests {
         try await database.save(notice)
         live.refresh()
         await live.reloadTask?.value
-        let presentedNotice = try #require(page.viewModel.messages.last)
+        // 后台发送状态可能取消并替换 reloadTask，等待目标消息实际进入列表。
+        for _ in 0..<100 where !page.viewModel.messages.contains(where: { live.sourceIDs[$0.id] == notice.id }) {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        let presentedNotice = try #require(page.viewModel.messages.first { live.sourceIDs[$0.id] == notice.id })
         #expect(presentedNotice.systemNotice == Localization.text("chat.system.friendshipAcceptedOther"))
         #expect(presentedNotice.deliveryState == nil && presentedNotice.statusText == nil && !presentedNotice.canRevoke)
         #expect(page.viewModel.makeState().timeline.contains { item in
@@ -139,6 +159,78 @@ struct ChatOriginalUIIntegrationTests {
         await engine.stop(); try await database.close()
     }
 
+    @Test(arguments: [true, false])
+    func submittingKeepsKeyboardFocusUntilLocalCommit(focused: Bool) async throws {
+        guard #available(iOS 26.0, *) else { return }
+        let page = ChatViewController(viewModel: ChatViewModel())
+        let session = RecordingSession()
+        page.session = session
+        let scene = try #require(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
+        let previous = scene.windows.first(where: \.isKeyWindow)
+        let window = UIWindow(windowScene: scene)
+        window.rootViewController = page
+        window.makeKeyAndVisible()
+        defer {
+            window.isHidden = true
+            previous?.makeKey()
+            page.attachmentStore.removeAll()
+        }
+        page.loadViewIfNeeded()
+        let composer = page.composerView
+        let editor = composer.textView
+        editor.text = "先落库，再发送\n第二行"
+        composer.textViewDidChange(editor)
+        page.layoutChatContent()
+        if focused { #expect(editor.becomeFirstResponder()) }
+        else { editor.resignFirstResponder() }
+        try await Task.sleep(for: .milliseconds(200))
+        let events = EditingEvents()
+        let observer = NotificationCenter.default.addObserver(
+            forName: UITextView.textDidEndEditingNotification, object: editor, queue: .main
+        ) { _ in
+            MainActor.assumeIsolated { events.didEnd = true }
+        }
+        let keyboardObserver = NotificationCenter.default.addObserver(
+            forName: UIResponder.keyboardWillHideNotification, object: nil, queue: .main
+        ) { _ in
+            MainActor.assumeIsolated { events.didHideKeyboard = true }
+        }
+        defer {
+            NotificationCenter.default.removeObserver(observer)
+            NotificationCenter.default.removeObserver(keyboardObserver)
+        }
+
+        composer.sendButtonDidTap()
+        #expect(page.isSubmittingComposition)
+        #expect(editor.text == "先落库，再发送\n第二行")
+        #expect(composer.isUserInteractionEnabled)
+        #expect(editor.isFirstResponder == focused)
+        // 提交中的展示刷新不能解除输入冻结，也不能再次提交相同消息。
+        composer.applyState(.idle)
+        editor.insertText("不应写入")
+        editor.deleteBackward()
+        #expect(!composer.textView(editor, shouldChangeTextIn: NSRange(location: 0, length: 0), replacementText: "X"))
+        composer.sendButtonDidTap()
+        #expect(session.sendCount == 1)
+        #expect(editor.text == "先落库，再发送\n第二行")
+        try await Task.sleep(for: .milliseconds(100))
+        #expect(editor.isFirstResponder == focused)
+
+        session.completion?(true)
+        page.layoutChatContent()
+        try await Task.sleep(for: .milliseconds(100))
+        #expect(!page.isSubmittingComposition)
+        #expect(editor.text.isEmpty)
+        #expect(editor.isFirstResponder == focused)
+        #expect(!events.didEnd, "发送过程中不能结束编辑后再恢复焦点")
+        #expect(!events.didHideKeyboard, "发送过程中不能触发键盘收起")
+        #expect(!editor.isInputSuspended)
+        if focused {
+            editor.insertText("下一条")
+            #expect(editor.text == "下一条")
+        }
+    }
+
     @Test func failedSendKeepsOriginalComposerDraft() async throws {
         guard #available(iOS 26.0, *) else { return }
         let page = ChatViewController(viewModel: ChatViewModel())
@@ -155,6 +247,7 @@ struct ChatOriginalUIIntegrationTests {
         #expect(page.composerView.textView.text == "保留待发文字")
         #expect(page.viewModel.messages.isEmpty)
         #expect(!page.isSubmittingComposition)
+        #expect(!page.composerView.textView.isInputSuspended)
         _ = page.composerView.actionRequested?(.sendText("保留待发文字"))
         session.completion?(true)
         #expect(page.composerView.textView.text.isEmpty)
@@ -168,16 +261,27 @@ struct ChatOriginalUIIntegrationTests {
 @MainActor
 private final class RecordingSession: ChatSessionProviding {
     var sent: [MessageContent] = []
+    var sendCount = 0
     var completion: ((Bool) -> Void)?
     func start(in controller: ChatViewController) {}
     func stop() {}
     func refresh() {}
     func loadHistory() {}
-    func send(_ contents: [MessageContent], completion: @escaping (Bool) -> Void) { sent = contents; self.completion = completion }
+    func send(_ contents: [MessageContent], completion: @escaping (Bool) -> Void) {
+        sendCount += 1
+        sent = contents
+        self.completion = completion
+    }
     func retry(_ messageID: Int) {}
     func delete(_ messageID: Int) {}
     func revoke(_ messageID: Int) {}
     func reedit(_ messageID: Int) {}
     func viewportChanged() {}
     func didTranscribe(_ text: String, messageID: Int, attachmentID: UUID) {}
+}
+
+@MainActor
+private final class EditingEvents {
+    var didEnd = false
+    var didHideKeyboard = false
 }

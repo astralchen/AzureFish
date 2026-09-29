@@ -27,16 +27,16 @@ extension ComposerView {
 
     /// 指示当前是否可以直接发送音频预览草稿的布尔值。
     ///
-    /// 要求处于音频预览、没有媒体组及普通文本，并且未显示录音不可用提示。
+    /// 要求处于音频预览、没有媒体组及普通文本，并且输入未暂停。
     var canSendAudioDraft: Bool {
         guard case .audioPreview = composerState else { return false }
-        return mediaDraft == nil && plainDraftText.isEmpty && !isShowingRecordingUnavailableHint
+        return mediaDraft == nil && plainDraftText.isEmpty && !textView.isInputSuspended
     }
 
     /// 将整批内容替换到当前选区；附件异步更新不会再改变插入位置。
     func insertContents(_ items: [EditorInsertion]) {
         performPresentationUpdate { [self] in
-            guard !isShowingRecordingUnavailableHint else { return }
+            guard !self.textView.isInputSuspended else { return }
             let selection = textView.selectedRange
             guard selection.location != NSNotFound, NSMaxRange(selection) <= textView.textStorage.length else { return }
             // 结束组合输入可能同步触发编辑回调；必须在注册新附件之前完成，
@@ -184,11 +184,11 @@ extension ComposerView {
             }
         }
         attachment.open = { [weak self] in
-            guard let self, !isShowingRecordingUnavailableHint else { return }
+            guard let self, !textView.isInputSuspended else { return }
             _ = actionRequested?(.openDocument(draft.id))
         }
         attachment.remove = { [weak self] in
-            guard let self, !isShowingRecordingUnavailableHint else { return }
+            guard let self, !textView.isInputSuspended else { return }
             removeDocument(draft.id, notify: true)
         }
         return attachment
@@ -319,7 +319,7 @@ extension ComposerView {
         shouldChangeTextIn range: NSRange,
         replacementText text: String
     ) -> Bool {
-        guard !isShowingRecordingUnavailableHint else { return false }
+        guard !self.textView.isInputSuspended else { return false }
         resetTypingAttributes()
         if case .dictating = composerState, !isApplyingTranscription {
             _ = actionRequested?(.manualEditDuringDictation)

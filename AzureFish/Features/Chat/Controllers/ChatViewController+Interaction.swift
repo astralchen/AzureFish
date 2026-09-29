@@ -334,11 +334,10 @@ extension ChatViewController {
         guard let session, !isSubmittingComposition, !contents.isEmpty else { return }
         flushDraftBeforeLeaving()
         isSubmittingComposition = true
-        composerView.isUserInteractionEnabled = false
+        // 保留编辑器的响应者链；落库期间仅冻结草稿编辑，避免键盘先收起再弹出。
         session.send(contents) { [weak self] accepted in
             guard let self, !hasCleanedUpChat else { return }
             isSubmittingComposition = false
-            composerView.isUserInteractionEnabled = true
             if accepted {
                 isHandlingDraftAction = true
                 consume()

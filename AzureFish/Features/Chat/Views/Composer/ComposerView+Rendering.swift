@@ -220,7 +220,7 @@ extension ComposerView {
         attachmentGlassView.accessibilityElementsHidden = !showsTextInput
         inputGlassView.accessibilityElementsHidden = !showsTextInput
         textView.alpha = isShowingRecordingUnavailableHint ? 0 : 1
-        textView.isInputSuspended = isShowingRecordingUnavailableHint
+        textView.isInputSuspended = isShowingRecordingUnavailableHint || isSubmissionPending
         textView.accessibilityElementsHidden = isShowingRecordingUnavailableHint
         textView.isAccessibilityElement = !isShowingRecordingUnavailableHint
         let showsPlaceholder = !isShowingRecordingUnavailableHint && (textView.text ?? "").isEmpty
@@ -230,7 +230,7 @@ extension ComposerView {
         placeholderLabel.alpha = showsPlaceholder ? 1 : 0
         recordingUnavailableLabel.alpha = isShowingRecordingUnavailableHint ? 1 : 0
         recordingUnavailableLabel.accessibilityElementsHidden = !isShowingRecordingUnavailableHint
-        let canSend = !isShowingRecordingUnavailableHint && hasSendableContent
+        let canSend = !textView.isInputSuspended && hasSendableContent
         // 导入进度只改变发送权限，不切换系统玻璃按钮的灰色/蓝色外观。
         // 隐藏期间也保留蓝色，首次出现与追加媒体都不会先闪过禁用色。
         sendButton.isEnabled = !isShowingRecordingUnavailableHint
@@ -241,8 +241,11 @@ extension ComposerView {
             sendButton.accessibilityTraits.insert(.notEnabled)
         }
         sendButton.accessibilityHint = nil
-        audioSendButton.isEnabled = canSendAudioDraft
-        attachmentButton.isEnabled = !isShowingRecordingUnavailableHint
+        audioSendButton.isEnabled = !isSubmissionPending && canSendAudioDraft
+        audioCancelButton.isEnabled = !isSubmissionPending
+        audioPlayButton.isEnabled = !isSubmissionPending
+        recordingStopButton.isEnabled = !isSubmissionPending
+        attachmentButton.isEnabled = !textView.isInputSuspended
             && (composerState == .idle || !textAttachments.isEmpty)
         var dictationConfiguration = UIButton.Configuration.plain()
         dictationConfiguration.image = UIImage(systemName: "mic.fill")
@@ -266,7 +269,7 @@ extension ComposerView {
             dictationButton.accessibilityLabel = strings.dictate
         }
         dictationButton.configuration = dictationConfiguration
-        if isShowingRecordingUnavailableHint {
+        if textView.isInputSuspended {
             dictationButton.isEnabled = false
         }
         textActionContainer.setNeedsQuickLayout()

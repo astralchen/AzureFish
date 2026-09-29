@@ -60,6 +60,11 @@ final class ComposerView: QuickLayoutView, UITextViewDelegate {
     /// 会保留当前文本或附件预览，避免验证、导入或文件失效导致草稿丢失。
     var actionRequested: ((ComposerAction) -> Bool)?
 
+    /// 草稿落库期间暂停编辑与操作，保持当前第一响应者；默认不暂停。
+    var isSubmissionPending = false {
+        didSet { updateComposerState() }
+    }
+
     /// 完成一次正文编辑事务后报告语义内容变化。
     ///
     /// 覆盖用户编辑、格式变更、附件插入删除、听写写入及受理发送后的清空。
@@ -433,9 +438,10 @@ final class ComposerView: QuickLayoutView, UITextViewDelegate {
         )
     }
 
-    /// 悬浮输入栏周围的透明留白允许触摸到达下方时间线。
+    /// 透明留白允许触摸到达时间线；提交期间拦截控件触摸而不禁用编辑器祖先。
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
         let target = super.hitTest(point, with: event)
+        if isSubmissionPending, let target, target !== self { return self }
         return target === self ? nil : target
     }
 }

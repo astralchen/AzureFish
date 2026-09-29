@@ -1,6 +1,22 @@
 import XCTest
 
 final class ChatContactsUITests: XCTestCase {
+    @MainActor func testProfileAvatarHasSquareBounds() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["-chat-details-ui-test", "-contacts-list", "-details-dark", "-azurefish.locale.identifier", "zh-Hans"]
+        app.launch()
+        let peer = app.cells["contacts.peer.00000000-0000-0000-0000-000000000012"]
+        XCTAssertTrue(peer.waitForExistence(timeout: 25))
+        peer.tap()
+        let avatar = app.images["contacts.profile.avatar"]
+        XCTAssertTrue(avatar.waitForExistence(timeout: 5))
+        XCTAssertEqual(avatar.frame.width, 64, accuracy: 1)
+        XCTAssertEqual(avatar.frame.height, 64, accuracy: 1)
+        XCTAssertTrue(app.buttons["chat.live.sendMessage"].isHittable)
+        capture(app, name: "好友资料-方形头像")
+    }
+
     @MainActor func testRemarkInputSurvivesCompactWideRotation() throws {
         continueAfterFailure = false
         XCUIDevice.shared.orientation = .portrait

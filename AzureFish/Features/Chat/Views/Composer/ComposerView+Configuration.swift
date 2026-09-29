@@ -15,7 +15,7 @@ extension ComposerView {
     /// 配置输入控件、动态字体、辅助功能标识和操作回调。
     func configureViews() {
         pasteCoordinator.insertAttachments = { [weak self] sources in
-            guard let self, !isShowingRecordingUnavailableHint else { return }
+            guard let self, !textView.isInputSuspended else { return }
             pasteAttachments?(sources)
         }
         pasteCoordinator.textDidChange = { [weak self] in
@@ -168,7 +168,7 @@ extension ComposerView {
         }
         mediaDraftStripView.previewRequested = { [weak self] id in _ = self?.actionRequested?(.openMediaDraftItem(id)) }
         mediaDraftStripView.removeRequested = { [weak self] id in
-            guard let self, !isShowingRecordingUnavailableHint else { return }
+            guard let self, !textView.isInputSuspended else { return }
             _ = actionRequested?(.removeMediaDraftItem(id))
         }
         updateComposerState()

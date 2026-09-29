@@ -42,7 +42,9 @@ final class ChatViewController: LocalizedQuickLayoutHostingController, MediaImag
     /// 会话操作来源；为 `nil` 时使用独立演示业务，在加载视图前注入。
     var session: (any ChatSessionProviding)?
     /// 表示草稿正在原子入队，期间禁止重复发送和旧草稿回写。
-    var isSubmittingComposition = false
+    var isSubmittingComposition = false {
+        didSet { composerView.isSubmissionPending = isSubmittingComposition }
+    }
     /// 阅读历史期间出现新消息时显示的跳转入口。
     let latestMessagesButton = UIButton(type: .system)
     /// 保存页面消息并生成时间线展示状态的视图模型。

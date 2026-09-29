@@ -6,7 +6,7 @@ extension ComposerView {
     /// 通过系统文字选区菜单设置格式；保留系统复制、粘贴及替换等动作。
     func textView(_ textView: UITextView, editMenuForTextIn range: NSRange,
                   suggestedActions: [UIMenuElement]) -> UIMenu? {
-        guard !isShowingRecordingUnavailableHint, textView.markedTextRange == nil,
+        guard !self.textView.isInputSuspended, textView.markedTextRange == nil,
               range.length > 0, range.location != NSNotFound,
               NSMaxRange(range) <= textView.textStorage.length else {
             return UIMenu(children: suggestedActions)
@@ -30,7 +30,7 @@ extension ComposerView {
 
     /// 混合选区统一添加格式；只有全部文字已设置该格式时才取消，附件保持原样。
     func toggleFormatting(_ style: MessageText.Style, range: NSRange) {
-        guard !isShowingRecordingUnavailableHint, textView.markedTextRange == nil,
+        guard !self.textView.isInputSuspended, textView.markedTextRange == nil,
               range.location != NSNotFound, range.length > 0,
               NSMaxRange(range) <= textView.textStorage.length else { return }
         let styles = selectedStyles(in: range)

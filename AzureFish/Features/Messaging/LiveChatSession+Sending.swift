@@ -140,11 +140,9 @@ extension LiveChatSession {
             guard let self, let controller, !stopped else { return }
             controller.flushDraftBeforeLeaving()
             controller.isSubmittingComposition = true
-            controller.composerView.isUserInteractionEnabled = false
             perform { [self, weak controller] in
                 defer {
                     controller?.isSubmittingComposition = false
-                    controller?.composerView.isUserInteractionEnabled = true
                     refresh()
                 }
                 let text = try await engine.store.reeditText(message: key, conversation: conversation.id)

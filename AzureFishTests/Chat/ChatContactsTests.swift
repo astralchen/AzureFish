@@ -3,11 +3,47 @@ import AzureFishChat
 import AzureFishProtocol
 import CryptoKit
 import Foundation
+import QuickLayoutKit
 import Testing
+import UIKit
 @testable import AzureFish
 
 @MainActor
 struct ChatContactsTests {
+    @Test func profileAvatarKeepsSquareSizeAcrossContainerAndImageChanges() throws {
+        guard #available(iOS 16.0, *) else { return }
+        let controller = FriendViewController(runtime: ChatRuntime(session: .configured()), contact: ConversationPreviewData.contact)
+        controller.loadViewIfNeeded()
+        func findAvatar(in view: UIView) -> AccountAvatarView? {
+            if let avatar = view as? AccountAvatarView { return avatar }
+            return view.subviews.lazy.compactMap { findAvatar(in: $0) }.first
+        }
+        for width: CGFloat in [320, 402, 768] {
+            controller.view.frame = CGRect(x: 0, y: 0, width: width, height: 874)
+            controller.setNeedsQuickLayout()
+            controller.view.layoutIfNeeded()
+            let avatar = try #require(findAvatar(in: controller.view))
+            for imageSize: CGSize in [.zero, CGSize(width: 240, height: 120), CGSize(width: 120, height: 240)] {
+                if imageSize == .zero {
+                    avatar.image = UIImage(systemName: "person.crop.circle.fill")
+                } else {
+                    avatar.image = UIGraphicsImageRenderer(size: imageSize).image { context in
+                        UIColor.systemBlue.setFill()
+                        context.fill(CGRect(origin: .zero, size: imageSize))
+                    }
+                }
+                controller.setNeedsQuickLayout()
+                controller.view.layoutIfNeeded()
+                avatar.superview?.layoutIfNeeded()
+                avatar.layoutIfNeeded()
+                #expect(avatar.bounds.size == CGSize(width: 64, height: 64))
+                #expect(avatar.layer.cornerRadius == 32)
+                let name = try #require(controller.fields.dropFirst().first)
+                #expect(avatar.convert(avatar.bounds, to: controller.view).maxY <= name.convert(name.bounds, to: controller.view).minY)
+            }
+        }
+    }
+
     @Test func displayNamesFilteringAndStableSections() {
         guard #available(iOS 16.0, *) else { return }
         let fixture = ConversationPreviewData.contacts

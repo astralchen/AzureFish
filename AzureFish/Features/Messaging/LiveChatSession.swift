@@ -163,7 +163,7 @@ final class LiveChatSession: ChatSessionProviding {
                     else if let item = transferring[key] { values.append(presentation(item)) }
                 }
                 let allowed = runtime.canSend(conversation)
-                controller.composerView.isUserInteractionEnabled = allowed && !controller.isRestoringDraft && !controller.isSubmittingComposition
+                controller.composerView.isUserInteractionEnabled = allowed && !controller.isRestoringDraft
                 controller.viewModel.sessionNotice = !allowed ? Localization.text(conversation.closed ? "chat.live.closed" : "chat.live.friendRequired")
                     : runtime.online ? nil : Localization.text("chat.live.offline")
                 controller.viewModel.messages = values

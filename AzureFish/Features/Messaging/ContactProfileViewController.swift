@@ -142,8 +142,14 @@ final class FriendViewController: ContactFormController {
     private func render() {
         let avatar = AccountAvatarView()
         if let user = UUID(uuidString: contact.peer.id) { avatar.configure(session: runtime.session, user: user, asset: contact.peer.avatarID) }
-        avatar.heightAnchor.constraint(equalToConstant: 64).isActive = true
-        fields = [avatar, text(contact.peer.deleted == true ? Localization.text("account.deletedUser") : contact.displayName, style: .title1)]
+        avatar.isAccessibilityElement = true
+        avatar.accessibilityIdentifier = "contacts.profile.avatar"
+        // 表单项会横向撑满；由独立容器保持头像的方形尺寸。
+        let avatarRow = QuickLayoutView {
+            avatar.resizable().frame(width: 64, height: 64)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        fields = [avatarRow, text(contact.peer.deleted == true ? Localization.text("account.deletedUser") : contact.displayName, style: .title1)]
         if !contact.remark.isEmpty { fields.append(text(contact.peer.nickname, style: .subheadline)) }
         if contact.isBlocked { fields.append(text(Localization.text("contacts.blockedHelp"), style: .footnote)) }
         if !contact.requestID.isEmpty {

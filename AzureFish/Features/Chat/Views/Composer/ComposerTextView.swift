@@ -8,7 +8,7 @@ import QuickLayout
 import QuickLayoutKit
 import UIKit
 
-/// 在临时提示期间冻结键盘和输入法修改，同时保留第一响应者与组合文本。
+/// 在临时提示或草稿落库期间冻结键盘和输入法修改，同时保留第一响应者与组合文本。
 final class ComposerTextView: UITextView {
     /// 只拦截编辑，不修改 `isEditable` 或第一响应者状态。
     var isInputSuspended = false
