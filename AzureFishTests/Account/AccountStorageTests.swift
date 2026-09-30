@@ -7,8 +7,12 @@ import AzureFishAPI
 final class MemorySecureValues: SecureValueStoring {
     var data: [String: Data] = [:]
     var failWrites = false
+    var failReads = false
     var onWrite: ((String) -> Void)?
-    func read(_ key: String) throws -> Data? { data[key] }
+    func read(_ key: String) throws -> Data? {
+        if failReads { throw AccountFailure.storage }
+        return data[key]
+    }
     func write(_ bytes: Data, key: String) throws {
         if failWrites { throw AccountFailure.storage }
         data[key] = bytes

@@ -114,6 +114,8 @@ public actor APISessionManager {
     }
 
     /// 控制普通 HTTP 和实时连接能否取用凭据；本地身份与显式认证校验仍可用。
+    ///
+    /// 关闭时取消已登记的传输；等待共享刷新中的业务调用在发送前再次检查权限。
     public func setNetworkAccessAllowed(_ allowed: Bool) {
         networkAccessAllowed = allowed
         if !allowed { requests.values.forEach { $0() } }
@@ -160,8 +162,11 @@ public actor APISessionManager {
     /// 返回当前凭据；有 pending refresh 时先完成其恢复，避免使用已被消费的旧代次。
     public func credentials() async throws -> SessionCredentials {
         guard !endingSession, let record else { throw APISessionError.noSession }
-        guard networkAccessAllowed, !requiresReauthentication else { throw APISessionError.verificationRequired }
-        if record.pendingRefreshOperationID != nil || refreshTask != nil { return try await refresh() }
+        let generation = epoch
+        try checkNetworkAccess(generation)
+        if record.pendingRefreshOperationID != nil || refreshTask != nil {
+            return try await refreshForBusiness(generation: generation)
+        }
         return record.credentials
     }
 
@@ -255,28 +260,42 @@ public actor APISessionManager {
     }
 
     /// 在同一会话代次执行受保护传输，仅对明确认证失败进行一次重试。
+    ///
+    /// 首次发送、刷新后重试和传输任务开始时均检查业务网络权限；关闭权限不会取消共享刷新。
     public func authorized<Value: Sendable>(_ work: @escaping @Sendable (SessionCredentials) async throws -> Value) async throws -> Value {
         let generation = epoch, initial = try await credentials()
-        try check(generation)
+        try checkNetworkAccess(generation)
         do {
-            let value = try await tracked { try await work(initial) }
-            try check(generation)
-            guard networkAccessAllowed else { throw APISessionError.verificationRequired }
+            let value = try await tracked(generation: generation) { try await work(initial) }
+            try checkNetworkAccess(generation)
             return value
         } catch {
-            try check(generation)
-            guard networkAccessAllowed else { throw APISessionError.verificationRequired }
+            try checkNetworkAccess(generation)
             guard isUnauthenticated(error) else { throw error }
             let latest = try await credentials()
-            try check(generation)
-            let retry = latest != initial ? latest : try await refresh()
-            try check(generation)
+            try checkNetworkAccess(generation)
+            let retry = latest != initial ? latest : try await refreshForBusiness(generation: generation)
+            try checkNetworkAccess(generation)
             do {
-                let value = try await tracked { try await work(retry) }
-                try check(generation)
-                guard networkAccessAllowed else { throw APISessionError.verificationRequired }
+                let value = try await tracked(generation: generation) { try await work(retry) }
+                try checkNetworkAccess(generation)
                 return value
             } catch { noteAuthenticationFailure(error, generation: generation); throw error }
+        }
+    }
+
+    /// 共享刷新结束后检查等待者仍可联网；网络失败且权限关闭时报告 verificationRequired。
+    private func refreshForBusiness(generation: UUID) async throws -> SessionCredentials {
+        do {
+            let renewed = try await refresh()
+            try checkNetworkAccess(generation)
+            return renewed
+        } catch {
+            try check(generation)
+            // 明确撤销仍向调用方传播业务错误，以完成凭据清理；网络失败遵循关闭权限。
+            if requiresReauthentication { throw error }
+            guard networkAccessAllowed else { throw APISessionError.verificationRequired }
+            throw error
         }
     }
 
@@ -296,9 +315,15 @@ public actor APISessionManager {
         record = next; publish()
         return session.credentials
     }
-    /// 登记异步任务以响应会话失效及调用方取消，并在结束时移除登记。
-    private func tracked<Value: Sendable>(_ work: @escaping @Sendable () async throws -> Value) async throws -> Value {
-        let id = UUID(), task = Task { try await work() }
+    /// 登记任务并响应取消；提供 generation 时，在任务开始执行前检查业务网络权限。
+    ///
+    /// 显式认证校验和退出不提供 generation，不受业务网络开关限制。
+    private func tracked<Value: Sendable>(generation: UUID? = nil, _ work: @escaping @Sendable () async throws -> Value) async throws -> Value {
+        let id = UUID(), task = Task {
+            try Task.checkCancellation()
+            if let generation { try checkNetworkAccess(generation) }
+            return try await work()
+        }
         requests[id] = { task.cancel() }
         defer { requests.removeValue(forKey: id) }
         return try await withTaskCancellationHandler { try await task.value } onCancel: { task.cancel() }
@@ -326,6 +351,11 @@ public actor APISessionManager {
     private func check(_ generation: UUID) throws {
         guard epoch == generation else { throw APISessionError.sessionChanged }
         try Task.checkCancellation()
+    }
+    /// 确认任务仍属于当前会话且允许业务联网；显式认证校验只调用 check。
+    private func checkNetworkAccess(_ generation: UUID) throws {
+        try check(generation)
+        guard networkAccessAllowed, !requiresReauthentication else { throw APISessionError.verificationRequired }
     }
     /// 仅在任务身份仍匹配时清除当前刷新任务。
     private func finishRefresh(_ id: UUID) { if refreshID == id { refreshID = nil; refreshTask = nil } }

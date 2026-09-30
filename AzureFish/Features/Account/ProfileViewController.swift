@@ -67,7 +67,11 @@ final class ProfileViewController: AccountScreen {
         Task { [weak self] in
             guard let self else { return }
             defer { menu.isReloading = false }
-            do { try await session.reloadProfile(); refresh() }
+            do {
+                if session.readOnly { await session.restore() }
+                else { try await session.reloadProfile() }
+                refresh()
+            }
             catch { showMessage(AccountFailure.key(for: error)) }
         }
     }
@@ -135,6 +139,7 @@ final class EditProfileViewController: AccountScreen {
     private let feedback = UILabel()
     private var feedbackKey: String?
     private var task: Task<Void, Never>?
+    private var sessionObservation: UUID?
     override var localizedTitleKey: String? { "account.design.editProfile" }
     init(session: SessionCoordinator, profile: AccountProfile) {
         self.session = session; base = profile
@@ -174,12 +179,21 @@ final class EditProfileViewController: AccountScreen {
         if session.readOnly { content.append(label("account.design.offlineProfile", secondary: true)) }
         save = button("account.design.save", primary: true) { [weak self] in self?.send() }
         save.isEnabled = !session.readOnly; actions = [save]
+        // 会话原位恢复只更新提交能力，不重建表单或覆盖草稿。
+        sessionObservation = session.observe { [weak self] in
+            guard let self else { return }
+            save?.isEnabled = task == nil && !session.readOnly
+        }
         navigationItem.hidesBackButton = true
         navigationItem.leftBarButtonItem = UIBarButtonItem(title: Localization.text("account.design.cancel"), primaryAction: UIAction { [weak self] _ in self?.cancel() })
         navigationController?.interactivePopGestureRecognizer?.isEnabled = false
         reloadLocalizedContent(); setNeedsQuickLayout()
     }
     override func viewWillDisappear(_ animated: Bool) { super.viewWillDisappear(animated); navigationController?.interactivePopGestureRecognizer?.isEnabled = true }
+    deinit {
+        let session = session, observation = sessionObservation
+        if let observation { Task { @MainActor in session.removeObserver(observation) } }
+    }
     override func reloadLocalizedContent() {
         super.reloadLocalizedContent(); nickname.reloadText()
         bio.accessibilityLabel = Localization.text("account.design.bio")

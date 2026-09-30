@@ -42,7 +42,7 @@ nil 字段表示不修改，空 bio 表示清空。操作绑定环境、账号�
 ## App 集成边界
 
 - CredentialStore 将完整凭据和 pending refresh operation ID 原子保存到 `AfterFirstUnlockThisDeviceOnly` Keychain；APISessionManager 通过注入的存储协议保存完整记录，不提供生产内存回退。
-- 现有 App 继续使用 SessionCoordinator；本轮不迁移其 Keychain 格式、不自动启动实时连接。新 APISessionManager 已独立实现共享刷新、pending ID 恢复、账号代次隔离与迟到结果拒绝，后续迁移需注入生产安全存储。
+- App 的 SessionCoordinator 通过 KeychainAPISessionStore 注入共享 APISessionManager，复用现有 Keychain 格式；管理器负责共享刷新、pending ID 恢复、账号代次隔离与迟到结果拒绝，页面及联网任务的恢复由协调器编排。
 - 普通受保护请求仅在 401＋`UNAUTHENTICATED` 时考虑刷新；刷新请求自身失败不递归。`INVALID_CREDENTIALS`、`REFRESH_REPLAY`、`AUTH_ATTEMPT_EXPIRED`、`REFRESH_SUPERSEDED` 按各自流程处理。离线不清空有效账号数据。
 - UserRepository 按 environment＋user_id 与单调 profile version 合并资料，并负责账号范围加密缓存；本包无 URLCache 或资料持久化。
 - 退出补偿队列、主题／语言、界面路由、Apple 和本地数据库不在本包中。
@@ -76,7 +76,11 @@ func makeRealtime(api: AccountAPI, secureStore: any APISessionStore) async throw
 
 `install` 先停止旧代次请求，再保存并发布新凭据；`restore` 恢复未完成刷新时复用操作 ID 和确定性请求字节。`execute(AccountOperation)` 与 `profile()` 只在 HTTP 401＋UNAUTHENTICATED 时认证重试一次。HTTP 和实时连接共用刷新；旧 Bearer 的迟到 401 使用已经更新的凭据，不重复刷新。刷新前先持久化旧凭据＋pending ID，成功后先保存新凭据再发布。存储失败不发布未保存的新代次；离线不清除有效会话。
 
-`logout(operationID:)` 先停止旧代次，再提交服务端退出和清理存储。失败保留存储，调用方应保留 operationID 重试；退出期间不向实时订阅发布临时刷新的凭据。`clearLocalSession()` 明确清除本机凭据，不替代服务端撤销，也不处理业务数据库。旧存储写入与新会话安装／清理顺序串行，旧请求结果不能复活已清理会话。
+`setNetworkAccessAllowed(false)` 关闭业务网络并取消已登记的传输，等待共享刷新的调用在首次发送或认证重试前重新检查权限，以 `verificationRequired` 结束。共享刷新可完成持久化，不能因此恢复业务权限。首次发送、重试和传输任务开始时同时检查会话代次与取消状态；`validateSession()` 可在业务网络关闭期间显式确认身份，确认成功后由调用方开放业务权限。
+
+`logout(operationID:)` 先停止旧代次，再提交服务端退出和清理存储。失败保留存储和退出中的管理器状态，调用方应保留 operationID 重试，由该方法协调必要刷新；退出期间不向实时订阅发布临时刷新的凭据。App 保留页面、导航及草稿，暂停联网任务并进入离线只读，重新连接时先 `restoreLocal()` 再 `validateSession()`，有效才原位解锁，已撤销则清除凭据并返回登录入口。重试或明确本机退出时，补偿材料使用当前凭据重建并保留原 operationID。`clearLocalSession()` 明确清除本机凭据，不替代服务端撤销，也不处理业务数据库。旧存储写入与新会话安装／清理顺序串行，旧请求结果不能复活已清理会话。
+
+`MediaAPI.download` 的接收容量为请求分块长度与 64 KiB 的较大值；错误正文仍最多 64 KiB，然后解析业务错误。1 字节及短尾块的 401 可触发共享刷新，403／429 保留业务分类。成功下载仍严格要求 206、匹配 ETag、完整 Content-Range 和精确实际长度。验证范围见[网络恢复修复记录](../../Documentation/Authentication/Implementation/2026-09-30-network-recovery.md)。
 
 `IMRealtimeClient` 从环境派生 `/v1/im/live`，每次握手取得最新 Bearer，25 秒 ping、10 秒 pong 超时，仅接受不超过 4 KiB 的二进制 IMSyncHint。页面取得 `IMRealtimeHint`、`IMRealtimeState` 与 `IMRealtimeSignal`，无需 import Protobuf。连接建立／恢复、提示变化和接收缺口触发 HTTP 补拉信号；每订阅只保留最新信号，携带会话作用域。提示 cursor **不是已提交 checkpoint**。
 

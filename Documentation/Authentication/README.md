@@ -8,6 +8,8 @@ AzureFish 是 iOS 客户端；仓库根目录下的 `AzureFishServer/` 是独立
 
 > 2026-09-29：新增默认自动登录、活跃会话续期与上次账号入口，验证记录见[自动登录实施](Implementation/2026-09-29-auto-login.md)。
 
+> 2026-09-30：修复业务网络门控、短分块下载错误分类和退出失败后的只读恢复，行为与本次验证见[网络恢复修复记录](Implementation/2026-09-30-network-recovery.md)。
+
 ## 阅读入口
 
 | 文档 | 内容 |

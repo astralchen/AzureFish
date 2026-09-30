@@ -4,6 +4,7 @@ import AzureFishAPI
 import AzureFishNetwork
 import AzureFishProtocol
 import SwiftProtobuf
+import UIKit
 @testable import AzureFish
 
 actor AccountTestTransport: HTTPTransport {
@@ -12,6 +13,10 @@ actor AccountTestTransport: HTTPTransport {
     var conflict = false
     var slow = false
     var unauthorized = false
+    var logoutOffline = false
+    var logoutNeedsRefresh = false
+    func setLogoutOffline(_ value: Bool) { logoutOffline = value }
+    func setLogoutNeedsRefresh(_ value: Bool) { logoutNeedsRefresh = value }
     func setUnauthorized(_ value: Bool) { unauthorized = value }
     func setOffline(_ value: Bool) { offline = value }
     func setConflict(_ value: Bool) { conflict = value }
@@ -20,6 +25,13 @@ actor AccountTestTransport: HTTPTransport {
         requests.append(request)
         if slow { try await Task.sleep(nanoseconds: 100_000_000) }
         if offline { throw URLError(.notConnectedToInternet) }
+        if request.url.path.hasSuffix("logout") {
+            if logoutNeedsRefresh && request.headers["Authorization"] == "Bearer " + String(repeating: "a", count: 43) {
+                var failure = ApiError(); failure.code = "UNAUTHENTICATED"
+                return HTTPResponse(statusCode: 401, headers: ["Content-Type": "application/protobuf"], body: try failure.serializedData())
+            }
+            if logoutOffline { throw URLError(.notConnectedToInternet) }
+        }
         if unauthorized {
             var failure = ApiError(); failure.code = "UNAUTHENTICATED"
             return HTTPResponse(statusCode: 401, headers: ["Content-Type": "application/protobuf"], body: try failure.serializedData())
@@ -148,6 +160,20 @@ struct SessionCoordinatorTests {
         #expect(coordinator.phase == .welcome && coordinator.profile == nil)
         #expect(try store.load() == nil)
     }
+    @Test func rejectedRefreshDuringProfileWriteStillClearsSession() async throws {
+        let transport = AccountTestTransport()
+        let (coordinator, store, root) = try fixture(transport, keys: MemorySecureValues())
+        defer { try? FileManager.default.removeItem(at: root) }
+        try store.save(StoredSession(sampleCredentials()))
+        await coordinator.restore()
+        let base = try #require(coordinator.profile)
+        await transport.setUnauthorized(true)
+        await #expect(throws: (any Error).self) {
+            try await coordinator.saveProfile(base: base, nickname: "Draft", bio: "")
+        }
+        #expect(coordinator.phase == .welcome && coordinator.profile == nil)
+        #expect(try store.load() == nil)
+    }
     @Test func pendingRefreshResumesSameIDAndConcurrentReadsShareRotation() async throws {
         let transport = AccountTestTransport(); await transport.setSlow(true)
         let (coordinator, store, root) = try fixture(transport, keys: MemorySecureValues())
@@ -241,5 +267,150 @@ struct SessionCoordinatorTests {
         await coordinator.restore()
         #expect(coordinator.phase == .signedIn && coordinator.readOnly)
         #expect(coordinator.profile?.accountName == "fictional_user")
+    }
+
+    @Test(arguments: ["valid", "revoked", "offline", "storage"])
+    func failedLogoutRequiresValidationBeforeBusinessAccess(recovery: String) async throws {
+        let transport = AccountTestTransport(), keys = MemorySecureValues()
+        let (coordinator, store, root) = try fixture(transport, keys: keys)
+        defer { try? FileManager.default.removeItem(at: root) }
+        try store.save(StoredSession(sampleCredentials()))
+        await coordinator.restore()
+        let profile = try #require(coordinator.profile), identity = coordinator.sessionIdentity
+        let snapshot = keys.data
+        await transport.setLogoutOffline(true)
+        await #expect(throws: (any Error).self) { try await coordinator.logout() }
+        #expect(coordinator.phase == .signedIn && coordinator.connectivity == .offline)
+        #expect(coordinator.profile == profile && coordinator.sessionIdentity == identity)
+        #expect(keys.data == snapshot)
+        let sent = await transport.requests.count
+        await #expect(throws: AccountFailure.offline) {
+            try await coordinator.saveProfile(base: profile, nickname: "Draft", bio: "")
+        }
+        await #expect(throws: (any Error).self) { try await coordinator.reloadProfile() }
+        #expect(await transport.requests.count == sent)
+        await transport.setOffline(recovery == "offline")
+        await transport.setUnauthorized(recovery == "revoked")
+        keys.failReads = recovery == "storage"
+        await coordinator.restore()
+        keys.failReads = false
+        if recovery == "valid" {
+            #expect(coordinator.phase == .signedIn && !coordinator.readOnly)
+            #expect(coordinator.sessionIdentity == identity)
+            try await coordinator.reloadProfile()
+        } else if recovery == "revoked" {
+            #expect(coordinator.phase == .welcome && coordinator.profile == nil)
+            #expect(try store.load() == nil)
+        } else {
+            #expect(coordinator.readOnly)
+            #expect(try store.load() != nil)
+            #expect(coordinator.phase == (recovery == "storage" ? .recovery : .signedIn))
+            #expect(await transport.requests.filter { $0.method == .patch }.isEmpty)
+            await transport.setOffline(false)
+            await coordinator.restore()
+            #expect(coordinator.phase == .signedIn && !coordinator.readOnly)
+        }
+    }
+
+    @Test func retryLogoutUsesSameOperationAndManagerRefreshDespiteExpiredLocalCredential() async throws {
+        let transport = AccountTestTransport()
+        let (coordinator, store, root) = try fixture(transport, keys: MemorySecureValues())
+        defer { try? FileManager.default.removeItem(at: root) }
+        try store.save(StoredSession(sampleCredentials()))
+        await coordinator.restore()
+        await transport.setLogoutOffline(true)
+        await #expect(throws: (any Error).self) { try await coordinator.logout() }
+        let first = try #require(await transport.requests.last)
+        // 协调器读到过期记录时，也不能对 endingSession 管理器执行预刷新。
+        try store.save(StoredSession(sampleCredentials(accessExpired: true)))
+        await transport.setLogoutOffline(false)
+        await transport.setLogoutNeedsRefresh(true)
+        try await coordinator.logout()
+        let requests = await transport.requests
+        let exits = requests.filter { $0.url.path.hasSuffix("logout") }
+        #expect(exits.count == 3 && exits.allSatisfy { $0.body == first.body })
+        #expect(exits.last?.headers["Authorization"] == "Bearer " + String(repeating: "b", count: 43))
+        #expect(requests.filter { $0.url.path.hasSuffix("refresh") }.count == 1)
+        #expect(coordinator.phase == .welcome)
+        #expect(try store.load() == nil)
+    }
+
+    @Test func localLogoutAfterRotationQueuesCurrentBearerAndRetainsOperation() async throws {
+        let transport = AccountTestTransport()
+        let (coordinator, store, root) = try fixture(transport, keys: MemorySecureValues())
+        defer { try? FileManager.default.removeItem(at: root) }
+        try store.save(StoredSession(sampleCredentials()))
+        await coordinator.restore()
+        await transport.setLogoutNeedsRefresh(true)
+        await transport.setLogoutOffline(true)
+        await #expect(throws: (any Error).self) { try await coordinator.logout() }
+        let first = try #require(await transport.requests.first { $0.url.path.hasSuffix("logout") })
+        #expect(try store.load()?.credentials().refreshGeneration == 2)
+        try await coordinator.logout(localOnly: true)
+        #expect(coordinator.phase == .welcome)
+        #expect(try store.load() == nil)
+        let ticket = try #require(try store.revocations().first)
+        await transport.setLogoutOffline(false)
+        await coordinator.restore()
+        let last = try #require(await transport.requests.last)
+        #expect(last.body == first.body)
+        #expect(last.headers["Authorization"] == "Bearer " + String(repeating: "b", count: 43))
+        #expect(ticket.operationID.uuidString.lowercased() == (try LogoutRequest(serializedBytes: first.body!)).operationID)
+        #expect(coordinator.phase == .welcome)
+        #expect(try store.revocations().isEmpty)
+    }
+
+    @Test func logoutStorageFailureKeepsPageReadOnlyAndCredentialsRecoverable() async throws {
+        let transport = AccountTestTransport(), keys = MemorySecureValues()
+        let (coordinator, store, root) = try fixture(transport, keys: keys)
+        defer { try? FileManager.default.removeItem(at: root) }
+        try store.save(StoredSession(sampleCredentials()))
+        await coordinator.restore()
+        let identity = coordinator.sessionIdentity
+        keys.failWrites = true
+        await #expect(throws: (any Error).self) { try await coordinator.logout() }
+        #expect(coordinator.phase == .signedIn && coordinator.readOnly)
+        #expect(coordinator.sessionIdentity == identity)
+        #expect(try store.load() != nil)
+        keys.failWrites = false
+        await transport.setUnauthorized(true)
+        await coordinator.restore()
+        #expect(coordinator.phase == .welcome)
+        #expect(try store.load() == nil)
+    }
+
+    @Test func readonlyProfileReloadRecoversInPlaceAndPreservesEditorDraft() async throws {
+        let transport = AccountTestTransport()
+        let (coordinator, store, root) = try fixture(transport, keys: MemorySecureValues())
+        defer { try? FileManager.default.removeItem(at: root) }
+        try store.save(StoredSession(sampleCredentials()))
+        await coordinator.restore()
+        let profile = ProfileViewController(session: coordinator)
+        let editor = EditProfileViewController(session: coordinator, profile: try #require(coordinator.profile))
+        let navigation = AppNavigationController(rootViewController: profile)
+        let scene = try #require(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
+        let previous = scene.windows.first(where: \.isKeyWindow)
+        let window = UIWindow(windowScene: scene)
+        defer { window.isHidden = true; previous?.makeKey() }
+        window.rootViewController = navigation; window.makeKeyAndVisible(); window.layoutIfNeeded()
+        navigation.pushViewController(editor, animated: false); window.layoutIfNeeded()
+        func descendants(_ view: UIView) -> [UIView] { [view] + view.subviews.flatMap(descendants) }
+        let nickname = try #require(descendants(editor.view).compactMap { $0 as? UITextField }
+            .first { $0.accessibilityIdentifier == "account.profile.nickname" })
+        let bio = try #require(descendants(editor.view).compactMap { $0 as? UITextView }
+            .first { $0.accessibilityIdentifier == "account.profile.bio" })
+        let save = try #require(descendants(editor.view).compactMap { $0 as? UIButton }
+            .first { $0.accessibilityIdentifier == "account.design.save" })
+        nickname.text = "Unsubmitted"; bio.text = "Draft survives reconnect"
+        await transport.setLogoutOffline(true)
+        await #expect(throws: (any Error).self) { try await coordinator.logout() }
+        #expect(!save.isEnabled && navigation.topViewController === editor)
+        let menu = try #require(descendants(profile.view).compactMap { $0 as? ProfileMenuView }.first)
+        menu.didSelect?("account.design.reload")
+        for _ in 0..<1_000 where menu.isReloading { try await Task.sleep(nanoseconds: 2_000_000) }
+        #expect(!menu.isReloading && !coordinator.readOnly && save.isEnabled)
+        #expect(navigation.viewControllers.count == 2 && navigation.topViewController === editor)
+        #expect(nickname.text == "Unsubmitted" && bio.text == "Draft survives reconnect")
+        #expect(await transport.requests.filter { $0.method == .patch }.isEmpty)
     }
 }

@@ -335,6 +335,8 @@ final class SessionCoordinator {
         }
     }
     /// 先尝试撤销服务端会话。失败时允许用户明确选择本机退出，补偿只持有旧访问凭据。
+    ///
+    /// 结果不确定时保留当前页面并转为只读；恢复须重新加载本地记录并通过服务端校验。
     func logout(localOnly: Bool = false) async throws {
         guard !busy else { throw AccountFailure.busy }
         stored = try store.load()
@@ -352,29 +354,45 @@ final class SessionCoordinator {
             }
             busy = false; exitPending = false; publish()
         }
-        if !localOnly && (stored?.pendingRefreshID != nil || credentials.accessExpiresAt <= Date()) {
-            credentials = try await refresh()
-            pendingLogout = nil
+        var generation = epoch
+        do {
+            // 失败退出后的管理器仍处于 endingSession；再次退出的刷新由 logout 自行协调。
+            if !localOnly, pendingLogout == nil,
+               stored?.pendingRefreshID != nil || credentials.accessExpiresAt <= Date() {
+                credentials = try await refresh()
+            }
+            exitPending = true; epoch = UUID(); generation = epoch; refreshTask?.cancel()
+            await invalidateAvatars()?.value
+            requests.values.forEach { $0() }; requests.removeAll()
+            // 保留业务身份，但每次使用当前存储的 Bearer 和截止时间构造补偿材料。
+            let ticket = try api.prepareLogoutRevocation(operationID: pendingLogout?.operationID ?? UUID(), using: credentials)
+            pendingLogout = ticket
+            if localOnly {
+                var queue = try store.revocations().filter { $0.expiresAt > Date() }
+                if ticket.expiresAt > Date() { queue.append(ticket) }
+                try store.saveRevocations(queue)
+            } else {
+                try await sessionManager?.logout(operationID: ticket.operationID)
+            }
+            try await ChatRuntime.stopAccount(user: credentials.userID, environment: store.environmentID)
+            try await sessionManager?.clearLocalSession()
+            try await endOtherWindows(user: credentials.userID)
+            avatarOperation = nil; securityOperation = nil
+            stored = nil; profile = nil; authentication = nil; profileOperation = nil; pendingLogout = nil
+            connectivity = .checking; localRestored = false; noticeKey = nil; phase = .welcome
+            renewalTask?.cancel()
+        } catch {
+            if epoch == generation {
+                await sessionManager?.setNetworkAccessAllowed(false)
+                if epoch == generation {
+                    localRestored = false
+                    connectivity = .offline
+                    noticeKey = AccountFailure.key(for: error)
+                    renewalTask?.cancel(); renewalTask = nil
+                }
+            }
+            throw error
         }
-        exitPending = true; epoch = UUID(); refreshTask?.cancel()
-        await invalidateAvatars()?.value
-        requests.values.forEach { $0() }; requests.removeAll()
-        let ticket = try pendingLogout ?? api.prepareLogoutRevocation(operationID: UUID(), using: credentials)
-        pendingLogout = ticket
-        if localOnly {
-            var queue = try store.revocations().filter { $0.expiresAt > Date() }
-            if ticket.expiresAt > Date() { queue.append(ticket) }
-            try store.saveRevocations(queue)
-        } else {
-            try await sessionManager?.logout(operationID: ticket.operationID)
-        }
-        try await ChatRuntime.stopAccount(user: credentials.userID, environment: store.environmentID)
-        try await sessionManager?.clearLocalSession()
-        try await endOtherWindows(user: credentials.userID)
-        avatarOperation = nil; securityOperation = nil
-        stored = nil; profile = nil; authentication = nil; profileOperation = nil; pendingLogout = nil
-        connectivity = .checking; localRestored = false; noticeKey = nil; phase = .welcome
-        renewalTask?.cancel()
     }
     func securityInfo() async throws -> AccountSecurityInfo {
         try await authorized { api, credentials in try await api.security(using: credentials) }

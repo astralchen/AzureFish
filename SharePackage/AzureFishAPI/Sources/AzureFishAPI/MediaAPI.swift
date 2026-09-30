@@ -175,6 +175,8 @@ public struct MediaAPI: Sendable {
     }
     /// 按授权下载指定字节范围，并校验 206、ETag、Content-Range 及实际长度。
     ///
+    /// 接收时为错误正文保留最多 64 KiB，短分块的认证失败仍可触发共享刷新。
+    ///
     /// - Parameters:
     ///   - grant: 与目标资源对应的内存授权。
     ///   - offset: 从 0 开始的字节偏移。
@@ -202,6 +204,7 @@ public struct MediaAPI: Sendable {
     {
         let url = session.environment.url(path: path)
         let client = client
+        let maximumErrorBytes = 64 * 1024
         return try await session.authorized { credentials in
             var headers = headers
             headers["Authorization"] = "Bearer " + credentials.accessToken.rawValue
@@ -209,9 +212,13 @@ public struct MediaAPI: Sendable {
             do {
                 response = try await client.send(
                     HTTPRequest(
-                        url: url, method: method, headers: headers, body: body, timeout: 60, maximumResponseBytes: max))
+                        url: url, method: method, headers: headers, body: body, timeout: 60,
+                        maximumResponseBytes: Swift.max(max, maximumErrorBytes)))
             } catch let error as NetworkError { throw APIClientError.network(error) }
             if !(200..<300).contains(response.statusCode) {
+                guard response.body.count <= maximumErrorBytes else {
+                    throw APIClientError.network(.responseTooLarge(limit: maximumErrorBytes))
+                }
                 if let error = try? ApiError(serializedBytes: response.body) {
                     throw APIClientError.service(
                         APIServiceFailure(

@@ -90,6 +90,64 @@ private actor Gate {
 
 @Suite("共享会话与实时提示", .timeLimit(.minutes(1)))
 struct SessionRealtimeTests {
+    /// 首次取凭据或认证重试等待刷新时关闭网络，均不得继续发出业务请求。
+    @Test(arguments: [false, true], [false, true])
+    func closingNetworkAccessDuringRefreshPreventsBusinessSend(retrying: Bool, refreshFails: Bool) async throws {
+        let fixture = SessionFixture(), store = MemorySessionStore(), gate = Gate()
+        let transport = MockHTTPTransport { request, number in
+            if request.url.path == "/v1/auth/refresh" {
+                await gate.wait()
+                if refreshFails, number == (retrying ? 2 : 1) { throw URLError(.notConnectedToInternet) }
+                return try fixture.auth()
+            }
+            if retrying, request.headers["Authorization"] == "Bearer \(try fixture.credentials().accessToken.rawValue)" {
+                return try failure()
+            }
+            if request.method == .patch {
+                var profile = fixture.profile(); profile.profileVersion = 2; profile.nickname = "受控写入"
+                return HTTPResponse(statusCode: 200, headers: ["Content-Type": "application/protobuf"], body: try profile.serializedData())
+            }
+            return try fixture.profileResponse()
+        }
+        let manager = APISessionManager(api: AccountAPI(environment: fixture.environment, transport: transport), store: store)
+        try await manager.install(fixture.credentials())
+        if !retrying {
+            try await store.save(.init(credentials: fixture.credentials(), pendingRefreshOperationID: UUID()), environmentID: "test")
+            try await manager.restoreLocal()
+        }
+        let operation = try manager.api.prepareProfileUpdate(operationID: UUID(),
+            changes: .init(expectedVersion: 1, nickname: "受控写入"), using: fixture.credentials())
+        let request = Task { try await manager.execute(operation) }
+        try await until { await transport.requests.contains { $0.url.path == "/v1/auth/refresh" } }
+        await manager.setNetworkAccessAllowed(false)
+        await gate.release()
+        await #expect(throws: APISessionError.verificationRequired) { try await request.value }
+        #expect(await transport.requests.filter { $0.url.path == "/v1/me" }.count == (retrying ? 1 : 0))
+        #expect(await manager.state.refreshGeneration == (refreshFails ? 1 : 2))
+        #expect(await store.records["test"]?.credentials.refreshGeneration == (refreshFails ? 1 : 2))
+        await manager.setNetworkAccessAllowed(true)
+        #expect(try await manager.execute(operation).userID == fixture.user)
+        #expect(await transport.requests.filter { $0.url.path == "/v1/auth/refresh" }.count == (refreshFails ? 2 : 1))
+    }
+
+    /// 已关闭的业务权限不能调用写操作闭包，显式校验仍可执行。
+    @Test func closedNetworkAccessRejectsBusinessWorkButAllowsValidation() async throws {
+        let fixture = SessionFixture(), store = MemorySessionStore()
+        let transport = MockHTTPTransport { _, _ in try fixture.profileResponse() }
+        let manager = APISessionManager(api: AccountAPI(environment: fixture.environment, transport: transport), store: store)
+        try await manager.install(fixture.credentials())
+        await manager.setNetworkAccessAllowed(false)
+        await #expect(throws: APISessionError.verificationRequired) {
+            try await manager.authorized { credentials in
+                try await manager.api.execute(manager.api.prepareProfileUpdate(operationID: UUID(),
+                    changes: .init(expectedVersion: 1, nickname: "不得提交"), using: credentials), using: credentials)
+            }
+        }
+        #expect(await transport.requests.isEmpty)
+        #expect(try await manager.validateSession().userID == fixture.user)
+        await #expect(throws: APISessionError.verificationRequired) { try await manager.credentials() }
+    }
+
     /// 验证刷新被明确拒绝后所有消费者收到重新认证状态。
     @Test func rejectedRefreshPublishesReauthenticationToAllConsumers() async throws {
         let fixture = SessionFixture(), store = MemorySessionStore()
@@ -303,6 +361,24 @@ struct SessionRealtimeTests {
         #expect(history.filter { $0.url.path == "/v1/auth/refresh" }.count == 1)
         let logout = history.filter { $0.url.path == "/v1/auth/logout" }
         #expect(logout.count == 2 && logout[0].body == logout[1].body)
+    }
+
+    /// 服务端退出响应迟到时，不能清理后来安装的新会话。
+    @Test func lateLogoutCannotClearReplacementSession() async throws {
+        let fixture = SessionFixture(), replacement = SessionFixture(), store = MemorySessionStore(), gate = Gate()
+        let transport = MockHTTPTransport { _, _ in
+            await gate.wait()
+            return HTTPResponse(statusCode: 200, headers: ["Content-Type": "application/protobuf"], body: Data())
+        }
+        let manager = APISessionManager(api: AccountAPI(environment: fixture.environment, transport: transport), store: store)
+        try await manager.install(fixture.credentials())
+        let logout = Task { try await manager.logout(operationID: UUID()) }
+        try await until { await transport.requests.count == 1 }
+        try await manager.install(replacement.credentials())
+        await gate.release()
+        await #expect(throws: (any Error).self) { try await logout.value }
+        #expect(try await manager.credentials().sessionID == replacement.session)
+        #expect(await store.records["test"]?.credentials.sessionID == replacement.session)
     }
 
     /// 验证离线确认失败及畸形提示不会误触发刷新。
