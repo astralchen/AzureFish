@@ -1,3 +1,4 @@
+import AzureFishStorage
 import AVFoundation
 import AVKit
 import AzureFishAPI
@@ -186,8 +187,7 @@ final class LiveMediaCoordinator: NSObject, PHPickerViewControllerDelegate, UIDo
         }
         sheet.addAction(
             UIAlertAction(title: Localization.text("chat.live.remove"), style: .destructive) { _ in
-                let removed = controller.attachments.remove(at: index)
-                Task { for resource in removed.resources { try? await controller.runtime.media?.remove(resource.id) } }
+                controller.attachments.remove(at: index)
             })
         sheet.addAction(UIAlertAction(title: Localization.text("chat.live.cancel"), style: .cancel))
         sheet.popoverPresentationController?.sourceView = controller.attachmentButton

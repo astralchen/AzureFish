@@ -371,9 +371,9 @@ struct ChatContactsTests {
         let latest = try #require(try await store.contacts().first)
         #expect(latest.displayName == "新的私有备注" && latest.peer.nickname == "最新昵称")
         #expect(latest.matches("最新昵称") && !latest.isContact)
-        try await store.setMeta(Data([1,2,3]), id: "pending")
-        try await store.removeMeta("pending")
-        let restored: Data? = try await store.meta("pending")
+        try await store.saveContactOperation(.init(bytes: Data([1,2,3]), action: .remark, remark: "", message: ""), peer: contact.peer.id)
+        try await store.removeContactOperation(peer: contact.peer.id)
+        let restored = try await store.pendingContactOperation(peer: contact.peer.id)
         #expect(restored == nil)
         try await store.close()
     }

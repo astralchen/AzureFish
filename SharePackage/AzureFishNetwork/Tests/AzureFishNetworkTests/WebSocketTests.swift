@@ -3,6 +3,7 @@ import Testing
 @testable import AzureFishNetwork
 import AzureFishNetworkTestSupport
 
+/// 以 2 毫秒间隔最多检查条件 1000 次；仍未满足时抛出 requestTimeout。
 private func eventually(_ predicate: @escaping @Sendable () async -> Bool) async throws {
     for _ in 0..<1000 { if await predicate() { return }; try await Task.sleep(nanoseconds: 2_000_000) }
     throw WebSocketError.requestTimeout
@@ -10,6 +11,7 @@ private func eventually(_ predicate: @escaping @Sendable () async -> Bool) async
 
 @Suite("WebSocket 生命周期与边界", .timeLimit(.minutes(1)))
 struct WebSocketTests {
+    /// 创建使用预设模拟传输、零抖动及虚构握手地址的连接，返回连接与工厂。
     private func connection(_ transports: [MockWebSocketTransport], configuration: WebSocketConfiguration = .init(),
                             clock: any NetworkClock = SystemNetworkClock()) throws -> (WebSocketConnection, MockWebSocketFactory) {
         let factory = MockWebSocketFactory(transports)
@@ -18,6 +20,7 @@ struct WebSocketTests {
         }, factory)
     }
 
+    /// 验证握手共享、独立等待取消及断开后的再次连接。
     @Test func sharedHandshakeCancellationAndRestart() async throws {
         let first = MockWebSocketTransport(automaticOpen: false), second = MockWebSocketTransport()
         let (socket, factory) = try connection([first, second])
@@ -35,6 +38,7 @@ struct WebSocketTests {
         await #expect(throws: WebSocketError.shutdown) { try await socket.connect() }
     }
 
+    /// 验证初次握手超时后不会自动套用断线重连策略。
     @Test func handshakeTimeoutAndNoInitialRetry() async throws {
         let clock = TestNetworkClock(), transport = MockWebSocketTransport(automaticOpen: false)
         let (socket, factory) = try connection([transport], clock: clock)
@@ -47,6 +51,7 @@ struct WebSocketTests {
         await socket.shutdown()
     }
 
+    /// 验证发送队列遵守字节上限且重连只保留未提交条目。
     @Test func queuesBoundBytesAndKeepOnlyUnsubmittedAcrossReconnect() async throws {
         var config = WebSocketConfiguration(); config.maximumQueuedMessages = 2; config.maximumQueuedBytes = 4
         let first = MockWebSocketTransport(automaticSend: false), second = MockWebSocketTransport()
@@ -66,6 +71,7 @@ struct WebSocketTests {
         await socket.shutdown()
     }
 
+    /// 验证发送超时报告送达不确定且策略关闭不自动重试。
     @Test func sendTimeoutIsUncertainAndPolicyCloseNeverRetries() async throws {
         let clock = TestNetworkClock(), transport = MockWebSocketTransport(automaticSend: false)
         var config = WebSocketConfiguration(); config.reconnectAttempts = 0
@@ -84,6 +90,7 @@ struct WebSocketTests {
         await other.shutdown()
     }
 
+    /// 验证pong 超时触发有界重连且预算耗尽后结束。
     @Test func pongTimeoutAndReconnectExhaustion() async throws {
         let clock = TestNetworkClock(), first = MockWebSocketTransport(automaticPong: false)
         let second = MockWebSocketTransport(automaticOpen: false), third = MockWebSocketTransport(automaticOpen: false)
@@ -103,6 +110,7 @@ struct WebSocketTests {
         await socket.shutdown()
     }
 
+    /// 验证慢订阅者溢出及订阅前接收缺口被明确报告。
     @Test func slowSubscriberAndPresubscriptionGapAreExplicit() async throws {
         var config = WebSocketConfiguration(); config.receiveBuffer = 1
         let transport = MockWebSocketTransport()
@@ -121,6 +129,7 @@ struct WebSocketTests {
         await socket.shutdown()
     }
 
+    /// 验证收发消息均遵守字节上限。
     @Test func inboundAndOutboundSizeLimits() async throws {
         var config = WebSocketConfiguration(); config.maximumMessageBytes = 2
         let transport = MockWebSocketTransport()
@@ -132,6 +141,7 @@ struct WebSocketTests {
         await socket.shutdown()
     }
 
+    /// 验证释放连接对象时请求关闭底层传输。
     @Test func releasingConnectionClosesTransport() async throws {
         let transport = MockWebSocketTransport()
         var socket: WebSocketConnection? = try connection([transport]).0
@@ -142,6 +152,7 @@ struct WebSocketTests {
         try await eventually { await transport.closeCount > 0 }
     }
 
+    /// 验证已提交发送取消报告不确定且收据等待者互相独立。
     @Test func submittedSendCancellationIsUncertainAndReceiptWaitersAreIndependent() async throws {
         let transport = MockWebSocketTransport(automaticSend: false)
         let (socket, _) = try connection([transport])
@@ -161,6 +172,7 @@ struct WebSocketTests {
         await socket.shutdown()
     }
 
+    /// 验证注销路由不取消已取得快照的回调。
     @Test func routerUnregisterDoesNotCancelSnapshotAlreadyRunning() async throws {
         let router = MessageRouter<String, Int>(), gate = RouteGate(), counter = Counter()
         let token = await router.register(routes: ["route"]) { value in
@@ -174,6 +186,7 @@ struct WebSocketTests {
         #expect(await counter.value == 2)
     }
 
+    /// 验证请求配对覆盖快速响应、重复身份、取消及旧 token。
     @Test func brokerFastResponseDuplicateCancellationAndOldToken() async throws {
         let broker = WebSocketRequestBroker<String, Int>(), tokens = TokenBox()
         let answer = try await broker.request(identity: "fast") { token in _ = await broker.resolve(7, for: token) }
@@ -190,6 +203,7 @@ struct WebSocketTests {
         await #expect(throws: CancellationError.self) { try await cancelled.value }
     }
 
+    /// 验证请求配对超时和路由注销快照语义。
     @Test func brokerTimeoutAndRouterUnregisterSnapshot() async throws {
         let clock = TestNetworkClock(), broker = WebSocketRequestBroker<String, Int>(clock: TestNetworkClock())
         await broker.invalidate()
@@ -206,18 +220,30 @@ struct WebSocketTests {
 }
 
 private actor TokenBox {
+    /// 最近登记的请求 token；nil 表示尚未登记。
     var value: WebSocketRequestToken<String>?
+    /// 保存请求 token，供测试稍后注入配对响应。
     func set(_ value: WebSocketRequestToken<String>) { self.value = value }
 }
-private actor Counter { var value = 0; func add(_ amount: Int) { value += amount } }
+private actor Counter {
+    /// 异步回调累计值，初始为 0。
+    var value = 0;
+    /// 将指定数值累加到测试计数器。
+    func add(_ amount: Int) { value += amount } }
 
 private final class WeakSocket: @unchecked Sendable {
+    /// 对连接的弱引用，用于验证连接释放而不延长其生命周期。
     weak var value: WebSocketConnection?
+    /// 保存连接的弱引用，不取得持有权。
     init(_ value: WebSocketConnection) { self.value = value }
 }
 private actor RouteGate {
+    /// 当前路由处理器等待测试释放的 continuation，仅支持一个等待者。
     private var continuation: CheckedContinuation<Void, Never>?
+    /// 屏障是否已被测试释放；释放后 wait 直接返回。
     private var released = false
+    /// 等待测试显式释放路由处理器；此屏障不单独处理任务取消。
     func wait() async { if !released { await withCheckedContinuation { continuation = $0 } } }
+    /// 标记已释放并恢复当前等待者，清除 continuation。
     func release() { released = true; continuation?.resume(); continuation = nil }
 }

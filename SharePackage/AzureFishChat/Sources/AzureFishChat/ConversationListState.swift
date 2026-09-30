@@ -4,71 +4,50 @@ import GRDB
 
 /// 当前设备的会话列表状态；隐藏边界与服务端已读水位互相独立。
 public struct ConversationListState: Sendable, Equatable {
+    /// 会话是否曾由聊天内容、发送或草稿进入列表，默认 false。
     public var hasAppeared = false
+    /// 本机隐藏会话时的序列边界；nil 表示未隐藏。
     public var hiddenThrough: Int64?
+    /// 当前账号在本机是否为会话设置手动未读提醒，不修改服务端已读水位。
     public var manuallyUnread = false
     /// 最近受理发送或收到聊天内容的时间，单位为 Unix 毫秒；清空与隐藏不重置。
     public var activityAt: Int64 = 0
+    /// 已完成列表检查的最新序列；-1 表示尚未检查。
     public var inspectedThrough: Int64 = -1
+    /// 已完成列表检查的可见边界版本；-1 表示尚未检查。
     public var inspectedBoundary: Int64 = -1
+    /// 仅当会话已出现且没有 hiddenThrough 隐藏边界时为 true。
     public var isVisible: Bool { hasAppeared && hiddenThrough == nil }
+    /// 创建未出现、未隐藏、未手动标记未读且尚未检查历史的默认列表状态。
     public init() {}
 
-    init(_ row: Row) {
-        hasAppeared = row["appeared"]
-        hiddenThrough = row["hidden_through"]
-        manuallyUnread = row["manual_unread"]
-        activityAt = row["activity_at"]
-        inspectedThrough = row["inspected_through"]
-        inspectedBoundary = row["inspected_boundary"]
+    /// 从已读取的本机会话状态记录恢复列表显示字段，不访问数据库。
+    init(_ row: LocalStateRecord) {
+        hasAppeared = row.appeared; hiddenThrough = row.hiddenThrough; manuallyUnread = row.manuallyUnread
+        activityAt = row.activityAt; inspectedThrough = row.inspectedThrough; inspectedBoundary = row.inspectedBoundary
     }
 }
 
 extension ChatStore {
-    static func migrateConversationList(_ db: Database, userID: UUID) throws {
-        try db.execute(sql: """
-            CREATE TABLE conversation_list (
-                conversation TEXT PRIMARY KEY, appeared BOOLEAN NOT NULL DEFAULT 0,
-                hidden_through INTEGER, manual_unread BOOLEAN NOT NULL DEFAULT 0,
-                activity_at INTEGER NOT NULL DEFAULT 0, inspected_through INTEGER NOT NULL DEFAULT -1,
-                inspected_boundary INTEGER NOT NULL DEFAULT -1)
-            """)
-        for bytes in try Data.fetchAll(db, sql: "SELECT payload FROM entity WHERE bucket='conversation'") {
-            let conversation = try JSONDecoder().decode(ChatConversation.self, from: bytes)
-            if let message = conversation.latestMessage {
-                try recordListMessage(message, userID: userID, restoreHidden: false, db: db)
-            }
-        }
-        for bytes in try Data.fetchAll(db, sql: "SELECT payload FROM entity WHERE bucket='message'") {
-            try recordListMessage(JSONDecoder().decode(ChatMessage.self, from: bytes), userID: userID, restoreHidden: false, db: db)
-        }
-        for id in try String.fetchAll(db, sql: "SELECT conversation FROM conversation_clear WHERE sequence>0") {
-            var value = try listState(id, db: db)
-            value.hasAppeared = true
-            try saveListState(value, conversation: id, db: db)
-        }
-        for bytes in try Data.fetchAll(db, sql: "SELECT payload FROM outbox") {
-            let pending = try JSONDecoder().decode(ChatPendingMessage.self, from: bytes)
-            try recordListSend(pending.outgoing.conversationID, at: pending.createdAt, db: db)
-        }
-        for bytes in try Data.fetchAll(db, sql: "SELECT payload FROM transfer") {
-            let batch = try JSONDecoder().decode(ChatUploadBatch.self, from: bytes)
-            try recordListSend(batch.conversation, at: batch.createdAt, db: db)
-        }
+    /// 读取会话本机状态；缺失时构造未出现、未隐藏且未检查的默认记录，不立即写入。
+    static func localState(_ conversation: String, db: Database) throws -> LocalStateRecord {
+        try LocalStateRecord.fetchOne(db, key: conversation) ?? .init(conversationID: conversation,
+            appeared: false, hiddenThrough: nil, manuallyUnread: false, activityAt: 0,
+            inspectedThrough: -1, inspectedBoundary: -1, clearedThrough: 0)
     }
-
+    /// 将会话本机记录映射为列表状态快照，缺失记录按默认状态处理。
     static func listState(_ conversation: String, db: Database) throws -> ConversationListState {
-        try Row.fetchOne(db, sql: "SELECT * FROM conversation_list WHERE conversation=?", arguments: [conversation])
-            .map(ConversationListState.init) ?? .init()
+        ConversationListState(try localState(conversation, db: db))
     }
-
+    /// 保存列表字段并保留现有 clearedThrough 历史清空边界。
     static func saveListState(_ value: ConversationListState, conversation: String, db: Database) throws {
-        try db.execute(sql: "INSERT OR REPLACE INTO conversation_list VALUES (?,?,?,?,?,?,?)", arguments: [
-            conversation, value.hasAppeared, value.hiddenThrough, value.manuallyUnread, value.activityAt,
-            value.inspectedThrough, value.inspectedBoundary
-        ])
+        var row = try localState(conversation, db: db)
+        row.appeared = value.hasAppeared; row.hiddenThrough = value.hiddenThrough; row.manuallyUnread = value.manuallyUnread
+        row.activityAt = value.activityAt; row.inspectedThrough = value.inspectedThrough; row.inspectedBoundary = value.inspectedBoundary
+        try row.upsert(db)
     }
 
+    /// 仅用当前账号可访问的非系统消息更新活动状态；是否解除隐藏由 restoreHidden 和序列共同决定。
     static func recordListMessage(_ message: ChatMessage, userID: UUID, restoreHidden: Bool, db: Database) throws {
         guard message.kind != "system", try isAccessible(message, userID: userID, db: db, includingRevoked: true) else { return }
         var value = try listState(message.conversationID, db: db)
@@ -81,6 +60,7 @@ extension ChatStore {
         try saveListState(value, conversation: message.conversationID, db: db)
     }
 
+    /// 记录本机受理发送的活动时间，使会话出现并解除列表隐藏。
     static func recordListSend(_ conversation: String, at date: Date, db: Database) throws {
         var value = try listState(conversation, db: db)
         value.hasAppeared = true
@@ -93,8 +73,8 @@ extension ChatStore {
     public func conversationListStates() throws -> [String: ConversationListState] {
         try check()
         return try db.read { db in
-            Dictionary(uniqueKeysWithValues: try Row.fetchAll(db, sql: "SELECT * FROM conversation_list").map {
-                ($0["conversation"] as String, ConversationListState($0))
+            Dictionary(uniqueKeysWithValues: try LocalStateRecord.fetchAll(db).map {
+                ($0.conversationID, ConversationListState($0))
             })
         }
     }
@@ -113,9 +93,9 @@ extension ChatStore {
     public func hideConversation(_ conversation: String, clearHistory: Bool = false) throws {
         try check()
         try db.write { db in
-            let bytes = try Data.fetchOne(db, sql: "SELECT payload FROM entity WHERE bucket='conversation' AND id=?", arguments: [conversation])
-            let latest = try bytes.map { try JSONDecoder().decode(ChatConversation.self, from: $0).latest } ?? 0
-            let local = try Int64.fetchOne(db, sql: "SELECT MAX(sequence) FROM entity WHERE bucket='message' AND conversation=?", arguments: [conversation]) ?? 0
+            let latest = try ConversationRecord.fetchOne(db, key: conversation)?.latest ?? 0
+            let local = try MessageRecord.filter(MessageRecord.Columns.conversationID == conversation)
+                .select(max(MessageRecord.Columns.sequence), as: Int64.self).fetchOne(db) ?? 0
             if clearHistory { try Self.clearHistory(conversation, db: db) }
             var value = try Self.listState(conversation, db: db)
             value.hiddenThrough = max(value.hiddenThrough ?? 0, max(latest, local))
@@ -138,45 +118,24 @@ extension ChatStore {
 
 /// 会话列表的草稿摘要；资源仅包含稳定身份，不读取或解密媒体文件。
 public struct ConversationDraftPreview: Sendable, Equatable {
+    /// 列表展示的草稿纯文本投影，保留用户文字。
     public let text: String
+    /// 草稿是否含附件，不读取或解密对应文件。
     public let hasAttachments: Bool
+    /// 按编辑器顺序保存的附件及媒体子项身份，用于判断摘要是否变化。
     let attachmentIdentity: [String]
+    /// 文字为空且没有附件时为 true。
     public var isEmpty: Bool { text.isEmpty && !hasAttachments }
 }
 
 extension ChatStore {
-    // rich-draft 的 v1 清单保留 segments/documents/media/audio；兼容旧库，不在读取时改写可见性。
+    /// 读取指定会话的文字及附件身份摘要；不存在时返回空摘要。
     static func draftPreview(_ conversation: String, db: Database) throws -> ConversationDraftPreview {
-        try draftPreview(
-            text: Data.fetchOne(db, sql: "SELECT payload FROM draft WHERE id=?", arguments: [conversation]),
-            rich: Data.fetchOne(db, sql: "SELECT payload FROM meta WHERE id=?", arguments: ["rich-draft:" + conversation]),
-            attachments: Data.fetchOne(db, sql: "SELECT payload FROM meta WHERE id=?", arguments: ["attachments:" + conversation]))
+        try DraftRepository.previews([conversation], in: db)[conversation]
+            ?? .init(text: "", hasAttachments: false, attachmentIdentity: [])
     }
 
-    private static func draftPreview(text: Data?, rich: Data?, attachments: Data?) throws -> ConversationDraftPreview {
-        let text = try text.map { try JSONDecoder().decode(ChatLocalDraft.self, from: $0).text } ?? ""
-        var resources: [Any] = []
-        if let rich, let snapshot = try JSONSerialization.jsonObject(with: rich) as? [String: Any] {
-            resources += snapshot["documents"] as? [Any] ?? []
-            for key in ["media", "audio"] {
-                if let value = snapshot[key], !(value is NSNull) { resources.append(value) }
-            }
-        } else if let attachments {
-            resources = try JSONSerialization.jsonObject(with: attachments) as? [Any] ?? []
-        }
-        func identities(_ value: Any) -> [String] {
-            if let object = value as? [String: Any] {
-                return object.keys.sorted().flatMap { key in
-                    let value = object[key]!
-                    return key == "id" ? (value as? String).map { [$0] } ?? [] : identities(value)
-                }
-            }
-            return (value as? [Any])?.flatMap(identities) ?? []
-        }
-        return .init(text: text, hasAttachments: !resources.isEmpty,
-                     attachmentIdentity: resources.flatMap(identities))
-    }
-
+    /// 非空草稿摘要确实变化时恢复会话可见性，不改变消息活动时间。
     static func recordDraftChange(_ previous: ConversationDraftPreview, conversation: String, db: Database) throws {
         let next = try draftPreview(conversation, db: db)
         guard !next.isEmpty, next != previous else { return }
@@ -193,8 +152,8 @@ extension ChatStore {
         try db.write { db in
             let conversation = try Self.canonicalDraftConversation(conversation, db: db)
             let previous = try Self.draftPreview(conversation, db: db)
-            try db.execute(sql: "INSERT OR REPLACE INTO meta VALUES (?,?)",
-                           arguments: ["attachments:" + conversation, JSONEncoder().encode(items)])
+            try DraftRepository.row(conversation, in: db).upsert(db)
+            try DraftUploadRepository.saveItems(items, owner: conversation, in: db)
             try Self.recordDraftChange(previous, conversation: conversation, db: db)
         }
     }
@@ -203,31 +162,18 @@ extension ChatStore {
     public func conversationListSnapshot() throws -> (states: [String: ConversationListState], drafts: [String: ConversationDraftPreview], pinnedCollapsed: Bool) {
         try check()
         return try db.read { db in
-            let states = Dictionary(uniqueKeysWithValues: try Row.fetchAll(db, sql: "SELECT * FROM conversation_list").map {
-                ($0["conversation"] as String, ConversationListState($0))
+            let states = Dictionary(uniqueKeysWithValues: try LocalStateRecord.fetchAll(db).map {
+                ($0.conversationID, ConversationListState($0))
             })
-            // 批量取已有草稿，避免每次输入或同步时按所有会话逐一查询。
-            let text = Dictionary(uniqueKeysWithValues: try Row.fetchAll(db, sql: "SELECT id,payload FROM draft").map {
-                ($0["id"] as String, $0["payload"] as Data)
-            })
-            let metadata = Dictionary(uniqueKeysWithValues: try Row.fetchAll(db,
-                sql: "SELECT id,payload FROM meta WHERE id LIKE 'rich-draft:%' OR id LIKE 'attachments:%'").map {
-                ($0["id"] as String, $0["payload"] as Data)
-            })
-            let ids = Set(text.keys).union(metadata.keys.map { String($0.dropFirst($0.hasPrefix("rich-draft:") ? 11 : 12)) })
-            var drafts: [String: ConversationDraftPreview] = [:]
-            for id in ids {
-                let value = try Self.draftPreview(text: text[id], rich: metadata["rich-draft:" + id], attachments: metadata["attachments:" + id])
-                if !value.isEmpty { drafts[id] = value }
-            }
-            let collapsed = try Data.fetchOne(db, sql: "SELECT payload FROM meta WHERE id='list-pinned-collapsed'")
-                .map { try JSONDecoder().decode(Bool.self, from: $0) } ?? false
+            let drafts = try DraftRepository.previews(in: db).filter { !$0.value.isEmpty }
+            let collapsed = try AccountPreferenceRecord.fetchOne(db, key: 1)?.pinnedCollapsed ?? false
             return (states, drafts, collapsed)
         }
     }
 
     /// 折叠仅属于当前账号本机的显示偏好，不隐藏会话或更改未读水位。
     public func setPinnedConversationsCollapsed(_ collapsed: Bool) throws {
-        try setMeta(collapsed, id: "list-pinned-collapsed")
+        try check()
+        try db.write { try AccountPreferenceRecord(id: 1, pinnedCollapsed: collapsed).upsert($0) }
     }
 }

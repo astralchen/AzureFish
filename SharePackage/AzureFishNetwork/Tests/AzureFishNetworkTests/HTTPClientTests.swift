@@ -5,8 +5,10 @@ import Testing
 
 @Suite("HTTP 传输策略")
 struct HTTPClientTests {
+    /// 账号请求策略测试使用的虚构 HTTPS 地址。
     private let url = URL(string: "https://example.invalid/v1/auth/register")!
 
+    /// 验证写请求重放复用正文但生成新的 X-Request-ID。
     @Test func writeReplayUsesSameBytesAndNewRequestID() async throws {
         let transport = MockHTTPTransport { _, attempt in
             if attempt == 1 { throw URLError(.networkConnectionLost) }
@@ -23,6 +25,7 @@ struct HTTPClientTests {
         #expect(history[0].headers["X-Request-ID"] != history[1].headers["X-Request-ID"])
     }
 
+    /// 验证传输重试须显式开启且次数有界。
     @Test func retryIsBoundedAndOptIn() async throws {
         let transport = MockHTTPTransport { _, _ in throw URLError(.timedOut) }
         let client = HTTPClient(transport: transport, waitBeforeRetry: {})
@@ -34,6 +37,7 @@ struct HTTPClientTests {
         #expect(await transport.requests.count == 3)
     }
 
+    /// 验证HTTP 状态及证书错误不触发自动重试。
     @Test func httpAndCertificateErrorsAreNotRetried() async throws {
         let transport = MockHTTPTransport { _, count in
             if count == 1 { return HTTPResponse(statusCode: 503) }
@@ -46,6 +50,7 @@ struct HTTPClientTests {
         #expect(await transport.requests.count == 2)
     }
 
+    /// 验证URL、头字段及响应大小限制被校验。
     @Test func validatesURLHeadersAndResponseLimit() async throws {
         let transport = MockHTTPTransport { _, _ in HTTPResponse(statusCode: 200, body: Data(repeating: 1, count: 11)) }
         let client = HTTPClient(transport: transport)
@@ -62,6 +67,7 @@ struct HTTPClientTests {
         #expect(await transport.requests.count == 1)
     }
 
+    /// 验证任务取消不会触发重试。
     @Test func cancellationIsNotRetried() async throws {
         let transport = MockHTTPTransport { _, _ in
             try await Task.sleep(nanoseconds: 10_000_000_000)
@@ -77,6 +83,7 @@ struct HTTPClientTests {
         #expect(await transport.requests.count == 1)
     }
 
+    /// 验证Debug HTTP 例外只接受指定字面回环地址。
     @Test func debugLoopbackIsRestricted() throws {
         let policy = TransportSecurityPolicy.debugLoopbackForFictionalData
         #expect(throws: NetworkError.insecureURL) { try policy.validate(URL(string: "http://192.168.1.2")!) }
@@ -88,6 +95,7 @@ struct HTTPClientTests {
         #endif
     }
 
+    /// 验证请求和响应描述不包含敏感原始内容。
     @Test func descriptionsRedactContent() {
         let request = HTTPRequest(url: url, method: .post, headers: ["Authorization": "secret"], body: Data("secret".utf8))
         let response = HTTPResponse(statusCode: 200, headers: ["X-Secret": "secret"], body: Data("secret".utf8))

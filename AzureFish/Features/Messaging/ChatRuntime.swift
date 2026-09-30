@@ -11,8 +11,7 @@ final class ChatRuntime {
         init(_ value: ChatRuntime) { self.value = value }
     }
     private static var instances: [WeakRuntime] = []
-    // 新账号首次打开数据库时，让其他窗口等待文件初始化完成，再建立各自连接。
-    private static var storeOpenings: [String: Task<ChatStore, Error>] = [:]
+    private var accountStorage: AccountBusinessStorage?
     private func registerInstance() {
         Self.instances.removeAll { $0.value == nil }
         Self.instances.append(WeakRuntime(self))
@@ -188,8 +187,8 @@ final class ChatRuntime {
                 var root = FileManager.default.urls(
                     for: .applicationSupportDirectory, in: .userDomainMask)[0]
                     .appendingPathComponent("ChatAccounts/" + directoryName, isDirectory: true)
-                if let opening = Self.storeOpenings[scope] { _ = try await opening.value }
                 guard self.generation == generation else { return }
+                try await AccountBusinessStorage.waitForOpening(environment: manager.environment.identifier, userID: user)
                 let exists = FileManager.default.fileExists(atPath: root.path)
                 let databaseURL = root.appendingPathComponent("main.sqlite")
                 // 恢复只打开既有库；残留目录缺少数据库同样需要明确恢复。
@@ -216,25 +215,14 @@ final class ChatRuntime {
                 var values = URLResourceValues()
                 values.isExcludedFromBackup = true
                 try root.setResourceValues(values)
-                let environmentID = manager.environment.identifier
-                // FTS 回填可能读取较多历史文字，不占用场景的主线程。
-                let opening = Task.detached {
-                    try ChatStore(url: databaseURL, key: databaseKey, environment: environmentID, userID: user)
-                }
-                Self.storeOpenings[scope] = opening
-                let store: ChatStore
-                do { store = try await opening.value }
-                catch { Self.storeOpenings[scope] = nil; throw error }
-                Self.storeOpenings[scope] = nil
-                let media = try ChatMediaStore(
-                    root: root.appendingPathComponent("media", isDirectory: true), key: mediaKey,
-                    environment: manager.environment.identifier, userID: user)
-                guard self.generation == generation else {
-                    try await store.close()
-                    return
-                }
+                let account = try await AccountBusinessStorage.acquire(root: root, databaseKey: databaseKey,
+                    mediaKey: mediaKey, environment: manager.environment.identifier, userID: user)
+                guard self.generation == generation else { try await account.release(); return }
+                self.accountStorage = account
+                let store = try ChatStore(database: account.resources.database)
+                let media = ChatMediaStore(storage: account.resources.media)
                 let engine = ChatEngine(store: store, session: manager)
-                let pages = root.appendingPathComponent("page-leases", isDirectory: true)
+                let pages = root.appendingPathComponent("page-leases/" + UUID().uuidString, isDirectory: true)
                 if FileManager.default.fileExists(atPath: pages.path) { try FileManager.default.removeItem(at: pages) }
                 try FileManager.default.createDirectory(at: pages, withIntermediateDirectories: true,
                     attributes: [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication])
@@ -284,20 +272,14 @@ final class ChatRuntime {
                         guard self.generation == generation, !Task.isCancelled else { break }
                         self.publish()
                     }
-                    if let invalidated = try? await store.mediaInvalidations() {
-                        var removed = Set<UUID>()
-                        for id in invalidated {
-                            do { try await media.remove(id); removed.insert(id) } catch { /* 下次同步继续清理。 */ }
-                        }
-                        try? await store.acknowledgeMediaInvalidations(removed)
-                    }
+                    try? await store.cleanupMedia(using: media)
                     if update.online && !session.readOnly { await transfers.resume() }
                 }
             } catch {
                 guard self.generation == generation else { return }
-                self.failure = "chat.live.storageFailure"
+                self.failure = (error as? ChatStoreError) == .incompatibleSchema ? "chat.live.incompatibleStorage" : "chat.live.storageFailure"
                 self.publish()
-                session.storageUnavailable()
+                session.storageUnavailable(notice: self.failure)
             }
         }
     }
@@ -327,6 +309,8 @@ final class ChatRuntime {
         let checks = Self.contactChecks.values.filter { $0.engine === old }.map(\.task)
         checks.forEach { $0.cancel() }
         let media = media
+        let accountStorage = accountStorage
+        self.accountStorage = nil
         let transfers = transfers
         let pages = pageLeaseRoot
         pageLeaseRoot = nil
@@ -347,9 +331,10 @@ final class ChatRuntime {
             for check in checks { _ = try? await check.value }
             await transfers?.stop()
             await old?.stop()
-            try await media?.clearLeases()
+            if accountStorage == nil { try await media?.clearLeases() }
             if let pages, FileManager.default.fileExists(atPath: pages.path) { try FileManager.default.removeItem(at: pages) }
             try await old?.store.close()
+            try await accountStorage?.release()
         }
     }
     func setForeground(_ enabled: Bool) {

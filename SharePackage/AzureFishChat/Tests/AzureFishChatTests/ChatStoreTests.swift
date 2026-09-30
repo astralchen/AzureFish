@@ -7,6 +7,7 @@ import Testing
 
 @Suite("聊天加密存储")
 struct ChatStoreTests {
+    /// 验证已取消上传不能被迟到回调转为发送消息。
     @Test func cancelledTransferCannotBecomeMessage() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
@@ -17,9 +18,9 @@ struct ChatStoreTests {
         var batch = ChatUploadBatch(conversation: UUID().uuidString, kind: "file", items: [], deviceID: UUID())
         let stale = batch
         batch.cancelRequested = true
-        try await store.saveTransfer(batch, id: batch.id)
-        try await store.saveTransfer(stale, id: batch.id)
-        #expect(try await store.transfers(as: ChatUploadBatch.self).first?.cancelRequested == true)
+        try await store.saveTransfer(batch)
+        try await store.saveTransfer(stale)
+        #expect(try await store.transfers().first?.cancelRequested == true)
         let outgoing = ChatOutgoing(
             conversationID: batch.conversation, deviceID: batch.deviceID, kind: "file", id: batch.messageID,
             clientID: batch.clientID, operationID: batch.operationID)
@@ -27,8 +28,12 @@ struct ChatStoreTests {
             try await store.submitTransfer(outgoing, transfer: batch.id)
         }
         #expect(try await store.pending().isEmpty)
+        try await store.removeTransfer(batch.id)
+        try await store.saveTransfer(stale)
+        #expect(try await store.transfers().isEmpty)
         try await store.close()
     }
+    /// 验证聊天数据库账号隔离及关闭重开。
     @Test func accountIsolationAndReopen() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
@@ -52,6 +57,7 @@ struct ChatStoreTests {
         #expect(try await reopened.draft(outgoing.conversationID).text == "draft secret")
         try await reopened.close()
     }
+    /// 验证加密分块恢复及跨资源替换检测。
     @Test func encryptedChunksResumeAndSubstitution() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)

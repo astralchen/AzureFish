@@ -216,7 +216,7 @@ final class LiveConversationViewController: LocalizedQuickLayoutHostingControlle
         loadHistory()
         Task { [weak self] in
             guard let self, let store = runtime.engine?.store else { return }
-            if let state = try? await store.editorDraftState(conversation.id, as: ChatDraftSnapshot.self) {
+            if let state = try? await store.editorDraftState(conversation.id) {
                 restoringDraft = true
                 editor.text = state.legacy.text
                 restoringDraft = false
@@ -280,6 +280,7 @@ final class LiveConversationViewController: LocalizedQuickLayoutHostingControlle
                 try await engine.store.saveDraft(.init(text: text), conversation: id)
                 try Task.checkCancellation()
                 try await engine.store.saveDraftAttachments(files, conversation: id)
+                if let media = runtime.media { try? await engine.store.cleanupMedia(using: media) }
                 try await runtime.refreshListStates()
                 draftSaveFailed = false; setNeedsQuickLayout()
             } catch is CancellationError { }
@@ -332,7 +333,7 @@ final class LiveConversationViewController: LocalizedQuickLayoutHostingControlle
                     return confirmedRevocations[message.id] ?? message
                 }
                 scheduleReeditExpiry(availability.map(\.expiresAt).min())
-                uploads = try await engine.store.transfers(as: ChatUploadBatch.self).filter {
+                uploads = try await engine.store.transfers().filter {
                     $0.conversation == conversation.id
                 }.sorted { $0.createdAt < $1.createdAt }
                 pending = try await engine.store.pending().filter {
@@ -354,6 +355,7 @@ final class LiveConversationViewController: LocalizedQuickLayoutHostingControlle
                         let text =
                             message.revoked
                             ? revokedNotice(message)
+                            : !message.isKnownContent ? Localization.text("chat.live.unknown")
                             : message.kind == "system" ? ChatSystemNotice.text(message, userID: runtime.userID)
                             : ["text", "link"].contains(message.kind)
                                 ? message.text
@@ -614,7 +616,7 @@ final class LiveConversationViewController: LocalizedQuickLayoutHostingControlle
     private func messageMenu(_ id: String) -> UIMenu {
         var actions: [UIAction] = []
         if let message = messages.first(where: { $0.id == id }) {
-            if message.kind == "text" && !message.revoked {
+            if message.kind == "text" && message.isKnownContent && !message.revoked {
                 actions.append(
                     UIAction(
                         title: Localization.text("chat.live.copy"),

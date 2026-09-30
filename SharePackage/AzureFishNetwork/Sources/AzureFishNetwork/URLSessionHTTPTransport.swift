@@ -5,8 +5,11 @@ import Foundation
 /// 关闭 URLCache、Cookie 存储及凭据存储，保持系统 TLS 校验并拒绝所有重定向。
 /// 实例持有 session，释放时使其失效并请求取消所属任务；不提供后台续传或自动重试。
 public final class URLSessionHTTPTransport: HTTPTransport, Sendable {
+    /// 此传输持有的临时 URLSession；释放传输时取消所属任务。
     private let session: URLSession
+    /// 发送前检查请求地址的安全策略。
     private let security: TransportSecurityPolicy
+    /// 逐任务拒绝重定向的代理，防止凭据和正文被转发。
     private let redirectDelegate = RedirectDelegate()
 
     /// 创建采用指定地址策略的临时 session，尚不发起请求。
@@ -28,6 +31,7 @@ public final class URLSessionHTTPTransport: HTTPTransport, Sendable {
         session = URLSession(configuration: configuration)
     }
 
+    /// 使所属 session 失效并请求取消尚未结束的任务。
     deinit { session.invalidateAndCancel() }
 
     /// 发送一次请求，逐字节接收响应，并在完成后返回内存中的正文。
@@ -72,6 +76,7 @@ public final class URLSessionHTTPTransport: HTTPTransport, Sendable {
 }
 
 private final class RedirectDelegate: NSObject, URLSessionTaskDelegate, Sendable {
+    /// 由 URLSession 在即将重定向时调用；以 nil 恢复 completionHandler，拒绝此次重定向。
     func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse,
                     newRequest request: URLRequest, completionHandler: @escaping @Sendable (URLRequest?) -> Void) {
         // 不把 Authorization 或含密码的正文转发给重定向地址，包括同域的 307／308。

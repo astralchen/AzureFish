@@ -5,6 +5,7 @@ import Testing
 
 @Suite("本机 AzureFishServer 联调")
 struct LiveAccountAPITests {
+    /// 验证显式启用的虚构服务账号完整流程。
     @Test(.enabled(if: ProcessInfo.processInfo.environment["AZUREFISH_API_LIVE_TEST"] == "1", "只在显式启用并启动虚构数据服务时运行"))
     func completeAccountFlow() async throws {
         let api = AccountAPI(environment: try .localTesting())

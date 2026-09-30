@@ -8,33 +8,53 @@ public enum ChatSynchronizationState: Sendable, Equatable {
 
 /// 聊天数据变化时携带的连接观察值与独立同步状态。
 public struct ChatEngineUpdate: Sendable, Equatable {
+    /// 最近一次同步或业务操作报告的连接观察值，不代表实时链路始终可用。
     public let online: Bool
+    /// 独立的全量及增量补拉状态，本地数据改变不会自动将其标记为完成。
     public let synchronization: ChatSynchronizationState
+    /// 增量同步已观察到的最大本人资料版本；0 表示尚未收到提示。
     public var ownProfileVersion: Int64 = 0
 }
 
 /// 驱动账号隔离的 HTTP 同步和持久 outbox；WebSocket 只唤醒 HTTP 补拉。
 public actor ChatEngine {
+    /// 此引擎使用的账号聊天事务入口。
     public nonisolated let store: ChatStore
+    /// 共享会话下的 IM 请求适配器。
     public nonisolated let api: IMAPI
+    /// 只消费同步提示并唤醒 HTTP 补拉的实时客户端。
     private let realtime: IMRealtimeClient
+    /// 是否已启动后台提示监听和周期补拉任务。
     private var running = false
+    /// 当前共享的补拉任务；重复 synchronize 等待同一任务。
     private var syncing: Task<Void, Error>?
+    /// 监听实时补拉提示的任务。
     private var signals: Task<Void, Never>?
+    /// 每轮同步后等待 15 秒再尝试补拉的循环任务。
     private var timer: Task<Void, Never>?
+    /// 是否正在处理发送队列，防止并发重复消费。
     private var flushing = false
+    /// 只保留最新 online 值的旧式变化订阅。
     private var observers: [UUID: AsyncStream<Bool>.Continuation] = [:]
+    /// 只保留最新完整引擎状态的变化订阅。
     private var updateObservers: [UUID: AsyncStream<ChatEngineUpdate>.Continuation] = [:]
+    /// 前台临时来信批次订阅，最多缓冲最近 16 批。
     private var incomingObservers: [UUID: AsyncStream<[ChatMessage]>.Continuation] = [:]
+    /// 控制前台切换基线和迟到补拉是否可触发提醒的门控状态。
     private var notificationGate = ChatIncomingNotificationGate()
+    /// 最近业务操作发布的在线观察值，初始为 false。
     private var online = false
+    /// 最近完整补拉的状态，初始为 idle。
     private var synchronization: ChatSynchronizationState = .idle
+    /// 同步过程中观察到的最大本人资料版本，初始为 0。
     private var ownProfileVersion: Int64 = 0
+    /// 绑定聊天存储及共享会话，并创建 IM 与实时适配器；不自动启动同步。
     public init(store: ChatStore, session: APISessionManager) {
         self.store = store
         api = IMAPI(session: session)
         realtime = IMRealtimeClient(sessionManager: session)
     }
+    /// 立即提交当前 online 观察值并订阅后续通知；缓冲只保留最新一项。
     public func changes() -> AsyncStream<Bool> {
         let id = UUID()
         let (stream, continuation) = AsyncStream<Bool>.makeStream(
@@ -44,6 +64,7 @@ public actor ChatEngine {
         continuation.onTermination = { [weak self] _ in Task { await self?.remove(id) } }
         return stream
     }
+    /// 移除已结束的旧式连接观察订阅。
     private func remove(_ id: UUID) { observers[id] = nil }
     /// 立即提供当前状态，随后合并通知；订阅本身不将同步标记为成功。
     public func updates() -> AsyncStream<ChatEngineUpdate> {
@@ -54,11 +75,14 @@ public actor ChatEngine {
         continuation.onTermination = { [weak self] _ in Task { await self?.removeUpdateObserver(id) } }
         return stream
     }
+    /// 移除已结束的完整状态订阅。
     private func removeUpdateObserver(_ id: UUID) { updateObservers[id] = nil }
+    /// 将连接观察值、同步状态及本人资料版本作为同一快照广播。
     private func publishUpdate() {
         let value = ChatEngineUpdate(online: online, synchronization: synchronization, ownProfileVersion: ownProfileVersion)
         for observer in updateObservers.values { observer.yield(value) }
     }
+    /// 更新 online 观察值并通知旧式和完整状态订阅，不更改同步状态。
     private func notify(_ online: Bool) {
         self.online = online
         for observer in observers.values { observer.yield(online) }
@@ -76,7 +100,9 @@ public actor ChatEngine {
         continuation.onTermination = { [weak self] _ in Task { await self?.removeIncomingObserver(id) } }
         return stream
     }
+    /// 移除已结束的临时来信批次订阅。
     private func removeIncomingObserver(_ id: UUID) { incomingObservers[id] = nil }
+    /// 启动实时提示监听和周期补拉；已启动时直接返回，实际同步结果通过状态流发布。
     public func start() async {
         guard !running else { return }
         running = true
@@ -95,6 +121,7 @@ public actor ChatEngine {
             }
         }
     }
+    /// 关闭前台提醒，取消提示、定时和补拉任务并停止实时连接；保留存储及 outbox。
     public func stop() async {
         notificationGate.setEnabled(false)
         running = false
@@ -106,6 +133,9 @@ public actor ChatEngine {
         syncing = nil
         await realtime.stop()
     }
+    /// 共享一次完整补拉，发布同步成功或失败状态；成功后尝试处理发送队列。
+    ///
+    /// - Throws: 同步或取消错误；发送队列内部失败由 flush 记录，不作为本方法错误抛出。
     public func synchronize() async throws {
         if let syncing { return try await syncing.value }
         synchronization = .syncing
@@ -125,6 +155,7 @@ public actor ChatEngine {
             throw error
         }
     }
+    /// 恢复同步基线并拉取增量，检查会话列表可见性，再按前台门控发布新来信批次。
     private func pull() async throws {
         let checkpoint = try await store.checkpoint()
         let notificationPull = notificationGate.begin(hasCheckpoint: checkpoint != nil)
@@ -171,6 +202,7 @@ public actor ChatEngine {
             }
         }
     }
+    /// 逐页获取并保存联系人与会话快照，直到服务端标记 complete。
     private func snapshot() async throws {
         var token = ""
         var cursor = ""
@@ -183,6 +215,7 @@ public actor ChatEngine {
             cursor = page.nextCursor
         } while true
     }
+    /// 从本地检查点逐页补拉并事务提交增量，累计首次入库的他人消息及本人资料版本提示。
     private func events() async throws -> [ChatMessage] {
         var received: [ChatMessage] = []
         while let checkpoint = try await store.checkpoint() {
@@ -194,6 +227,7 @@ public actor ChatEngine {
         }
         return received
     }
+    /// 获取一页历史并将消息和连续覆盖区间保存到本地；参数沿用 IMAPI.history 的序列语义。
     public func history(
         _ conversation: String, before: Int64 = 0, upper: Int64 = 0, boundary: Int64 = 0
     ) async throws
@@ -205,6 +239,7 @@ public actor ChatEngine {
         notify(true)
         return page
     }
+    /// 以当前本地身份创建消息并持久入队，清空文字草稿后尝试发送；返回不保证服务端已接收。
     public func send(
         conversation: String, text: String = "", kind: String = "text", assets: [String] = []
     ) async throws {
@@ -218,6 +253,7 @@ public actor ChatEngine {
         notify(true)
         await flush()
     }
+    /// 保留原消息身份，将失败状态改为 waiting 并清除失败码，然后尝试发送队列。
     public func retry(_ pending: ChatPendingMessage) async throws {
         var pending = pending
         pending.state = "waiting"
@@ -268,6 +304,7 @@ public actor ChatEngine {
         notify(true)
         return (value, available)
     }
+    /// 按持久顺序尝试发送非 failed 任务；网络结果不确定时保留 confirming，失败时停止本轮。
     public func flush() async {
         guard !flushing else { return }
         flushing = true
@@ -318,7 +355,9 @@ public actor ChatEngine {
         try await store.save(result)
         notify(true)
     }
+    /// 发布本地数据变化并将 online 观察值设为 true；不执行网络连通性检查或同步。
     public func changed() { notify(true) }
+    /// 取消提示、定时和补拉任务，并结束旧式 changes 订阅。
     deinit {
         signals?.cancel()
         timer?.cancel()

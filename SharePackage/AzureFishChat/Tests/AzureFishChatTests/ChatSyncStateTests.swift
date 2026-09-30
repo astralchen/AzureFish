@@ -5,13 +5,17 @@ import Testing
 @testable import AzureFishChat
 
 private actor EmptySyncSessionStore: APISessionStore {
+    /// 始终返回 nil，模拟尚无会话的同步测试环境。
     func load(environmentID: String) async throws -> APISessionRecord? { nil }
+    /// 接受并忽略记录，不执行持久化，仅用于空会话测试。
     func save(_ record: APISessionRecord, environmentID: String) async throws {}
+    /// 不执行操作，保持没有会话的测试状态。
     func clear(environmentID: String) async throws {}
 }
 
 @Suite("聊天同步状态")
 struct ChatSyncStateTests {
+    /// 验证初始及本地变化不冒充同步成功，失败状态保留。
     @Test func initialAndLocalUpdatesDoNotConfirmSyncAndFailureSurvivesLocalChange() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)

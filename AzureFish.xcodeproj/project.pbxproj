@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		AF0000000000000000000308 /* AzureFishStorage in Frameworks */ = {isa = PBXBuildFile; productRef = AF0000000000000000000208 /* AzureFishStorage */; };
 		AF0000000000000000000301 /* QuickLayoutKit in Frameworks */ = {isa = PBXBuildFile; productRef = AF0000000000000000000201 /* QuickLayoutKit */; };
 		AF0000000000000000000302 /* ListKit in Frameworks */ = {isa = PBXBuildFile; productRef = AF0000000000000000000202 /* ListKit */; };
 		AF0000000000000000000303 /* AppLocalization in Frameworks */ = {isa = PBXBuildFile; productRef = AF0000000000000000000203 /* AppLocalization */; };
@@ -80,6 +81,7 @@
 				AF0000000000000000000303 /* AppLocalization in Frameworks */,
 				AF0000000000000000000306 /* AzureFishAPI in Frameworks */,
 				AF0000000000000000000307 /* AzureFishChat in Frameworks */,
+				AF0000000000000000000308 /* AzureFishStorage in Frameworks */,
 				AF0000000000000000000305 /* AzureFishNetwork in Frameworks */,
 				AF0000000000000000000304 /* AzureFishProtocol in Frameworks */,
 			);
@@ -147,6 +149,7 @@
 				AF0000000000000000000203 /* AppLocalization */,
 				AF0000000000000000000206 /* AzureFishAPI */,
 				AF0000000000000000000207 /* AzureFishChat */,
+				AF0000000000000000000208 /* AzureFishStorage */,
 				AF0000000000000000000205 /* AzureFishNetwork */,
 				AF0000000000000000000204 /* AzureFishProtocol */,
 			);
@@ -241,6 +244,7 @@
 				AF0000000000000000000103 /* XCRemoteSwiftPackageReference "AppLocalization" */,
 				AF0000000000000000000106 /* XCLocalSwiftPackageReference "SharePackage/AzureFishAPI" */,
 				AF0000000000000000000107 /* XCLocalSwiftPackageReference "SharePackage/AzureFishChat" */,
+				AF0000000000000000000108 /* XCLocalSwiftPackageReference "SharePackage/AzureFishStorage" */,
 				AF0000000000000000000105 /* XCLocalSwiftPackageReference "SharePackage/AzureFishNetwork" */,
 				AF0000000000000000000104 /* XCLocalSwiftPackageReference "SharePackage/AzureFishProtocol" */,
 			);
@@ -653,6 +657,10 @@
 			isa = XCLocalSwiftPackageReference;
 			relativePath = SharePackage/AzureFishChat;
 		};
+		AF0000000000000000000108 /* XCLocalSwiftPackageReference "SharePackage/AzureFishStorage" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = SharePackage/AzureFishStorage;
+		};
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCRemoteSwiftPackageReference section */
@@ -717,6 +725,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = AF0000000000000000000107 /* XCLocalSwiftPackageReference "SharePackage/AzureFishChat" */;
 			productName = AzureFishChat;
+		};
+		AF0000000000000000000208 /* AzureFishStorage */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AF0000000000000000000108;
+			productName = AzureFishStorage;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

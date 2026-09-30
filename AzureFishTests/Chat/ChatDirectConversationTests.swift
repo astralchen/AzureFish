@@ -150,7 +150,7 @@ struct ChatDirectConversationTests {
         #expect(try await store.canonicalDraftConversation(empty.id) == bound.id)
         snapshot.segments = [.text("迁移后的输入")]
         try await drafts.save(snapshot).value
-        let migrated: ChatDraftSnapshot? = try await store.meta("rich-draft:" + bound.id)
+        let migrated = try await store.editorDraftState(bound.id).editor
         #expect(migrated?.conversationID == bound.id)
         #expect(try await store.draft(bound.id).text == "迁移后的输入")
         let loaded = try await drafts.load(conversationID: empty.id, into: root).value

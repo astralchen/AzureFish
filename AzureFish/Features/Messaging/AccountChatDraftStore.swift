@@ -1,3 +1,4 @@
+import AzureFishStorage
 import AzureFishAPI
 import AzureFishChat
 import Foundation
@@ -23,8 +24,9 @@ final class AccountChatDraftStore: ChatDraftStoring {
     func load(conversationID: String, into directory: URL) -> Task<ChatDraftLoadResult, Error> {
         enqueue { [self] in
             let requestedID = conversationID
-            let state = try await store.editorDraftState(requestedID, as: ChatDraftSnapshot.self)
-            if let snapshot = state.editor {
+            let state = try await store.editorDraftState(requestedID)
+            if let stored = state.editor {
+                let snapshot = try ChatDraftSnapshot(storage: stored)
                 guard snapshot.version == 1, snapshot.conversationID == state.conversation else { throw ChatStoreError.scopeMismatch }
                 var restored = snapshot
                 restored.conversationID = requestedID
@@ -52,21 +54,24 @@ final class AccountChatDraftStore: ChatDraftStoring {
             let text = snapshot.segments.map { segment -> String in
                 switch segment { case .text(let text): text; case .richText(let text): text.text; case .attachment: "" }
             }.joined()
-            try await store.saveEditorDraft(value, text: text, conversation: snapshot.conversationID)
+            try await store.saveEditorDraft(value.storageValue(), text: text, conversation: snapshot.conversationID)
+            try? await store.cleanupMedia(using: media)
             await didSave?()
         }
     }
     func saveReedited(_ snapshot: ChatDraftSnapshot, message: String, original: String) -> Task<Void, Error> {
         enqueue { [self] in
             let value = try await encrypt(snapshot)
-            try await store.saveEditorDraft(value, text: original, conversation: snapshot.conversationID,
+            try await store.saveEditorDraft(value.storageValue(), text: original, conversation: snapshot.conversationID,
                 reediting: message, expectedText: original)
+            try? await store.cleanupMedia(using: media)
             await didSave?()
         }
     }
     func remove(conversationID: String) -> Task<Void, Error> {
         enqueue { [self] in
-            try await store.saveEditorDraft(ChatDraftSnapshot(conversationID: conversationID), text: "", conversation: conversationID)
+            try await store.saveEditorDraft(StoredChatDraft(conversationID: conversationID), text: "", conversation: conversationID)
+            try? await store.cleanupMedia(using: media)
             await didSave?()
         }
     }
@@ -76,7 +81,8 @@ final class AccountChatDraftStore: ChatDraftStoring {
             let info = try url.resourceValues(forKeys: [.contentModificationDateKey, .fileSizeKey])
             let bytes = Int64(info.fileSize ?? 0)
             let id: UUID
-            if reuseResources, let old = imported[url], old.0 == info.contentModificationDate, old.1 == bytes {
+            if reuseResources, let old = imported[url], old.0 == info.contentModificationDate, old.1 == bytes,
+               (try? await media.completed(old.2)) != nil {
                 id = old.2
             } else {
                 let resource = try await media.importFile(url, filename: url.lastPathComponent, mime: "application/octet-stream")

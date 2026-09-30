@@ -6,9 +6,11 @@ import Testing
 
 @Suite("聊天详情设置、搜索和提醒来源")
 struct ChatDetailsTests {
+    /// 通过 JSON 字典构造目标测试业务值，编码或解码失败向上抛出。
     private func decode<T: Decodable>(_ type: T.Type, _ value: [String: Any]) throws -> T {
         try JSONDecoder().decode(type, from: JSONSerialization.data(withJSONObject: value))
     }
+    /// 构造包含测试用户有效成员区间的虚构群会话。
     private func conversation(_ user: UUID, id: String = "chat") throws -> ChatConversation {
         try decode(ChatConversation.self, ["id": id, "kind": "group", "title": "测试", "ownerID": user.uuidString.lowercased(),
             "members": [["id": user.uuidString.lowercased(), "active": true, "intervals": [["joined": 1, "left": 0]],
@@ -16,20 +18,24 @@ struct ChatDetailsTests {
             "revision": 1, "boundaryRevision": 1, "latest": 1000, "closed": false,
             "readState": ["read": 0, "delivered": 0, "unread": 0, "through": 0, "revision": 1]])
     }
+    /// 构造指定内容或序列的虚构消息，供本地存储断言使用。
     private func message(_ index: Int, text: String, sender: String = "peer", revoked: Bool = false, conversation: String = "chat") throws -> ChatMessage {
         try decode(ChatMessage.self, messageJSON(index, text: text, sender: sender, revoked: revoked, conversation: conversation))
     }
+    /// 构造指定正文、身份及撤回状态的消息 JSON 字典。
     private func messageJSON(_ index: Int, text: String, sender: String = "peer", revoked: Bool = false, conversation: String = "chat") -> [String: Any] {
         ["id": "message-\(index)", "conversationID": conversation, "clientID": "c-\(index)", "serverID": "s-\(index)",
          "senderID": sender, "deviceID": "device", "sequence": index, "createdAt": index * 1000, "revision": revoked ? 2 : 1,
          "kind": "text", "schemaVersion": 1, "text": text, "revoked": revoked, "assets": [],
          "receipt": ["expected": 0, "delivered": 0, "read": 0, "revision": 0]]
     }
+    /// 创建唯一临时测试目录；调用方负责在测试结束时清理。
     private func folder() throws -> URL {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
         return url
     }
+    /// 验证首轮补拉只建立提醒基线且旧前台周期结果不提醒。
     @Test func notificationBaselineAndForegroundGeneration() {
         var gate = ChatIncomingNotificationGate()
         let background = gate.complete(gate.begin(hasCheckpoint: true))
@@ -50,6 +56,7 @@ struct ChatDetailsTests {
         let snapshot = gate.complete(gate.begin(hasCheckpoint: false))
         #expect(!snapshot)
     }
+    /// 验证偏好跨重开及清空保留且保持账号隔离。
     @Test func preferencesSurviveReopenAndClearButRemainAccountScoped() async throws {
         let root = try folder(); defer { try? FileManager.default.removeItem(at: root) }
         let user = UUID(), key = Data(repeating: 7, count: 32), url = root.appendingPathComponent("db")
@@ -74,6 +81,7 @@ struct ChatDetailsTests {
         #expect(try await other.conversationPreferences("chat") == .init())
         try await other.close()
     }
+    /// 验证四语言搜索、分页、可见权限及旧消息上下文。
     @Test func fourLanguageSearchPaginationVisibilityAndOldContext() async throws {
         let root = try folder(); defer { try? FileManager.default.removeItem(at: root) }
         let user = UUID(), store = try ChatStore(url: root.appendingPathComponent("db"), key: Data(repeating: 8, count: 32), environment: "test", userID: user)
@@ -107,30 +115,22 @@ struct ChatDetailsTests {
         #expect(try await store.searchMessages(conversation: "chat", query: "hello").messages.isEmpty)
         try await store.close()
     }
-    @Test func migrationRebuildsLegacyTextIndex() async throws {
+    /// 验证当前基线的文字索引可在关闭重开后继续使用。
+    @Test func baselineKeepsTextIndexAcrossReopen() async throws {
         let root = try folder(); defer { try? FileManager.default.removeItem(at: root) }
         let user = UUID(), key = Data(repeating: 9, count: 32), url = root.appendingPathComponent("db")
         let store = try ChatStore(url: url, key: key, environment: "test", userID: user)
         try await store.save(conversation(user)); try await store.save(message(1, text: "搜索繁體中文")); try await store.close()
-        var configuration = Configuration()
-        configuration.prepareDatabase { try $0.usePassphrase(key.base64EncodedString()) }
-        let legacy = try DatabaseQueue(path: url.path, configuration: configuration)
-        try await legacy.write { db in
-            try db.execute(sql: "DELETE FROM grdb_migrations WHERE identifier='chat-v4-local-details-search'")
-            try db.execute(sql: "DROP TABLE message_search")
-            try db.execute(sql: "CREATE VIRTUAL TABLE message_search USING fts5(id UNINDEXED, body)")
-            try db.execute(sql: "INSERT INTO message_search VALUES ('message-1','搜索繁體中文')")
-        }
-        try legacy.close()
-        let migrated = try ChatStore(url: url, key: key, environment: "test", userID: user)
-        #expect(try await migrated.searchMessages(conversation: "chat", query: "繁體").messages.count == 1)
-        try await migrated.close()
+        let reopened = try ChatStore(url: url, key: key, environment: "test", userID: user)
+        #expect(try await reopened.searchMessages(conversation: "chat", query: "繁體").messages.count == 1)
+        try await reopened.close()
     }
+    /// 验证来信候选只来自事务已提交的新消息。
     @Test func incomingCandidatesOnlyFollowCommittedNewMessages() async throws {
         let root = try folder(); defer { try? FileManager.default.removeItem(at: root) }
         let user = UUID(), store = try ChatStore(url: root.appendingPathComponent("db"), key: Data(repeating: 6, count: 32), environment: "test", userID: user)
         try await store.save(conversation(user))
-        try await store.setMeta(ChatCheckpoint(cursor: "0", epoch: "epoch"), id: "checkpoint")
+        try await store.saveCheckpoint(ChatCheckpoint(cursor: "0", epoch: "epoch"))
         let messages = [messageJSON(1, text: "new"), messageJSON(2, text: "self", sender: user.uuidString.lowercased()), messageJSON(3, text: "revoked", revoked: true)]
         let batch = try decode(ChatEvents.self, ["base": "0", "next": "3", "epoch": "epoch", "hasMore": false,
             "events": messages.enumerated().map { ["position": $0.offset + 1, "kind": "message", "message": $0.element] }])

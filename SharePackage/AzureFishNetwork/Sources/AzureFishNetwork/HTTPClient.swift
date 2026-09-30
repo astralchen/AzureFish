@@ -6,9 +6,13 @@ import Foundation
 /// 注入的传输对象由实例持有，业务层负责协调共享状态。
 /// Debug 启动参数 `-AzureFishNetworkLogging true` 可开启脱敏诊断，Release 始终关闭。
 public struct HTTPClient: Sendable {
+    /// 执行单次发送的传输对象，由客户端持有。
     private let transport: any HTTPTransport
+    /// 当前客户端使用的脱敏诊断输出边界。
     private let diagnostics: NetworkDiagnostics
+    /// 每次发送前校验 URL 的安全策略。
     private let security: TransportSecurityPolicy
+    /// 首次可重放故障后的等待操作；抛错即结束本次发送。
     private let waitBeforeRetry: @Sendable () async throws -> Void
 
     /// 创建客户端并指定单次传输实现、安全策略和重试等待操作。
@@ -86,6 +90,7 @@ public struct HTTPClient: Sendable {
         }
     }
 
+    /// 根据请求方法、正文和重放策略判断传输错误是否允许再次发送。
     private func retryAllowed(_ request: HTTPRequest, error: NetworkError) -> Bool {
         guard case .transport(let code) = error else { return false }
         switch request.replayPolicy {

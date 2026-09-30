@@ -4,12 +4,14 @@ import Testing
 
 @Suite("插件生成协议")
 struct ProtocolTests {
+    /// 验证Swift 简短类型名保持原 Protobuf 线协议名称。
     @Test func shortSwiftNamesKeepWireNames() {
         #expect(RegisterRequest.protoMessageName == "azurefish.v1.RegisterRequest")
         #expect(AuthResponse.protoMessageName == "azurefish.v1.AuthResponse")
         #expect(UserProfile.protoMessageName == "azurefish.v1.UserProfile")
     }
 
+    /// 验证可选字段 presence 及 Int64 值往返不丢失。
     @Test func optionalPresenceAndInt64RoundTrip() throws {
         var message = UpdateProfileRequest()
         message.operationID = UUID().uuidString
@@ -21,6 +23,7 @@ struct ProtocolTests {
         #expect(decoded.expectedProfileVersion == Int64.max)
     }
 
+    /// 验证未知 Protobuf 字段经过往返编码仍被保留。
     @Test func unknownFieldsSurvive() throws {
         // 字段 99 的 varint=1，模拟服务端后续新增字段。
         let bytes = Data([0x98, 0x06, 0x01])
@@ -28,6 +31,7 @@ struct ProtocolTests {
         #expect(try message.serializedData() == bytes)
     }
 
+    /// 验证系统事件追加字段兼容未知 envelope 往返。
     @Test func systemEventUsesAppendOnlyFieldsAndSurvivesUnknownEnvelope() throws {
         var message = IMMessage()
         message.systemEvent.kind = "friendship_accepted"
@@ -41,6 +45,7 @@ struct ProtocolTests {
         #expect(try IMMessage(serializedBytes: legacy.serializedData()) == message)
     }
 
+    /// 验证媒体追加字段及未知 envelope 可往返保留。
     @Test func mediaAppendOnlyFieldsAndUnknownEnvelopeRoundTrip() throws {
         var request = IMSendRequest(); request.assetIds = ["asset"]
         #expect(try request.serializedData().first == 0x4a) // 字段 9，保留原来的 1～8。

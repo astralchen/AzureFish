@@ -12,7 +12,7 @@
 
 ## 本机存储与生命周期
 
-`AzureFishChat` 在原 SQLCipher 账号库追加 `chat-v2-revoke-recovery` 迁移，不重建数据库或密钥。恢复记录与消息正文、FTS 搜索分开保存，不进入日志。
+`AzureFishChat` 使用 `account-storage-v1` 中的 `message_reedit_recovery` 和格式子表；旧开发库拒绝打开，不自动重建数据库或密钥。恢复记录与消息正文、FTS 搜索分开保存，不进入日志。
 
 网络调用前保存原 operation ID 和本人原文。待确认副本最多保留三分钟；在此期限内，HTTP、历史或事件首次确认撤回时，与消息更新同事务转为可编辑并固定新的三分钟截止时间。超过待确认期限后到达的成功仍撤回消息，但不恢复编辑副本。
 

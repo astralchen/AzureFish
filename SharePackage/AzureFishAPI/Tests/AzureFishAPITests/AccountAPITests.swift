@@ -5,14 +5,19 @@ import AzureFishProtocol
 import Foundation
 import Testing
 
+/// 账号 API 测试共用的虚构用户 UUID。
 private let testUserID = UUID(uuidString: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")!
+/// 账号 API 测试共用的虚构安装 UUID。
 private let testDeviceID = UUID(uuidString: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb")!
+/// 账号 API 测试共用的虚构会话 UUID。
 private let testSessionID = UUID(uuidString: "cccccccc-cccc-4ccc-8ccc-cccccccccccc")!
 
+/// 创建指向 example.invalid 的指定名称测试环境。
 private func environment(_ name: String = "test") throws -> APIEnvironment {
     try APIEnvironment(identifier: name, baseURL: URL(string: "https://example.invalid")!)
 }
 
+/// 按给定身份及刷新代次构造虚构凭据，不访问安全存储。
 private func credentials(generation: Int64 = 1, userID: UUID = testUserID, sessionID: UUID = testSessionID) throws -> SessionCredentials {
     try SessionCredentials(environmentID: "test", userID: userID, deviceID: testDeviceID, sessionID: sessionID,
         accessToken: SessionToken(rawValue: String(repeating: generation == 1 ? "a" : "b", count: 43)),
@@ -21,6 +26,7 @@ private func credentials(generation: Int64 = 1, userID: UUID = testUserID, sessi
         refreshExpiresAt: Date(timeIntervalSince1970: 1_802_592_000), refreshGeneration: generation)
 }
 
+/// 构造指定资料版本的虚构用户 Protobuf 响应。
 private func profileMessage(version: Int64 = 1) -> AzureFishProtocol.UserProfile {
     var message = AzureFishProtocol.UserProfile()
     message.userID = testUserID.uuidString.lowercased(); message.accountName = "fictional_user"
@@ -29,6 +35,7 @@ private func profileMessage(version: Int64 = 1) -> AzureFishProtocol.UserProfile
     return message
 }
 
+/// 构造指定刷新代次且身份一致的虚构认证响应。
 private func authMessage(generation: Int64 = 1) -> AuthResponse {
     var message = AuthResponse()
     message.environmentID = "test"; message.userID = testUserID.uuidString.lowercased()
@@ -39,6 +46,7 @@ private func authMessage(generation: Int64 = 1) -> AuthResponse {
     return message
 }
 
+/// 编码指定错误码和状态的虚构 Protobuf 错误响应，附带重试间隔。
 private func serviceResponse(_ code: String, status: Int) throws -> HTTPResponse {
     var message = ApiError()
     message.code = code; message.requestID = UUID().uuidString.lowercased(); message.field = "password"
@@ -47,6 +55,7 @@ private func serviceResponse(_ code: String, status: Int) throws -> HTTPResponse
 
 @Suite("账号 API 适配")
 struct AccountAPITests {
+    /// 验证删除恢复复用原请求字节，拒绝过期及跨环境材料。
     @Test func deletionRecoveryPreservesBytesAndRejectsExpiredOrForeignTickets() async throws {
         let proofToken = String(repeating: "p", count: 43)
         let transport = MockHTTPTransport { request, _ in
@@ -76,6 +85,7 @@ struct AccountAPITests {
         await #expect(throws: APIClientError.operationEnvironmentMismatch) { try await other.recoverDeletion(restored, now: now) }
         #expect(await transport.requests.count == 3)
     }
+    /// 验证注册请求只编码一次且认证响应映射为业务值。
     @Test func registrationSerializesOnceAndMapsDomainValues() async throws {
         let bytes = try authMessage().serializedData()
         let transport = MockHTTPTransport { _, attempt in
@@ -103,6 +113,7 @@ struct AccountAPITests {
         #expect(!String(reflecting: result.credentials).contains(result.credentials.accessToken.rawValue))
     }
 
+    /// 验证资料修改保留字段 presence，并使用新 Bearer 重放原始正文。
     @Test func updatePresenceAndReplayWithNewBearer() async throws {
         let response = try profileMessage(version: 2).serializedData()
         let transport = MockHTTPTransport { _, _ in HTTPResponse(statusCode: 200, headers: ["Content-Type": "application/protobuf"], body: response) }
@@ -119,6 +130,7 @@ struct AccountAPITests {
         #expect(message.expectedProfileVersion == 1)
     }
 
+    /// 验证请求拒绝跨账号、会话、环境及旧代次凭据。
     @Test func preventsCrossAccountSessionEnvironmentAndOldCredentialUse() async throws {
         let transport = MockHTTPTransport { _, _ in Issue.record("Unexpected network request"); return HTTPResponse(statusCode: 500) }
         let api = AccountAPI(environment: try environment(), transport: transport)
@@ -133,6 +145,7 @@ struct AccountAPITests {
         #expect(await transport.requests.isEmpty)
     }
 
+    /// 验证账号 API 不因业务 401 自行刷新或重试。
     @Test(arguments: ["INVALID_CREDENTIALS", "UNAUTHENTICATED", "REFRESH_REPLAY", "REAUTH_REQUIRED"])
     func doesNotAutomaticallyRefreshOrRetryBusiness401(code: String) async throws {
         let response = try serviceResponse(code, status: 401)
@@ -148,6 +161,7 @@ struct AccountAPITests {
         #expect(await transport.requests.count == 1)
     }
 
+    /// 验证代理响应、MIME、截断、限流和未知错误码正确分类。
     @Test func classifiesProxyMIMETruncationRateLimitAndUnknownCode() async throws {
         let limited = try serviceResponse("RATE_LIMITED", status: 429)
         let unknown = try serviceResponse("NEW_ERROR", status: 409)
@@ -171,6 +185,7 @@ struct AccountAPITests {
         #expect(await transport.requests.count == 5)
     }
 
+    /// 验证认证响应身份及刷新代次不匹配时被拒绝。
     @Test func rejectsAuthIdentityMismatchAndInvalidRefreshGeneration() async throws {
         var wrongEnvironment = authMessage(); wrongEnvironment.environmentID = "wrong"
         var wrongUser = authMessage(); wrongUser.profile.userID = UUID().uuidString
@@ -186,6 +201,7 @@ struct AccountAPITests {
         await #expect(throws: APIClientError.invalidResponse) { try await api.execute(refresh) }
     }
 
+    /// 验证有效刷新和无业务字段退出响应正确解码。
     @Test func validRefreshAndEmptyLogoutResponse() async throws {
         var renewedMessage = authMessage(generation: 2)
         renewedMessage.refreshExpiresAtMs += 86_400_000
@@ -204,6 +220,7 @@ struct AccountAPITests {
         #expect(history[1].headers["Authorization"] != nil)
     }
 
+    /// 验证无效环境和超限请求在发送前被拒绝。
     @Test func validatesEnvironmentAndOversizedPayload() throws {
         for url in ["http://example.invalid", "https://u:p@example.invalid", "https://example.invalid/api", "https://example.invalid?token=x"] {
             #expect(throws: APIClientError.invalidEnvironment) { try APIEnvironment(identifier: "test", baseURL: URL(string: url)!) }
@@ -217,6 +234,7 @@ struct AccountAPITests {
         }
     }
 
+    /// 验证取消向上传递且 API 不自行安装会话。
     @Test func cancellationPropagatesWithoutInstallingState() async throws {
         let transport = MockHTTPTransport { _, _ in throw CancellationError() }
         let api = AccountAPI(environment: try environment(), transport: transport)
@@ -226,6 +244,7 @@ struct AccountAPITests {
 }
 
 extension AccountAPITests {
+    /// 验证退出补偿序列化保留访问令牌及原请求，不保留刷新令牌。
     @Test func logoutRevocationRoundTripKeepsOnlyAccessAndOriginalBody() async throws {
         let transport = MockHTTPTransport { _, _ in HTTPResponse(statusCode: 200, headers: ["Content-Type": "application/protobuf"], body: Data()) }
         let api = AccountAPI(environment: try environment(), transport: transport)

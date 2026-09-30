@@ -34,6 +34,7 @@ public struct APIEnvironment: Sendable, Equatable {
         return try APIEnvironment(identifier: "local-development", baseURL: url, security: .debugLoopbackForFictionalData)
     }
 
+    /// 校验环境标识、根地址及安全策略后保存配置；拒绝带查询、片段或认证信息的地址。
     private init(identifier: String, baseURL: URL, security: TransportSecurityPolicy) throws {
         guard !identifier.isEmpty, identifier.utf8.count <= 64,
               identifier.utf8.allSatisfy({ (97...122).contains($0) || (48...57).contains($0) || $0 == 45 || $0 == 95 }),

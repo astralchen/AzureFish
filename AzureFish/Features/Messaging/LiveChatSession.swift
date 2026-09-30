@@ -150,7 +150,7 @@ final class LiveChatSession: ChatSessionProviding {
                 if let contextAnchor { loaded = try await engine.store.messageContext(contextAnchor, conversation: conversation.id) }
                 else { loaded = try await engine.store.messages(conversation.id, limit: historyLimit) }
                 let pending = try await engine.store.pending().filter { $0.outgoing.conversationID == conversation.id }
-                let uploads = try await engine.store.transfers(as: ChatUploadBatch.self).filter { $0.conversation == conversation.id }
+                let uploads = try await engine.store.transfers().filter { $0.conversation == conversation.id }
                 let order = try await engine.store.orderedMessageIDs(conversation: conversation.id)
                 let availability = try await engine.store.reeditAvailability(conversation: conversation.id)
                 try Task.checkCancellation()
@@ -231,6 +231,7 @@ final class LiveChatSession: ChatSessionProviding {
         return result
     }
     func content(_ message: ChatMessage) -> MessageContent {
+        guard message.isKnownContent else { return .userText(Localization.text("chat.live.unknown")) }
         if message.revoked || message.kind == "system" { return .userText("") }
         if let cached = contents[message.id] { return cached }
         if message.kind == "link", let url = URL(string: message.linkURL ?? message.text) {

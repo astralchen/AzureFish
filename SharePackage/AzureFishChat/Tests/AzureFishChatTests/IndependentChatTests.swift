@@ -6,14 +6,19 @@
     @testable import AzureFishChat
 
     private actor ChatTestSessionStore: APISessionStore {
+        /// 当前虚构会话记录；此测试替身不提供环境隔离。
         private var value: APISessionRecord?
+        /// 返回当前内存记录，忽略环境参数，仅用于单环境虚构服务测试。
         func load(environmentID: String) -> APISessionRecord? { value }
+        /// 替换当前内存记录，不执行安全持久化。
         func save(_ record: APISessionRecord, environmentID: String) { value = record }
+        /// 清空当前内存记录。
         func clear(environmentID: String) { value = nil }
     }
 
     @Suite("真实好友与客户端加密发送", .timeLimit(.minutes(2)))
     struct IndependentChatTests {
+        /// 验证显式虚构服务上的联系人、消息、媒体及撤回闭环。
         @Test(.enabled(if: ProcessInfo.processInfo.environment["AZUREFISH_CHAT_TEST_PORT"] != nil))
         func friendMessageMediaAndRevocation() async throws {
             let port = try #require(
@@ -141,10 +146,10 @@
                 #expect(try await store.pending().count == 2)
                 await queue.resume()
                 for _ in 0..<200 {
-                    if try await store.transfers(as: ChatUploadBatch.self).isEmpty, try await store.pending().isEmpty { break }
+                    if try await store.transfers().isEmpty, try await store.pending().isEmpty { break }
                     try await Task.sleep(nanoseconds: 100_000_000)
                 }
-                #expect(try await store.transfers(as: ChatUploadBatch.self).isEmpty)
+                #expect(try await store.transfers().isEmpty)
                 let sent = try #require(
                     try await first.history(conversation.id).messages.first { $0.kind == "file" })
                 let received = try await second.history(conversation.id)

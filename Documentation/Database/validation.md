@@ -1,6 +1,36 @@
 # 开发验证与验收方案
 
-> **状态：设计阶段，尚未接入应用。** 本次只交付 Markdown 开发文档。以下数据库、应用及服务端场景均为后续实施验收要求；不能据此宣称已实现或已通过。返回 [文档入口](README.md)。
+## 2026-09-30 账号存储重构验收
+
+本次实现 `account-storage-v1`、AzureFishStorage、类型化聊天表和 App 适配。下方早期设计矩阵仍是未来完整能力目标，其中旧名称不是当前物理表；实际字典见 [schema.md](schema.md)。历史文档检查不能作为本轮测试结果。
+
+| 验证层级 | 本轮状态 |
+| --- | --- |
+| 基础包：迁移、只读拒绝、密钥、回滚、跨业务资源引用 | 通过，5 项 |
+| 聊天包：类型往返、图结构、外键、共享资源、查询次数、版本与取消、四语言搜索 | 通过，35 项；真实服务端用例 1 项按环境开关跳过 |
+| SQLCipher probe：加密、迁移、FTS、错误密钥、加密备份 | 通过，1 项 |
+| App 编译与测试目标 | 通过，iPhone 17 Pro／iOS 26.5 Simulator，包含全部测试目标 |
+| App 单元／组件：共享所有权、启动、通讯录、请求重试、私聊、编辑器、详情与撤回布局 | 通过，9 个测试组、32 项 |
+| iOS 26.5 模拟器 UI：列表隐藏／删除、清空保留草稿、偏好与历史搜索 | 通过，3 项；使用隔离的虚构账号及本地测试数据 |
+| 文档链接、字段一致性、git diff --check | 通过，123 个本地链接、65 个聊天 Record 的表名与字段；四语言不兼容提示齐全 |
+| 真机、iOS 15 运行、iOS 27.1 Duo、完整视觉和无障碍矩阵 | 未执行 |
+| 真实服务端联调、百万消息性能、业务备份恢复／轮换 | 未执行；不以包测试代替 |
+
+新增用例入口：[基础包测试](../../SharePackage/AzureFishStorage/Tests/AzureFishStorageTests/AccountDatabaseTests.swift)、[类型化存储测试](../../SharePackage/AzureFishChat/Tests/AzureFishChatTests/TypedStorageTests.swift)、[App 共享所有权测试](../../AzureFishTests/Chat/ChatAccountStorageTests.swift)。继续执行既有聊天包回归，避免仅以新结构自证。
+
+包验证命令：
+
+```sh
+swift test --package-path SharePackage/AzureFishStorage --disable-automatic-resolution -j 2
+swift test --package-path SharePackage/AzureFishChat --disable-automatic-resolution -j 4
+swift test --package-path Scripts/account-storage-probe -j 2
+```
+
+App 使用 `AzureFish.xcworkspace`／`AzureFish` scheme、`/tmp/AzureFish-DD` 和模拟器 `505FE0AF-BD0B-4257-A44A-A3BA1364CF5C`，关闭签名与并行测试。联系人与真实页面夹具补齐恢复必需的加密账号资料，并为请求发出及 ACK 投影使用有界等待；没有放宽业务断言。
+
+最终 `xcodebuild test` 结果为 `TEST SUCCEEDED`，结果包保存在本机临时目录 `/tmp/azurefish-storage-regression-final.xcresult`。App 运行范围是 ChatAccountStorageTests、ChatStartupTests、ChatContactCacheTests、ChatContactOperationsTests、ChatContactsTests、ChatDirectConversationTests、ChatOriginalUIIntegrationTests、ChatDetailsPresentationTests 和 ChatReeditLayoutTests。UI 运行 ChatConversationListUITests.testSwipeUnreadHideAndDeleteConfirmation，以及 ChatDetailsUITests 的 testPushPreferencesSearchOldMessageAndDraft、testClearConfirmationPreservesPreferencesAndDraft；未宣称整个 UI 矩阵已通过。
+
+> 以下章节保留早期完整目标和历史验收；其中 SQL、任务租约及容量要求并非全部实现。当前结果以上方本轮记录为准，物理字段以新基线字典为准。返回 [文档入口](README.md)。
 
 ## 1. 开发顺序与完成条件
 

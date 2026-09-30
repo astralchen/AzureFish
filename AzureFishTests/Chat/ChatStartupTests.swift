@@ -14,7 +14,7 @@ private actor StartupTestSession: APISessionStore {
 @Suite("启动会话列表", .serialized)
 @MainActor
 struct ChatStartupTests {
-    @Test func storedSelectionDoesNotOpenDetailOrClearUnread() async throws {
+    @Test func startupDoesNotOpenDetailOrClearUnread() async throws {
         guard #available(iOS 16.0, *) else { return }
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
@@ -27,7 +27,6 @@ struct ChatStartupTests {
         let engine = ChatEngine(store: store, session: APISessionManager(api: AccountAPI(environment: environment), store: StartupTestSession()))
         let conversation = ConversationPreviewData.detailsConversation()
         try await store.save(conversation)
-        try await store.setMeta(conversation.id, id: "selectedConversation")
         try await store.saveDraft(.init(text: "启动时保留的草稿"), conversation: conversation.id)
         try await store.setManuallyUnread(true, conversation: conversation.id)
         let runtime = ChatRuntime(session: preview.session, engine: engine, media: media, conversations: [conversation], pageLeaseRoot: root)

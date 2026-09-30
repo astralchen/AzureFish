@@ -20,7 +20,7 @@ public enum HTTPReplayPolicy: Sendable, Equatable {
     case never
     /// 仅对 GET 的超时、连接中断、无法连接主机、找不到主机或 DNS 查询失败额外尝试一次。
     case readOnce
-    /// 对带有正文的 POST／PATCH，仅在超时或连接中断时额外尝试一次。
+    /// 对带有正文的 POST／PATCH／PUT，仅在超时或连接中断时额外尝试一次。
     ///
     /// - Parameter operationID: 服务端用于去重的业务动作 ID；调用方须将它写入实际业务请求。
     ///   网络层不将此值自动写入请求头或正文，也不验证服务端是否支持去重。

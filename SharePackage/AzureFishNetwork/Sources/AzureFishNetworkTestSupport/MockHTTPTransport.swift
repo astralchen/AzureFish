@@ -11,7 +11,9 @@ public actor MockHTTPTransport: HTTPTransport {
     /// 第一个参数为原始请求，第二个参数为当前实例从 1 开始的发送序号；序号在调用前确定。
     /// 闭包不承诺运行在主 Actor，允许挂起或抛错，应配合任务取消；每次 send 只调用一次。
     public typealias Handler = @Sendable (HTTPRequest, Int) async throws -> HTTPResponse
+    /// 每次发送调用一次的模拟响应处理器，由测试传输持有。
     private let handler: Handler
+    /// 按调用顺序保存的原始请求；失败的请求也保留，仅允许使用虚构数据。
     private var history: [HTTPRequest] = []
     /// 创建测试传输并持有响应处理器，初始历史记录为空。
     ///

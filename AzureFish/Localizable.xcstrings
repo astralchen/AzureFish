@@ -14868,6 +14868,35 @@
           }
         }
       }
+    },
+    "chat.live.incompatibleStorage" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此开发版本的本地数据格式已更新。请显式清除该账号的本地数据后重试；未发送内容将被删除。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此開發版本的本機資料格式已更新。請明確清除此帳號的本機資料後重試；尚未傳送的內容將被刪除。"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The local data format has changed in this development version. Explicitly clear this account’s local data before trying again. Unsent content will be deleted."
+          }
+        },
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تغيّر تنسيق البيانات المحلية في هذا الإصدار التجريبي. امسح البيانات المحلية لهذا الحساب بشكل صريح ثم أعد المحاولة. سيُحذف المحتوى غير المُرسَل."
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

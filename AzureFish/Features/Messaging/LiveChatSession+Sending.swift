@@ -79,7 +79,7 @@ extension LiveChatSession {
         var snapshot = ChatDraftSnapshot(conversationID: conversation.id)
         snapshot.documents = [attachment]
         let encrypted = try await drafts.encrypt(snapshot, reuseResources: false)
-        try await drafts.store.savePresentation(encrypted, message: key)
+        try await drafts.store.savePresentation(encrypted.storageValue(), message: key)
     }
     func uploadItems(_ attachment: Attachment, media: ChatMediaStore) async throws -> [ChatUploadItem] {
         func resource(_ url: URL, name: String? = nil, role: String = "original") async throws -> ChatLocalMedia {

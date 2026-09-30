@@ -6,6 +6,7 @@ import Testing
 
 @Suite("好友系统提示存储")
 struct ChatFriendshipNoticeTests {
+    /// 验证摘要不会伪造历史覆盖或恢复隐藏内容。
     @Test func summaryDoesNotInventCoverageOrRestoreHiddenContent() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)

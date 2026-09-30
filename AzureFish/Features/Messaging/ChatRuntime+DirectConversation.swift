@@ -8,7 +8,7 @@ extension ChatRuntime {
     func directConversation(for contact: ChatContact) async throws -> ChatConversation {
         guard let engine else { throw ContactOperationError.unavailable }
         let localID = ChatStore.localDirectID(peer: contact.peer.id)
-        let pending: Bool = try await engine.store.meta("direct.pending:" + localID) ?? false
+        let pending: Bool = try await engine.store.isDirectResolutionPending(localID)
         guard self.engine === engine else { throw CancellationError() }
         if !pending {
             if let existing = matchingDirectConversation(in: conversations, peer: contact.peer.id) { return existing }
@@ -16,7 +16,7 @@ extension ChatRuntime {
             guard self.engine === engine else { throw CancellationError() }
             if let existing = matchingDirectConversation(in: stored, peer: contact.peer.id) { return existing }
         }
-        try await engine.store.setMeta(true, id: "direct.pending:" + localID)
+        try await engine.store.setDirectResolutionPending(true, localID: localID)
         guard self.engine === engine else { throw CancellationError() }
         let peer = try JSONSerialization.jsonObject(with: JSONEncoder().encode(contact.peer))
         let value: [String: Any] = [

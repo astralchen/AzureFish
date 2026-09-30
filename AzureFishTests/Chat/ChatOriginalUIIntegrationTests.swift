@@ -26,7 +26,7 @@ struct ChatOriginalUIIntegrationTests {
         snapshot.segments = [.richText(rich), .attachment(file.id)]
         snapshot.documents = [.file(file)]
         try await adapter.save(snapshot).value
-        let persisted: ChatDraftSnapshot = try #require(await database.meta("rich-draft:one"))
+        let persisted = try ChatDraftSnapshot(storage: #require(await database.editorDraftState("one").editor))
         #expect(persisted.localFileURLs.allSatisfy { $0.scheme == "azurefish-media" })
         let second = PageAttachmentStore(parentDirectory: root)
         let restored = try await adapter.load(conversationID: "one", into: second.directoryURL).value
@@ -50,9 +50,13 @@ struct ChatOriginalUIIntegrationTests {
         let credentials = try sampleCredentials()
         let credentialStore = CredentialStore(values: keys, environmentID: credentials.environmentID)
         try credentialStore.save(StoredSession(credentials))
+        let repository = UserRepository(root: root.appendingPathComponent("profile"), keys: keys, environment: credentials.environmentID)
+        try repository.save(AccountProfile(userID: credentials.userID, accountName: "fictional_user",
+            nickname: "Fictional", bio: "", version: 1))
         let session = SessionCoordinator(service: LiveAccountService(api: AccountAPI(environment: try APIEnvironment.localTesting(), transport: transport)),
-            store: credentialStore, repository: UserRepository(root: root.appendingPathComponent("profile"), keys: keys, environment: credentials.environmentID))
+            store: credentialStore, repository: repository)
         await session.restore()
+        try #require(!session.readOnly)
         await transport.setOffline(true)
         let database = try ChatStore(url: root.appendingPathComponent("chat.sqlite"), key: Data(repeating: 3, count: 32), environment: credentials.environmentID, userID: credentials.userID)
         let media = try ChatMediaStore(root: root.appendingPathComponent("media"), key: Data(repeating: 4, count: 32), environment: credentials.environmentID, userID: credentials.userID)
@@ -110,6 +114,10 @@ struct ChatOriginalUIIntegrationTests {
         try await database.save(confirmed)
         live.refresh()
         await live.reloadTask?.value
+        // 发送队列通知可替换 reloadTask；等待实际 ACK 投影，不能把旧任务结束当成 UI 更新完成。
+        for _ in 0..<100 where page.viewModel.messages.first?.deliveryState != .delivered {
+            try await Task.sleep(for: .milliseconds(10))
+        }
         #expect(page.viewModel.messages.count == 1)
         #expect(page.viewModel.messages.first?.id == before)
         #expect(page.viewModel.messages.first?.deliveryState == .delivered)

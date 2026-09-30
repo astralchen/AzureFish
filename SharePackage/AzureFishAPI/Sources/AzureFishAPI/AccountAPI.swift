@@ -11,6 +11,7 @@ import SwiftProtobuf
 public struct AccountAPI: Sendable {
     /// 本实例使用的固定服务环境；已准备的操作只能由环境值完全一致的实例执行。
     public let environment: APIEnvironment
+    /// 执行账号 HTTP 请求并沿用环境安全策略的客户端。
     private let client: HTTPClient
 
     /// 创建指定服务环境的账号调用器，尚不读取凭据或连接服务端。
@@ -202,6 +203,7 @@ public struct AccountAPI: Sendable {
         return try await executeValidated(operation, headers: headers)
     }
 
+    /// 发送已准备操作，校验预期状态及 Protobuf 响应后调用解码器；网络错误映射为 APIClientError。
     func executeValidated<Value>(_ operation: AccountOperation<Value>, headers: [String: String]) async throws -> Value {
         let replay: HTTPReplayPolicy = operation.operationID.map { .idempotentWriteOnce(operationID: $0) } ?? .readOnce
         let request = HTTPRequest(url: environment.url(path: operation.path), method: operation.method, headers: headers,
@@ -233,7 +235,7 @@ public struct AccountAPI: Sendable {
         catch { throw APIClientError.decodingFailed }
     }
 
-    /// 为当前设备退出保存原始请求和有限期访问凭据；结果只能存入独立 Keychain 队列。
+    /// 为当前设备退出构造原始请求和有限期访问凭据；本方法不写入存储，结果只能存入独立 Keychain 队列。
     public func prepareLogoutRevocation(operationID: UUID, using credentials: SessionCredentials) throws -> LogoutRevocation {
         let operation = try prepareLogout(operationID: operationID, using: credentials)
         return LogoutRevocation(operationID: operationID, environmentID: environment.identifier,
@@ -271,6 +273,7 @@ public struct AccountAPI: Sendable {
                                 expectedStatus: status, authorization: authorization, decode: decode)
     }
 
+    /// 确认凭据的环境标识与此 API 一致；不匹配时抛出 credentialsMismatch。
     func checkEnvironment(_ credentials: SessionCredentials) throws {
         guard credentials.environmentID == environment.identifier else { throw APIClientError.credentialsMismatch }
     }
@@ -299,5 +302,6 @@ public struct AccountAPI: Sendable {
         return AuthenticatedSession(credentials: credentials, profile: profile)
     }
 
+    /// 将服务端 Unix 毫秒时间戳转换为 Date，不校验业务有效期。
     private static func date(_ milliseconds: Int64) -> Date { Date(timeIntervalSince1970: Double(milliseconds) / 1000) }
 }

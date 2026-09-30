@@ -6,8 +6,10 @@ import Testing
 /// 在不修改进程全局配置的情况下验证诊断开关、事件和敏感数据边界。
 @Suite("网络诊断日志")
 struct NetworkDiagnosticsTests {
+    /// 包含虚构敏感标记的诊断测试地址，不用于真实账号。
     private let url = URL(string: "https://fictional.invalid/private-secret?token=query-secret")!
 
+    /// 验证诊断开关只接受唯一参数及小写 true。
     @Test func launchArgumentsRequireUniqueLiteralTrue() {
         let flag = "-AzureFishNetworkLogging"
         #if DEBUG
@@ -21,6 +23,7 @@ struct NetworkDiagnosticsTests {
         }
     }
 
+    /// 验证关闭诊断时不求值日志内容或采集时钟。
     @Test func disabledLoggingDoesNotEvaluateMessagesOrClock() {
         let recorder = Recorder()
         let diagnostics = NetworkDiagnostics(enabled: false, sink: recorder.append)
@@ -32,6 +35,7 @@ struct NetworkDiagnosticsTests {
         #expect(recorder.messages.isEmpty)
     }
 
+    /// 验证诊断记录响应而不改变 HTTP 状态语义。
     @Test(arguments: [200, 503]) func responsesAreLoggedWithoutChangingHTTPStatus(status: Int) async throws {
         let recorder = Recorder()
         let transport = MockHTTPTransport { _, _ in
@@ -57,6 +61,7 @@ struct NetworkDiagnosticsTests {
         #expect(recorder.messages.allSatisfy { $0.contains("requestID=\(id)") })
     }
 
+    /// 验证重试诊断包含两次尝试及不同请求身份。
     @Test func retryLogsBothAttemptsWithFreshRequestIDs() async throws {
         let recorder = Recorder()
         let transport = MockHTTPTransport { _, count in
@@ -82,6 +87,7 @@ struct NetworkDiagnosticsTests {
         #expect(!output.lowercased().contains(operationID.uuidString.lowercased()))
     }
 
+    /// 验证请求校验失败会记录诊断且不会调用传输。
     @Test func validationFailureNeverSends() async {
         let recorder = Recorder()
         let transport = MockHTTPTransport { _, _ in Issue.record("Unexpected send"); return HTTPResponse(statusCode: 200) }
@@ -95,6 +101,7 @@ struct NetworkDiagnosticsTests {
         #expect(!recorder.messages[0].contains("secret"))
     }
 
+    /// 验证最终传输失败次数有界且诊断内容脱敏。
     @Test func finalTransportFailureIsBoundedAndRedacted() async {
         let recorder = Recorder()
         let transport = MockHTTPTransport { _, _ in throw URLError(.timedOut, userInfo: [NSURLErrorFailingURLStringErrorKey: "url-secret"]) }
@@ -107,6 +114,7 @@ struct NetworkDiagnosticsTests {
         #expect(!recorder.messages.joined().contains("secret"))
     }
 
+    /// 验证响应超限诊断在已接收响应事件之后记录。
     @Test func responseLimitFailureFollowsResponseEvent() async {
         let recorder = Recorder()
         let client = HTTPClient(transport: MockHTTPTransport { _, _ in HTTPResponse(statusCode: 200, body: Data([1, 2])) },
@@ -118,6 +126,7 @@ struct NetworkDiagnosticsTests {
         #expect(recorder.messages.last?.contains("error=responseTooLarge") == true)
     }
 
+    /// 验证重试等待错误被记录并原样向上传递。
     @Test func retryWaitErrorIsLoggedAndPreserved() async {
         let recorder = Recorder()
         let transport = MockHTTPTransport { _, _ in throw URLError(.networkConnectionLost) }
@@ -131,6 +140,7 @@ struct NetworkDiagnosticsTests {
         #expect(!recorder.messages.joined().contains("secret"))
     }
 
+    /// 验证传输或重试等待期间取消均被记录且不继续重试。
     @Test(arguments: [false, true]) func cancellationIsLoggedWithoutRetryingAgain(duringWait: Bool) async {
         let recorder = Recorder()
         let transport = MockHTTPTransport { _, _ in
@@ -145,6 +155,7 @@ struct NetworkDiagnosticsTests {
         #expect(recorder.events == (duringWait ? ["send", "retry", "cancelled"] : ["send", "cancelled"]))
     }
 
+    /// 验证预先取消的任务不提交传输。
     @Test func preCancelledTaskDoesNotSend() async {
         let recorder = Recorder()
         let transport = MockHTTPTransport { _, _ in Issue.record("Unexpected send"); return HTTPResponse(statusCode: 200) }
@@ -160,15 +171,22 @@ struct NetworkDiagnosticsTests {
 }
 
 private struct SecretError: Error, CustomStringConvertible {
+    /// 包含虚构秘密标记的底层错误描述，用于验证诊断不泄漏原始错误。
     var description: String { "underlying-secret" }
 }
 
 /// 用锁隔离同步日志接收器，允许多个请求并发写入测试记录。
 private final class Recorder: @unchecked Sendable {
+    /// 保护并发诊断记录及读取的锁。
     private let lock = NSLock()
+    /// 按实际追加顺序保存的诊断消息。
     private var storage: [String] = []
+    /// 启用诊断并将输出交给当前记录器的测试实例。
     var diagnostics: NetworkDiagnostics { NetworkDiagnostics(enabled: true, sink: append) }
+    /// 在锁保护下追加一条诊断消息。
     func append(_ message: String) { lock.lock(); defer { lock.unlock() }; storage.append(message) }
+    /// 截至读取时的诊断消息数组快照。
     var messages: [String] { lock.lock(); defer { lock.unlock() }; return storage }
+    /// 从每条诊断的首字段提取事件名，保留消息顺序。
     var events: [String] { messages.map { String($0.split(separator: " ")[0].dropFirst("event=".count)) } }
 }

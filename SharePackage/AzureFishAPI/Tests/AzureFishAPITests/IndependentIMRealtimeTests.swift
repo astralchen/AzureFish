@@ -6,6 +6,7 @@ import AzureFishAPI
 
 @Suite("独立随机端口 IM 真服务", .timeLimit(.minutes(1)))
 struct IndependentIMRealtimeTests {
+    /// 验证独立虚构服务上的实时提示、刷新和退出闭环。
     @Test(.enabled(if: ProcessInfo.processInfo.environment["AZUREFISH_REALTIME_TEST_PORT"] != nil))
     func hintsRefreshAndLogout() async throws {
         let port = try #require(Int(ProcessInfo.processInfo.environment["AZUREFISH_REALTIME_TEST_PORT"] ?? ""))
@@ -53,13 +54,16 @@ struct IndependentIMRealtimeTests {
             try Data("completed".utf8).write(to: URL(fileURLWithPath: path), options: .atomic)
         }
     }
+    /// 以 20 毫秒间隔最多检查条件 500 次；仍未满足时抛出 requestTimeout。
     private func poll(_ condition: @escaping @Sendable () async -> Bool) async throws {
         for _ in 0..<500 { if await condition() { return }; try await Task.sleep(nanoseconds: 20_000_000) }
         throw WebSocketError.requestTimeout
     }
 }
 private actor SignalCollector {
+    /// 按接收顺序记录的实时补拉信号。
     var values: [IMRealtimeSignal] = []
+    /// 追加一条实时信号供测试断言。
     func append(_ value: IMRealtimeSignal) { values.append(value) }
 }
 #endif

@@ -7,24 +7,35 @@ import AzureFishProtocol
 
 /// 仅测试使用；生产模块不导出内存存储。
 actor MemorySessionStore: APISessionStore {
+    /// 按环境保存的虚构会话记录，初始为空。
     var records: [String: APISessionRecord] = [:]
+    /// 成功保存的记录历史，按调用顺序排列。
     var writes: [APISessionRecord] = []
+    /// 是否使下一次保存失败；失败后重置为 false。
     var failNextSave = false
+    /// 指定应保存失败的刷新代次；nil 表示不按代次注入失败。
     var failGeneration: Int64?
+    /// 读取指定环境的内存记录，没有记录时返回 nil。
     func load(environmentID: String) async throws -> APISessionRecord? { records[environmentID] }
+    /// 按测试开关注入失败，否则保存完整记录并追加写入历史。
     func save(_ record: APISessionRecord, environmentID: String) async throws {
         if failNextSave || failGeneration == record.credentials.refreshGeneration {
             failNextSave = false; throw APISessionError.storageFailure
         }
         records[environmentID] = record; writes.append(record)
     }
+    /// 删除指定环境的内存记录，保留写入历史用于断言。
     func clear(environmentID: String) async throws { records.removeValue(forKey: environmentID) }
+    /// 设置按刷新代次触发的保存失败；nil 清除此故障条件。
     func fail(generation: Int64?) { failGeneration = generation }
 }
 
 private struct SessionFixture: Sendable {
+    /// 此测试夹具生成的虚构用户、安装和会话 UUID。
     let user = UUID(), device = UUID(), session = UUID()
+    /// 使用 example.invalid 的虚构 HTTPS 测试环境。
     let environment = try! APIEnvironment(identifier: "test", baseURL: URL(string: "https://example.invalid")!)
+    /// 构造指定刷新代次的虚构凭据，默认代次为 1。
     func credentials(_ generation: Int64 = 1) throws -> SessionCredentials {
         try SessionCredentials(environmentID: "test", userID: user, deviceID: device, sessionID: session,
             accessToken: SessionToken(rawValue: String(repeating: generation == 1 ? "a" : "b", count: 43)),
@@ -32,6 +43,7 @@ private struct SessionFixture: Sendable {
             refreshToken: SessionToken(rawValue: String(repeating: generation == 1 ? "r" : "s", count: 43)),
             refreshExpiresAt: Date(timeIntervalSince1970: 1_902_000_000), refreshGeneration: generation)
     }
+    /// 构造与夹具用户身份一致的虚构 Protobuf 资料。
     func profile() -> AzureFishProtocol.UserProfile {
         var profile = AzureFishProtocol.UserProfile()
         profile.userID = user.uuidString.lowercased(); profile.accountName = "fictional_user"
@@ -39,6 +51,7 @@ private struct SessionFixture: Sendable {
         profile.createdAtMs = 1_800_000_000_000; profile.updatedAtMs = profile.createdAtMs
         return profile
     }
+    /// 编码代次 2 的虚构认证响应，用于模拟成功刷新。
     func auth() throws -> HTTPResponse {
         let credentials = try credentials(2)
         var message = AuthResponse()
@@ -49,27 +62,35 @@ private struct SessionFixture: Sendable {
         message.refreshGeneration = 2; message.profile = profile()
         return HTTPResponse(statusCode: 200, headers: ["Content-Type": "application/protobuf"], body: try message.serializedData())
     }
+    /// 将虚构资料编码为 200 Protobuf 响应。
     func profileResponse() throws -> HTTPResponse {
         HTTPResponse(statusCode: 200, headers: ["Content-Type": "application/protobuf"], body: try profile().serializedData())
     }
 }
+/// 编码指定状态及错误码的虚构服务端错误响应。
 private func failure(_ code: String = "UNAUTHENTICATED", status: Int = 401) throws -> HTTPResponse {
     var error = ApiError(); error.code = code
     return HTTPResponse(statusCode: status, headers: ["Content-Type": "application/protobuf"], body: try error.serializedData())
 }
+/// 以 2 毫秒间隔最多检查条件 1500 次；仍未满足时抛出 requestTimeout。
 private func until(_ condition: @escaping @Sendable () async -> Bool) async throws {
     for _ in 0..<1500 { if await condition() { return }; try await Task.sleep(nanoseconds: 2_000_000) }
     throw WebSocketError.requestTimeout
 }
 private actor Gate {
+    /// 屏障是否已释放；释放后后续 wait 直接返回。
     private var open = false
+    /// 尚未释放的多个等待者，本测试屏障不单独处理取消。
     private var waiters: [CheckedContinuation<Void, Never>] = []
+    /// 等待测试显式 release；已经释放时直接返回。
     func wait() async { if !open { await withCheckedContinuation { waiters.append($0) } } }
+    /// 打开屏障并恢复全部等待者；重复调用不会再次恢复。
     func release() { open = true; for waiter in waiters { waiter.resume() }; waiters.removeAll() }
 }
 
 @Suite("共享会话与实时提示", .timeLimit(.minutes(1)))
 struct SessionRealtimeTests {
+    /// 验证刷新被明确拒绝后所有消费者收到重新认证状态。
     @Test func rejectedRefreshPublishesReauthenticationToAllConsumers() async throws {
         let fixture = SessionFixture(), store = MemorySessionStore()
         let transport = MockHTTPTransport { _, _ in try failure() }
@@ -84,6 +105,7 @@ struct SessionRealtimeTests {
         #expect(try await manager.credentials().userID == fixture.user)
     }
 
+    /// 验证本地到期判断触发服务端确认而不直接丢弃会话。
     @Test func localClockExpiryRequestsServerConfirmationInsteadOfDiscardingSession() async throws {
         let fixture = SessionFixture(), store = MemorySessionStore()
         let transport = MockHTTPTransport { request, _ in
@@ -96,6 +118,7 @@ struct SessionRealtimeTests {
         #expect(await transport.requests.filter { $0.url.path.hasSuffix("refresh") }.count == 1)
     }
 
+    /// 验证本地恢复不发送未决刷新，验证期间业务请求受阻。
     @Test func localRestoreDoesNotSendPendingRefreshAndBlocksBusinessRequests() async throws {
         let fixture = SessionFixture(), store = MemorySessionStore()
         let operation = UUID()
@@ -118,6 +141,7 @@ struct SessionRealtimeTests {
         #expect(try await manager.profile().userID == fixture.user)
     }
 
+    /// 验证并发 HTTP 和 WebSocket 认证确认共享同一次刷新。
     @Test func concurrentHTTPAndWebSocketConfirmationShareRefresh() async throws {
         let fixture = SessionFixture(), store = MemorySessionStore(), gate = Gate()
         let transport = MockHTTPTransport { request, _ in
@@ -138,6 +162,7 @@ struct SessionRealtimeTests {
         #expect(try await manager.credentials().refreshGeneration == 2)
     }
 
+    /// 验证刷新响应丢失后恢复原操作身份及请求字节。
     @Test func refreshResponseLostRestoresSameIdentityAndBytes() async throws {
         let fixture = SessionFixture(), store = MemorySessionStore()
         let lost = MockHTTPTransport { _, _ in throw URLError(.notConnectedToInternet) }
@@ -155,6 +180,7 @@ struct SessionRealtimeTests {
         #expect(await store.records["test"]?.pendingRefreshOperationID == nil)
     }
 
+    /// 验证新凭据保存失败时不发布新刷新代次。
     @Test func failedCredentialPersistenceDoesNotPublishNewGeneration() async throws {
         let fixture = SessionFixture(), store = MemorySessionStore()
         let transport = MockHTTPTransport { _, _ in try fixture.auth() }
@@ -170,6 +196,7 @@ struct SessionRealtimeTests {
         #expect(requests.count == 2 && requests[0].body == requests[1].body)
     }
 
+    /// 验证迟到 401 使用已经更新的凭据而不再次刷新。
     @Test func stale401UsesAlreadyUpdatedCredentialsWithoutSecondRefresh() async throws {
         let fixture = SessionFixture(), store = MemorySessionStore(), gate = Gate()
         let transport = MockHTTPTransport { request, _ in
@@ -189,6 +216,7 @@ struct SessionRealtimeTests {
         #expect(await transport.requests.filter { $0.url.path == "/v1/auth/refresh" }.count == 1)
     }
 
+    /// 验证刷新期间清理会话不会被迟到响应恢复。
     @Test func clearDuringRefreshPreventsResurrection() async throws {
         let fixture = SessionFixture(), store = MemorySessionStore(), gate = Gate()
         let transport = MockHTTPTransport { _, _ in await gate.wait(); return try fixture.auth() }
@@ -203,6 +231,7 @@ struct SessionRealtimeTests {
         #expect(await store.records["test"] == nil)
     }
 
+    /// 验证只有明确未认证错误触发刷新。
     @Test(arguments: ["INVALID_CREDENTIALS", "UNKNOWN"])
     func onlyExplicitUnauthenticatedRefreshes(code: String) async throws {
         let fixture = SessionFixture(), store = MemorySessionStore()
@@ -214,6 +243,7 @@ struct SessionRealtimeTests {
         #expect(await manager.state.sessionID == fixture.session)
     }
 
+    /// 验证实时提示、凭据轮换及本地退出正确协调。
     @Test func realtimeHintsRotationAndLocalLogout() async throws {
         let fixture = SessionFixture(), store = MemorySessionStore()
         let http = MockHTTPTransport { _, _ in try fixture.auth() }
@@ -241,6 +271,7 @@ struct SessionRealtimeTests {
         await client.stop()
     }
 
+    /// 验证替换会话后拒绝旧刷新结果并保护新持久记录。
     @Test func replacementRejectsOldRefreshAndProtectsStoredSession() async throws {
         let fixture = SessionFixture(), replacement = SessionFixture(), store = MemorySessionStore(), gate = Gate()
         let transport = MockHTTPTransport { _, _ in await gate.wait(); return try fixture.auth() }
@@ -255,6 +286,7 @@ struct SessionRealtimeTests {
         #expect(await store.records["test"]?.credentials.sessionID == replacement.session)
     }
 
+    /// 验证过期会话退出至多刷新一次且不重新发布登录状态。
     @Test func expiredLogoutRefreshesOnceWithoutRepublishingSession() async throws {
         let fixture = SessionFixture(), store = MemorySessionStore()
         let transport = MockHTTPTransport { request, _ in
@@ -273,6 +305,7 @@ struct SessionRealtimeTests {
         #expect(logout.count == 2 && logout[0].body == logout[1].body)
     }
 
+    /// 验证离线确认失败及畸形提示不会误触发刷新。
     @Test func offlineConfirmationAndMalformedHintDoNotRefresh() async throws {
         let fixture = SessionFixture(), store = MemorySessionStore()
         let http = MockHTTPTransport { _, _ in throw URLError(.notConnectedToInternet) }
@@ -291,6 +324,7 @@ struct SessionRealtimeTests {
         await client.stop()
     }
 
+    /// 验证策略关闭先通过 HTTP 确认认证失败再刷新。
     @Test(arguments: [false, true])
     func policyCloseConfirmsHTTPBeforeRefresh(expired: Bool) async throws {
         let fixture = SessionFixture(), store = MemorySessionStore()

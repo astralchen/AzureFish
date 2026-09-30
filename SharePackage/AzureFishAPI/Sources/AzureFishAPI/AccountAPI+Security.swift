@@ -7,36 +7,52 @@ public enum AccountSecurityAction: String, Sendable, CaseIterable {
 }
 /// 只允许短期内存持有的再次认证凭据。
 public struct AccountReauthentication: Sendable, CustomStringConvertible {
+    /// 敏感操作使用的短期重新认证令牌，原文不得写入日志。
     public let token: SessionToken
+    /// 重新认证令牌的服务端到期时间。
     public let expiresAt: Date
+    /// 隐藏重新认证令牌的固定说明。
     public var description: String { "AccountReauthentication(<redacted>)" }
 }
 /// 当前账号的密码登录状态，以及删除前必须转让或解散的群。
 public struct AccountSecurityInfo: Sendable {
+    /// 服务端是否已为当前账号配置密码。
     public let passwordConfigured: Bool
+    /// 当前用户拥有的群会话快照，供删除账号前处理所有权。
     public let ownedGroups: [ChatConversation]
 }
 /// 鉴权接口返回的头像资源；恢复默认后标识与 JPEG 同时为空。
 public struct AccountAvatar: Sendable {
+    /// 服务端不可变头像资源身份；空字符串表示使用默认头像。
     public let id: String
+    /// 头像 JPEG 原始字节，空 Data 表示默认头像；业务层负责受保护的缓存和展示。
     public let jpeg: Data
 }
 
 /// 删除申请的有限期恢复包，不包含密码或刷新令牌，只能保存到 ThisDeviceOnly Keychain。
 public struct AccountDeletionRecovery: Codable, Sendable, CustomStringConvertible, CustomDebugStringConvertible {
+    /// 待删除账号的用户身份，用于拒绝跨账号恢复。
     public let userID: UUID
+    /// 原删除动作的幂等身份，恢复时必须复用。
     let operationID: UUID
+    /// 原删除请求所属的环境标识。
     let environmentID: String
+    /// 原删除请求所属的服务根地址。
     let baseURL: URL
+    /// 原删除请求的完整编码字节，包含敏感重新认证信息，仅供恢复同一次操作。
     let body: Data
+    /// 原删除请求的访问令牌原文，不得写入日志。
     let accessToken: String
+    /// 此删除恢复材料允许使用的截止时间。
     public let expiresAt: Date
+    /// 隐藏删除请求及凭据的固定说明。
     public var description: String { "AccountDeletionRecovery(<redacted>)" }
+    /// 与 description 相同的脱敏调试说明。
     public var debugDescription: String { description }
 }
 
 extension AccountAPI {
-    /// 在发送删除请求前保存同一请求字节；恢复包不会生成新的业务操作。
+    /// 在发送删除请求前构造包含原始请求字节的恢复包；不生成新的业务操作，也不写入持久存储。
     public func deletionRecovery(for operation: AccountOperation<Bool>, using credentials: SessionCredentials,
         now: Date = Date()) throws -> AccountDeletionRecovery {
         try checkEnvironment(credentials)

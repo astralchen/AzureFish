@@ -19,6 +19,7 @@ public struct AccountOperation<Value: Sendable>: Sendable, CustomStringConvertib
     let body: Data?
     /// 允许按成功响应解码的唯一 HTTP 状态码；注册为 201，当前其他接口为 200。
     var maximumResponseBytes: Int = 64 * 1024
+    /// 本操作要求的成功 HTTP 状态码；其他状态交给错误响应解析。
     let expectedStatus: Int
     /// 受保护操作要求的会话作用域；nil 表示执行时不得额外提供 Bearer 凭据。
     let authorization: SessionIdentity?

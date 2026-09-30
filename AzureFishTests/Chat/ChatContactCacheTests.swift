@@ -128,7 +128,7 @@ struct ChatContactCacheTests {
     @Test func localDirectoryPublishesWhileNetworkIsBlockedAndOlderResponseCannotRollBackUpdates() async throws {
         let f = try await fixture()
         try await f.engine.store.save(f.contact)
-        try await f.engine.store.setMeta(["cursor": "baseline", "epoch": "fixture"], id: "checkpoint")
+        try await f.engine.store.saveCheckpoint(.init(cursor: "baseline", epoch: "fixture"))
         let first = Task { try await f.runtime.refreshContact(peer: f.contact.peer.id) }
         while await f.transport.reads == 0 { await Task.yield() }
         try await f.runtime.restoreDirectory(engine: f.engine)

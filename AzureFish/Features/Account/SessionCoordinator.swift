@@ -132,9 +132,9 @@ final class SessionCoordinator {
         if !busy { scheduleRenewal() }
     }
     /// 本账号存储无法安全打开时退出内容界面，保留原文件及凭据供明确恢复。
-    func storageUnavailable() {
+    func storageUnavailable(notice: String? = nil) {
         epoch = UUID(); renewalTask?.cancel()
-        profile = nil; connectivity = .offline; phase = .recovery; noticeKey = AccountFailure.storage.key
+        profile = nil; connectivity = .offline; phase = .recovery; noticeKey = notice ?? AccountFailure.storage.key
         Task { await sessionManager?.setNetworkAccessAllowed(false) }
         publish()
     }

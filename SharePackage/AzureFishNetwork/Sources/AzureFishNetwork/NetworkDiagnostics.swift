@@ -3,6 +3,7 @@ import OSLog
 
 /// 由本次进程启动参数控制的网络诊断输出，不读取持久化偏好。
 struct NetworkDiagnostics: Sendable {
+    /// 输出已筛选 HTTP 诊断字段的系统日志对象。
     private static let logger = Logger(subsystem: "AzureFish.Network", category: "HTTPClient")
 
     /// 生产调用使用的日志实例；Release 始终关闭，Debug 仅接受显式的 true。
@@ -10,7 +11,9 @@ struct NetworkDiagnostics: Sendable {
         logger.debug("\(text, privacy: .public)")
     }
 
+    /// 当前实例是否输出诊断；关闭时不求值日志消息。
     private let enabled: Bool
+    /// 同步接收诊断文本的闭包；并发请求可能同时调用。
     private let sink: @Sendable (String) -> Void
 
     /// 创建内部可验证的输出边界；接收器可能被多个并发请求调用，须自行保证线程安全。

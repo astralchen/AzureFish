@@ -47,10 +47,6 @@ final class ChatDetailsRegressionController: UIViewController {
                     conversation.members[1].profile = peer
                 }
                 try await store.save(conversation)
-                if args.contains("-navigation-stored-conversation") {
-                    // 模拟旧版本遗留的详情选择；启动列表不得消费它并自动导航。
-                    try await store.setMeta(conversation.id, id: "selectedConversation")
-                }
                 for offset in 0..<(args.contains("-contacts-list") ? 0 : 260) {
                     let i = offset + 1
                     let object: [String: Any] = ["id": "fixture-\(i)", "conversationID": conversation.id, "clientID": "", "serverID": "fixture-\(i)",

@@ -5,6 +5,7 @@ import Testing
 
 @Suite("原生 URLSession 回环验证")
 struct NativeTransportTests {
+    /// 验证原生 HTTP 传输的重定向、缓存、Cookie、大小及取消行为。
     @Test func redirectCacheCookiesLimitsAndCancellation() async throws {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/python3")

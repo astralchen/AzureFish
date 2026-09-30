@@ -5,6 +5,7 @@ import Testing
 
 @Suite("系统消息客户端契约")
 struct ChatSystemEventTests {
+    /// 验证结构化系统事件和最新消息摘要可往返映射。
     @Test func structuredEventAndLatestMessageRoundTrip() throws {
         var wire = IMMessage()
         wire.messageUuid = UUID().uuidString.lowercased()

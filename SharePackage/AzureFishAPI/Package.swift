@@ -1,6 +1,7 @@
 // swift-tools-version: 6.3
 import PackageDescription
 
+/// 定义账号、IM 和媒体 API 的产品、相邻包依赖及测试目标。
 let package = Package(
     name: "AzureFishAPI",
     platforms: [.iOS(.v15), .macOS(.v12)],

@@ -2,12 +2,6 @@ import AzureFishAPI
 import AzureFishChat
 import Foundation
 
-struct PendingContactOperation: Codable, Sendable {
-    let bytes: Data
-    let action: ContactAction
-    let remark: String
-    let message: String
-}
 enum ContactOperationError: Error { case busy, unavailable, confirmedPrevious, resultExpired }
 
 /// 将不确定的联系人写请求保存在当前账号加密库；重试先恢复原字节，不创建替代操作。
@@ -25,8 +19,7 @@ final class ContactOperations {
         guard !Self.busyScopes.contains(scope) else { throw ContactOperationError.busy }
         Self.busyScopes.insert(scope)
         defer { Self.busyScopes.remove(scope) }
-        let key = "contact.operation." + peer
-        let saved: PendingContactOperation? = try await engine.store.meta(key)
+        let saved: PendingContactOperation? = try await engine.store.pendingContactOperation(peer: peer)
         try Task.checkCancellation()
         guard runtime.engine === engine else { throw CancellationError() }
         let pending: PendingContactOperation
@@ -46,14 +39,14 @@ final class ContactOperations {
                 revision: fresh.revision, operationID: UUID(), remark: remark, message: message,
                 requestID: [.accept, .reject, .cancel].contains(action) ? fresh.requestID : ""),
                 action: action, remark: remark, message: message)
-            try await engine.store.setMeta(pending, id: key)
+            try await engine.store.saveContactOperation(pending, peer: peer)
         }
         guard runtime.engine === engine else { throw CancellationError() }
         do {
             // 即使页面退出，已发出请求仍对账并落库；旧账号结果不能发布到当前界面。
             let result = try await api.mutateContact(bytes: pending.bytes)
             try await engine.store.save(result)
-            try await engine.store.removeMeta(key)
+            try await engine.store.removeContactOperation(peer: peer)
             guard runtime.engine === engine else { throw CancellationError() }
             runtime.receivedContact(result, engine: engine)
             runtime.changed(); runtime.refresh()
@@ -65,7 +58,7 @@ final class ContactOperations {
             if case APIClientError.service(let failure) = error, (400..<500).contains(failure.statusCode), failure.statusCode != 429 {
                 let fresh = try await api.contact(peer: peer)
                 try await engine.store.save(fresh)
-                try await engine.store.removeMeta(key)
+                try await engine.store.removeContactOperation(peer: peer)
                 runtime.receivedContact(fresh, engine: engine)
                 if failure.code == .operationResultExpired { throw ContactOperationError.resultExpired }
             }

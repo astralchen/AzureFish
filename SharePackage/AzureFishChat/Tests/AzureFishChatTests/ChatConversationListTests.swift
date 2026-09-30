@@ -6,10 +6,13 @@ import Testing
 
 @Suite("会话列表显示、隐藏与手动未读")
 struct ChatConversationListTests {
+    /// 会话列表测试共用的固定虚构用户身份。
     private let user = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
+    /// 通过 JSON 字典构造目标测试业务值，编码或解码失败向上抛出。
     private func decode<T: Decodable>(_ object: [String: Any]) throws -> T {
         try JSONDecoder().decode(T.self, from: JSONSerialization.data(withJSONObject: object))
     }
+    /// 构造包含测试用户有效成员区间的虚构群会话。
     private func conversation() throws -> ChatConversation {
         try decode(["id": "chat", "kind": "group", "title": "测试", "ownerID": user.uuidString.lowercased(),
             "members": [["id": user.uuidString.lowercased(), "active": true, "intervals": [["joined": 1, "left": 0]],
@@ -17,26 +20,31 @@ struct ChatConversationListTests {
             "revision": 1, "boundaryRevision": 1, "latest": 0, "closed": false,
             "readState": ["read": 0, "delivered": 0, "unread": 0, "through": 0, "revision": 1]])
     }
+    /// 构造指定内容或序列的虚构消息，供本地存储断言使用。
     private func message(_ sequence: Int, system: Bool = false) throws -> ChatMessage {
         try decode(["id": "m\(sequence)", "conversationID": "chat", "clientID": "c\(sequence)", "serverID": "s\(sequence)",
             "senderID": user.uuidString.lowercased(), "deviceID": "test", "sequence": sequence, "createdAt": sequence * 1000,
             "revision": 1, "kind": system ? "system" : "text", "schemaVersion": 1, "text": "测试", "revoked": false,
             "assets": [], "receipt": ["expected": 0, "delivered": 0, "read": 0, "revision": 0]])
     }
+    /// 将消息列表封装为固定 1～10 连续覆盖区间的虚构历史页。
     private func history(_ messages: [ChatMessage]) throws -> ChatHistory {
         try decode(["messages": try JSONSerialization.jsonObject(with: JSONEncoder().encode(messages)),
             "upper": 10, "before": 0, "hasMore": false, "coveredFrom": 1, "coveredThrough": 10,
             "boundary": 1, "earliest": 1])
     }
+    /// 在给定目录打开固定虚构密钥和账号的列表测试存储。
     private func store(_ root: URL) throws -> ChatStore {
         try ChatStore(url: root.appendingPathComponent("db"), key: Data(repeating: 17, count: 32), environment: "list-tests", userID: user)
     }
+    /// 创建唯一临时测试目录；调用方负责在测试结束时清理。
     private func folder() throws -> URL {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         return root
     }
 
+    /// 验证首次内容、清空、隐藏及重开遵循会话可见性规则。
     @Test func firstContentClearHideAndReopen() async throws {
         let root = try folder(); defer { try? FileManager.default.removeItem(at: root) }
         let store = try store(root)
@@ -70,6 +78,7 @@ struct ChatConversationListTests {
         try await reopened.close()
     }
 
+    /// 验证隐藏保留历史，删除列表项保留待发任务、草稿及偏好。
     @Test func hideKeepsHistoryAndDeleteKeepsPendingDraftAndPreferences() async throws {
         let root = try folder(); defer { try? FileManager.default.removeItem(at: root) }
         let store = try store(root)
@@ -97,29 +106,23 @@ struct ChatConversationListTests {
         try await store.close()
     }
 
-    @Test func migrationAndDeleteRollback() async throws {
+    /// 验证删除事务回滚时历史和列表状态同时保留。
+    @Test func deleteRollbackKeepsHistoryAndListState() async throws {
         let root = try folder(); defer { try? FileManager.default.removeItem(at: root) }
         let store = try store(root)
         try await store.save(conversation())
         try await store.save(message(1))
         let db = await store.db
-        try await db.write { db in
-            try db.execute(sql: "DROP TABLE conversation_list")
-            try db.execute(sql: "DELETE FROM grdb_migrations WHERE identifier='chat-v5-conversation-list'")
+        try db.write { db in
+            try db.execute(sql: "CREATE TRIGGER reject_list BEFORE UPDATE ON conversation_local_state BEGIN SELECT RAISE(ABORT, 'test'); END")
         }
+        do { try await store.hideConversation("chat", clearHistory: true); Issue.record("Write must fail") } catch {}
+        #expect(try await store.messages("chat").count == 1)
+        #expect(try await store.conversationListStates()["chat"]?.isVisible == true)
         try await store.close()
-        let migrated = try self.store(root)
-        #expect(try await migrated.conversationListStates()["chat"]?.isVisible == true)
-        let migratedDB = await migrated.db
-        try await migratedDB.write { db in
-            try db.execute(sql: "CREATE TRIGGER reject_list BEFORE INSERT ON conversation_list BEGIN SELECT RAISE(ABORT, 'test'); END")
-        }
-        do { try await migrated.hideConversation("chat", clearHistory: true); Issue.record("Write must fail") } catch {}
-        #expect(try await migrated.messages("chat").count == 1)
-        #expect(try await migrated.conversationListStates()["chat"]?.isVisible == true)
-        try await migrated.close()
     }
 
+    /// 验证快照摘要与本机未读提醒保持各自语义。
     @Test func snapshotSummaryAndUnreadAreLocal() async throws {
         let root = try folder(); defer { try? FileManager.default.removeItem(at: root) }
         let store = try store(root)
@@ -141,6 +144,7 @@ struct ChatConversationListTests {
         #expect(try await store.conversations().first?.readState.read == 0)
         try await store.close()
     }
+    /// 验证历史发现及失败发送正确影响列表可见性。
     @Test func historyDiscoveryAndFailedSending() async throws {
         let root = try folder(); defer { try? FileManager.default.removeItem(at: root) }
         let store = try store(root)
@@ -165,6 +169,7 @@ struct ChatConversationListTests {
         try await store.close()
     }
 
+    /// 验证只有草稿内容变化恢复隐藏会话且不推进活动排序。
     @Test func draftRestoresOnlyOnContentChangeAndDoesNotReorder() async throws {
         let root = try folder(); defer { try? FileManager.default.removeItem(at: root) }
         let store = try store(root)
@@ -194,6 +199,7 @@ struct ChatConversationListTests {
         try await reopened.close()
     }
 
+    /// 验证附件草稿恢复、原子发送及失败回滚。
     @Test func attachmentDraftHydrationAtomicSendAndRollback() async throws {
         let root = try folder(); defer { try? FileManager.default.removeItem(at: root) }
         let store = try store(root)
@@ -205,19 +211,19 @@ struct ChatConversationListTests {
         try await store.hideConversation("chat")
         try await store.saveDraftAttachments([attachment], conversation: "chat")
         #expect(try await store.conversationListStates()["chat"]?.isVisible == false)
-        struct Rich: Codable, Sendable { var documents: [ChatUploadItem]; var revision: Int }
-        try await store.saveEditorDraft(Rich(documents: [attachment], revision: 0), text: "", conversation: "chat")
+        let richAttachment = StoredDraftAttachment.file(.init(id: attachment.id, resourceID: UUID(), displayName: "file", typeIdentifier: "public.data", byteCount: 1))
+        try await store.saveEditorDraft(StoredChatDraft(conversationID: "chat", documents: [richAttachment]), text: "", conversation: "chat")
         #expect(try await store.conversationListStates()["chat"]?.isVisible == false)
-        try await store.saveEditorDraft(Rich(documents: [attachment], revision: 1), text: "", conversation: "chat")
+        try await store.saveEditorDraft(StoredChatDraft(revision: 1, conversationID: "chat", documents: [richAttachment]), text: "", conversation: "chat")
         #expect(try await store.conversationListStates()["chat"]?.isVisible == false)
         let database = await store.db
-        try await database.write { db in
-            try db.execute(sql: "CREATE TRIGGER reject_draft_list BEFORE INSERT ON conversation_list BEGIN SELECT RAISE(ABORT, 'test'); END")
+        try database.write { db in
+            try db.execute(sql: "CREATE TRIGGER reject_draft_list BEFORE UPDATE ON conversation_local_state BEGIN SELECT RAISE(ABORT, 'test'); END")
         }
         do { try await store.saveDraft(.init(text: "不能提交"), conversation: "chat"); Issue.record("Write must fail") } catch {}
         #expect(try await store.draft("chat").text.isEmpty)
         #expect(try await store.conversationListSnapshot().drafts["chat"]?.hasAttachments == true)
-        try await database.write { try $0.execute(sql: "DROP TRIGGER reject_draft_list") }
+        try database.write { try $0.execute(sql: "DROP TRIGGER reject_draft_list") }
         try await store.enqueueComposition([.message(.init(conversationID: "chat", deviceID: UUID(), kind: "text", text: "发送", assets: []))], conversation: "chat")
         let snapshot = try await store.conversationListSnapshot()
         #expect(snapshot.drafts.isEmpty)

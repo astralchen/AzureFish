@@ -5,6 +5,7 @@ import Testing
 
 @Suite("原生 WebSocket 随机回环端口", .timeLimit(.minutes(1)))
 struct NativeWebSocketTests {
+    /// 验证原生 WebSocket 握手、回声、心跳、关闭、重定向和大小限制。
     @Test func handshakeEchoPingCloseRedirectAndLimit() async throws {
         let process = Process(), output = Pipe()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
@@ -44,6 +45,7 @@ struct NativeWebSocketTests {
         await large.close()
     }
 
+    /// 验证WebSocket 安全策略限制 WS 与 WSS 地址。
     @Test func securityPolicy() throws {
         try TransportSecurityPolicy.httpsOnly.validateWebSocket(URL(string: "wss://example.invalid/live")!)
         for address in ["ws://example.invalid/live", "ws://localhost/live", "wss://user:password@example.invalid", "wss://example.invalid/#token"] {

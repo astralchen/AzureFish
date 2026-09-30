@@ -5,16 +5,22 @@ import SwiftProtobuf
 
 /// 服务端同步提示的业务值；cursor 只能触发补拉，不能作为已提交 checkpoint。
 public struct IMRealtimeHint: Sendable, Equatable {
+    /// 服务端同步代次；变化时应重新建立同步基线。
     public let epoch: UUID
+    /// 服务端提示的最新游标，只能用于触发补拉，不能直接写为已提交检查点。
     public let cursor: String
+    /// 提示中的当前用户资料版本，默认 0 表示没有可用版本提示。
     public var ownProfileVersion: Int64 = 0
 }
 
 /// 可合并的 HTTP 补拉通知；每个通知携带会话作用域供调用方隔离迟到结果。
 public struct IMRealtimeSignal: Sendable, Equatable {
     public enum Reason: Sendable { case connected, hintChanged, receiveGap }
+    /// 触发 HTTP 补拉的原因，包括连接建立、提示变化或接收缺口。
     public let reason: Reason
+    /// 最近一次有效实时提示；尚未收到提示时为 nil。
     public let hint: IMRealtimeHint?
+    /// 产生此信号时的会话作用域，供接收方排除旧会话结果。
     public let session: APISessionState
 }
 
@@ -31,26 +37,46 @@ public enum IMRealtimeState: Sendable, Equatable {
 ///
 /// 不发送消息、不持久化增量，也不管理客户端 checkpoint。
 public actor IMRealtimeClient {
+    /// 提供共享凭据、认证确认和会话状态的管理器。
     private let manager: APISessionManager
+    /// 为每次连接尝试创建单次传输实例的工厂。
     private let factory: WebSocketConnection.TransportFactory
+    /// 用于 WebSocket 超时、退避和心跳的等待机制。
     private let clock: any NetworkClock
+    /// 是否已请求启动实时观察，初始为 false。
     private var active = false
+    /// 本次会话观察身份，防止旧观察循环在重新启动后产生作用。
     private var observationID = UUID()
+    /// 当前实时连接代次，关闭或重建时更新。
     private var generation = UUID()
+    /// 最近接纳的会话状态；未启动或停止后为 nil。
     private var observedSession: APISessionState?
+    /// 当前握手实际使用的凭据，供策略关闭后的 HTTP 认证确认使用。
     private var handshakeCredentials: SessionCredentials?
+    /// 当前实时提示连接；重建或停止时关闭并清空。
     private var connection: WebSocketConnection?
+    /// 消费管理器会话变化的任务。
     private var sessionTask: Task<Void, Never>?
+    /// 消费当前连接实时提示消息的任务。
     private var messageTask: Task<Void, Never>?
+    /// 消费当前连接状态变化的任务。
     private var stateTask: Task<Void, Never>?
+    /// 等待当前连接握手结果的任务。
     private var connectTask: Task<Void, Never>?
+    /// 策略关闭后的单一 HTTP 认证确认任务。
     private var confirmationTask: Task<Void, Never>?
+    /// 对外发布的实时状态，初始为 stopped。
     private var state: IMRealtimeState = .stopped
+    /// 当前连接最近一次有效提示，用于合并重复提示。
     private var lastHint: IMRealtimeHint?
+    /// 当前连接最近一次补拉信号，供新订阅者立即获取。
     private var lastSignal: IMRealtimeSignal?
+    /// 独立补拉信号订阅，每个订阅只保留最新信号。
     private var signals: [UUID: AsyncStream<IMRealtimeSignal>.Continuation] = [:]
+    /// 独立实时状态订阅，每个订阅只保留最新状态。
     private var states: [UUID: AsyncStream<IMRealtimeState>.Continuation] = [:]
 
+    /// 保存会话管理器、时钟及传输工厂；默认工厂沿用会话环境的安全策略，不立即连接。
     public init(sessionManager: APISessionManager, clock: any NetworkClock = SystemNetworkClock(),
                 transportFactory: WebSocketConnection.TransportFactory? = nil) {
         manager = sessionManager; self.clock = clock
@@ -58,6 +84,7 @@ public actor IMRealtimeClient {
         factory = transportFactory ?? { URLSessionWebSocketTransport(security: security) }
     }
 
+    /// 读取时的实时连接状态快照。
     public var currentState: IMRealtimeState { state }
 
     /// 开始观察会话并连接；实际连接结果通过 stateChanges 发布。
@@ -82,6 +109,7 @@ public actor IMRealtimeClient {
         if generation == id, !active { setState(.stopped) }
     }
 
+    /// 创建状态流并立即提交当前状态；只缓冲最新状态，stop 不结束此订阅。
     public func stateChanges() -> AsyncStream<IMRealtimeState> {
         let id = UUID()
         let (stream, continuation) = AsyncStream<IMRealtimeState>.makeStream(bufferingPolicy: .bufferingNewest(1))
@@ -100,12 +128,14 @@ public actor IMRealtimeClient {
         return stream
     }
 
+    /// 接纳当前观察周期的会话变化并重建连接；重复或过期状态被忽略。
     private func sessionChanged(_ session: APISessionState, observation: UUID) async {
         guard active, observationID == observation, observedSession != session else { return }
         observedSession = session
         await rebuild()
     }
 
+    /// 结束旧连接，按当前会话建立只消费同步提示的新连接及订阅。
     private func rebuild() async {
         let id = await closeConnection()
         guard generation == id, active else { return }
@@ -145,6 +175,7 @@ public actor IMRealtimeClient {
         } catch { setState(.failed(.connection(.invalidConfiguration))) }
     }
 
+    /// 确认握手凭据仍匹配当前连接代次、用户和会话，匹配时保存用于认证确认。
     private func accept(_ credentials: SessionCredentials, generation: UUID) -> Bool {
         guard active, self.generation == generation, observedSession?.sessionID == credentials.sessionID,
               observedSession?.userID == credentials.userID else { return false }
@@ -152,6 +183,7 @@ public actor IMRealtimeClient {
         return true
     }
 
+    /// 解析不超过 4 KiB 的二进制同步提示并合并重复值；无效提示触发补拉信号并关闭连接。
     private func received(_ message: WebSocketMessage, generation: UUID) async {
         guard active, self.generation == generation else { return }
         guard case .binary(let bytes) = message, bytes.count <= 4096,
@@ -165,6 +197,7 @@ public actor IMRealtimeClient {
         if hint != lastHint { lastHint = hint; emit(.hintChanged) }
     }
 
+    /// 将底层状态映射为业务状态；策略关闭或握手 401 触发一次 HTTP 认证确认。
     private func connectionChanged(_ socketState: WebSocketState, generation: UUID) async {
         guard active, self.generation == generation else { return }
         switch socketState {
@@ -188,6 +221,7 @@ public actor IMRealtimeClient {
         }
     }
 
+    /// 处理当前代次认证确认结果；凭据已更新时重建连接，否则停止策略关闭重连。
     private func confirmed(changed: Bool, generation: UUID) async {
         guard active, self.generation == generation else { return }
         confirmationTask = nil
@@ -201,21 +235,25 @@ public actor IMRealtimeClient {
             if self.generation == closed { setState(.failed(.policyClosed)) }
         }
     }
+    /// 将当前代次的认证确认失败发布为终止本轮连接的失败状态。
     private func confirmationFailed(generation: UUID) {
         guard active, self.generation == generation else { return }
         confirmationTask = nil; setState(.failed(.authenticationConfirmationFailed))
     }
+    /// 为当前代次发布接收缺口信号，并重建连接以恢复后续提示。
     private func receiveGap(generation: UUID) async {
         guard active, self.generation == generation else { return }
         emit(.receiveGap)
         await rebuild()
     }
+    /// 携带当前会话和最近提示发布补拉信号，并保存供新订阅者读取。
     private func emit(_ reason: IMRealtimeSignal.Reason) {
         guard let session = observedSession else { return }
         let signal = IMRealtimeSignal(reason: reason, hint: lastHint, session: session)
         lastSignal = signal
         for continuation in signals.values { continuation.yield(signal) }
     }
+    /// 更新连接代次并清除旧任务、凭据及提示，再等待底层连接永久关闭。
     @discardableResult
     private func closeConnection() async -> UUID {
         let id = UUID(); generation = id
@@ -226,11 +264,15 @@ public actor IMRealtimeClient {
         await old?.shutdown()
         return id
     }
+    /// 保存并向全部状态订阅广播新的实时状态。
     private func setState(_ value: IMRealtimeState) {
         state = value; for continuation in states.values { continuation.yield(value) }
     }
+    /// 移除已结束的状态订阅。
     private func removeState(_ id: UUID) { states.removeValue(forKey: id) }
+    /// 移除已结束的补拉信号订阅。
     private func removeSignal(_ id: UUID) { signals.removeValue(forKey: id) }
+    /// 取消全部观察任务，异步关闭连接并结束信号与状态订阅。
     deinit {
         sessionTask?.cancel(); connectTask?.cancel(); messageTask?.cancel(); stateTask?.cancel(); confirmationTask?.cancel()
         let connection = connection; Task { await connection?.shutdown() }

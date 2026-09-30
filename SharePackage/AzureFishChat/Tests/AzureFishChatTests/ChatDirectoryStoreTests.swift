@@ -5,12 +5,14 @@ import Testing
 
 @Suite("通讯录快照与离线恢复")
 struct ChatDirectoryStoreTests {
+    /// 构造指定完成标记及基线游标的联系人快照页。
     private func snapshot(_ contacts: [ChatContact], complete: Bool, baseline: String) throws -> ChatSnapshot {
         let object: [String: Any] = ["contacts": try JSONSerialization.jsonObject(with: JSONEncoder().encode(contacts)),
             "conversations": [], "token": "fixed", "nextCursor": complete ? "" : "next", "complete": complete,
             "baseline": baseline, "epoch": "fixture"]
         return try JSONDecoder().decode(ChatSnapshot.self, from: JSONSerialization.data(withJSONObject: object))
     }
+    /// 验证空快照和中断恢复在重开后仍保留正确检查点。
     @Test func emptySnapshotAndInterruptedRecoveryPreserveCheckpointAcrossReopen() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
@@ -33,6 +35,7 @@ struct ChatDirectoryStoreTests {
         #expect(try await reopened.checkpoint()?.cursor == "replacement")
         try await reopened.close()
     }
+    /// 验证旧快照不能恢复过时关系、头像或已删除资料。
     @Test func olderSnapshotCannotRestoreRelationshipAvatarOrDeletedProfile() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)

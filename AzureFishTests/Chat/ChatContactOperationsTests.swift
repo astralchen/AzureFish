@@ -57,16 +57,24 @@ struct ChatContactOperationsTests {
         let credentials = try sampleCredentials()
         let credentialStore = CredentialStore(values: keys, environmentID: credentials.environmentID)
         try credentialStore.save(StoredSession(credentials))
+        let repository = UserRepository(root: root.appendingPathComponent("profile"), keys: keys, environment: credentials.environmentID)
+        try repository.save(AccountProfile(userID: credentials.userID, accountName: "fictional_user",
+            nickname: "Fictional", bio: "", version: 1))
         let session = SessionCoordinator(service: LiveAccountService(api: AccountAPI(environment: try .localTesting(), transport: transport)),
-            store: credentialStore, repository: UserRepository(root: root.appendingPathComponent("profile"), keys: keys, environment: credentials.environmentID))
+            store: credentialStore, repository: repository)
         await session.restore()
+        try #require(!session.readOnly)
         let database = try ChatStore(url: root.appendingPathComponent("db"), key: Data(repeating: 7, count: 32), environment: credentials.environmentID, userID: credentials.userID)
         let media = try ChatMediaStore(root: root.appendingPathComponent("media"), key: Data(repeating: 8, count: 32), environment: credentials.environmentID, userID: credentials.userID)
         let engine = ChatEngine(store: database, session: try #require(session.sessionManager))
         let contact = await ChatContact(transport.contact)
         let runtime = ChatRuntime(session: session, engine: engine, media: media, conversations: [], pageLeaseRoot: root, contacts: [contact])
         let operation = Task { try await runtime.contactOperations.mutate(contact, action: .remark, remark: "私人备注") }
-        while await transport.writes.isEmpty { await Task.yield() }
+        defer { operation.cancel() }
+        for _ in 0..<250 where await transport.writes.isEmpty {
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+        try #require(await !transport.writes.isEmpty)
         var renamed = contact
         renamed.peer.version += 1; renamed.peer.nickname = "Latest profile"; renamed.peer.avatarID = "latest-avatar"
         try await database.save(renamed)
@@ -75,8 +83,7 @@ struct ChatContactOperationsTests {
             try await runtime.contactOperations.mutate(contact, action: .delete)
         }
         await #expect(throws: (any Error).self) { try await operation.value }
-        let key = "contact.operation." + contact.peer.id
-        let pending: PendingContactOperation? = try await database.meta(key)
+        let pending: PendingContactOperation? = try await database.pendingContactOperation(peer: contact.peer.id)
         #expect(pending != nil)
         #expect(runtime.contacts.first?.remark == "")
         await transport.setDrop(false)
@@ -86,7 +93,7 @@ struct ChatContactOperationsTests {
         #expect(restored.peer.nickname == "Latest profile" && restored.peer.avatarID == "latest-avatar")
         let writes = await transport.writes
         #expect(writes.count >= 2 && Set(writes).count == 1)
-        let cleared: PendingContactOperation? = try await database.meta(key)
+        let cleared: PendingContactOperation? = try await database.pendingContactOperation(peer: contact.peer.id)
         #expect(cleared == nil)
         _ = try await runtime.contactOperations.mutate(restored, action: .remark, remark: "新备注")
         #expect(await transport.contact.revision == 4)
@@ -96,7 +103,10 @@ struct ChatContactOperationsTests {
         let field = try #require(add.fields.compactMap { $0 as? AccountField }.first)
         field.input.text = "old_account"
         add.controls.first?.sendActions(for: .touchUpInside)
-        while await !transport.lookupStarted { await Task.yield() }
+        for _ in 0..<250 where await !transport.lookupStarted {
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+        try #require(await transport.lookupStarted)
         field.input.text = "new_account"; field.input.sendActions(for: .editingChanged)
         try await Task.sleep(nanoseconds: 300_000_000)
         #expect(navigation.topViewController === add && field.input.text == "new_account")

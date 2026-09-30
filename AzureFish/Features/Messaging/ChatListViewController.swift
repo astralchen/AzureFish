@@ -438,6 +438,7 @@ final class ConversationListViewController: LiveChatListController {
     }
     private func messageSubtitle(_ message: ChatMessage) -> String {
         message.revoked ? Localization.text("chat.live.revoked")
+            : !message.isKnownContent ? Localization.text("chat.live.unknown")
             : message.kind == "system" ? ChatSystemNotice.text(message, userID: runtime.userID)
             : message.kind == "text" ? message.text : Localization.text("chat.live." + message.kind)
     }

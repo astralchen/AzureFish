@@ -1,3 +1,4 @@
+import AzureFishStorage
 import AVFoundation
 import AzureFishAPI
 import AzureFishChat
@@ -10,7 +11,7 @@ extension LiveChatSession {
     func scheduleMedia() {
         guard !stopped, let controller, let drafts = runtime.originalDraftStore else { return }
         let visibleKeys = Set(controller.conversationView.visibleMessageIDs.compactMap { sourceIDs[$0] })
-        let keys = messages.reversed().filter { !$0.revoked && !$0.assets.isEmpty }.map(\.id)
+        let keys = messages.reversed().filter { !$0.revoked && $0.isKnownContent && !$0.assets.isEmpty }.map(\.id)
             + uploads.map { $0.messageID.uuidString.lowercased() }
             + pending.filter { $0.outgoing.kind != "text" }.map { $0.outgoing.id.uuidString.lowercased() }
         for key in keys where visibleKeys.contains(key) && contents[key] == nil && mediaTasks[key] == nil && !mediaFailures.contains(key) {
@@ -26,7 +27,8 @@ extension LiveChatSession {
                     defer { if !installed { files.removeAll() } }
                     var restored = false
                     var attachment: Attachment?
-                    if let saved: ChatDraftSnapshot = try await drafts.store.meta("presentation:" + key) {
+                    if let stored = try await drafts.store.presentation(message: key) {
+                        let saved = try ChatDraftSnapshot(storage: stored)
                         attachment = try await drafts.materialize(saved, into: files.directoryURL).snapshot?.documents.first
                         restored = attachment != nil
                     }
@@ -79,7 +81,7 @@ extension LiveChatSession {
                     typeIdentifier: UTType(mimeType: resource.mime)?.identifier ?? UTType.data.identifier, byteCount: resource.bytes))
             }
             if message.kind == "audio" {
-                let transcript: String? = try await runtime.engine?.store.meta("transcript:" + message.id)
+                let transcript: String? = try await runtime.engine?.store.transcript(message: message.id)
                 return .audio(.init(id: id, fileURL: original, duration: Double(asset.duration) / 1000,
                     waveform: asset.waveform, transcript: transcript))
             }
@@ -131,7 +133,7 @@ extension LiveChatSession {
         contents[key] = .attachment(.audio(audio))
         if let drafts = runtime.originalDraftStore {
             perform { [self] in
-                try await drafts.store.savePresentation(text, message: key, transcript: true)
+                try await drafts.store.saveTranscript(text, message: key)
                 try await cache(.audio(audio), key: key, drafts: drafts)
             }
         }

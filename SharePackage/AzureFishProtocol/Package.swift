@@ -1,6 +1,7 @@
 // swift-tools-version: 6.3
 import PackageDescription
 
+/// 定义协议产品及官方 SwiftProtobufPlugin 构建生成规则，不提交生成类型。
 let package = Package(
     name: "AzureFishProtocol",
     platforms: [.iOS(.v15), .macOS(.v12)],
