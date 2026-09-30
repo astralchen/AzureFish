@@ -12,12 +12,12 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         let root: UIViewController
         #if DEBUG
         if ProcessInfo.processInfo.arguments.contains("-chat-details-ui-test"), #available(iOS 26.0, *) {
-            root = UINavigationController(rootViewController: ChatDetailsRegressionController())
+            root = AppNavigationController(rootViewController: ChatDetailsRegressionController())
         } else if let scenario = AccountDebugScenario.controller(arguments: ProcessInfo.processInfo.arguments) {
             root = scenario
         } else if ProcessInfo.processInfo.arguments.contains("-chat-ui-test-root") {
-            if #available(iOS 26.0, *) { root = UINavigationController(rootViewController: ChatRegressionLaunchController()) }
-            else { root = UINavigationController(rootViewController: LegacyChatViewController()) }
+            if #available(iOS 26.0, *) { root = AppNavigationController(rootViewController: ChatRegressionLaunchController()) }
+            else { root = AppNavigationController(rootViewController: LegacyChatViewController()) }
         } else {
             root = AccountRootViewController()
         }

@@ -123,6 +123,11 @@ final class ChatContactsUITests: XCTestCase {
         XCTAssertTrue(app.alerts.firstMatch.waitForExistence(timeout: 5))
         capture(app, name: "通讯录-单向删除确认")
         app.alerts.buttons["取消"].tap()
+        // 窄屏详情容器也已压入主栈；返回通讯录列表后再切换 Tab。
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        if !app.buttons["应用设置"].firstMatch.isHittable {
+            app.navigationBars.buttons.element(boundBy: 0).tap()
+        }
         app.buttons["应用设置"].firstMatch.tap()
         app.cells["contacts.privacy"].tap()
         app.cells["contacts.blacklist"].tap()

@@ -446,18 +446,18 @@ final class ConversationMemberViewController: AccountScreen {
 #if DEBUG
 @available(iOS 17.0, *)
 #Preview("聊天详情 · 群主") {
-    UINavigationController(rootViewController: ConversationDetailsViewController(runtime: ConversationPreviewData.detailsRuntime(), conversation: ConversationPreviewData.detailsConversation()))
+    AppNavigationController(rootViewController: ConversationDetailsViewController(runtime: ConversationPreviewData.detailsRuntime(), conversation: ConversationPreviewData.detailsConversation()))
 }
 @available(iOS 17.0, *)
 #Preview("聊天详情 · 单聊") {
-    UINavigationController(rootViewController: ConversationDetailsViewController(runtime: ConversationPreviewData.detailsRuntime(), conversation: ConversationPreviewData.detailsConversation(group: false)))
+    AppNavigationController(rootViewController: ConversationDetailsViewController(runtime: ConversationPreviewData.detailsRuntime(), conversation: ConversationPreviewData.detailsConversation(group: false)))
 }
 @available(iOS 17.0, *)
 #Preview("聊天详情 · 大字体 RTL") {
     let page = ConversationDetailsViewController(runtime: ConversationPreviewData.detailsRuntime(), conversation: ConversationPreviewData.detailsConversation(owner: false))
     page.traitOverrides.preferredContentSizeCategory = .accessibilityExtraExtraLarge
     page.loadViewIfNeeded(); page.reloadLayoutDirection(.rightToLeft)
-    return UINavigationController(rootViewController: page)
+    return AppNavigationController(rootViewController: page)
 }
 @available(iOS 17.0, *)
 #Preview("群成员资料") {

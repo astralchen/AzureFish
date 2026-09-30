@@ -116,7 +116,6 @@ enum ConversationDetailsNavigation {
                 try await locate(message)
                 navigation.popToViewController(controller, animated: true)
             }
-            page.hidesBottomBarWhenPushed = true
             navigation.pushViewController(page, animated: true)
         })
         button.accessibilityIdentifier = "chat.details.open"
@@ -128,6 +127,6 @@ enum ConversationDetailsNavigation {
 #if DEBUG
 @available(iOS 17.0, *)
 #Preview("聊天记录搜索") {
-    UINavigationController(rootViewController: ConversationSearchViewController(runtime: ConversationPreviewData.detailsRuntime(), conversation: ConversationPreviewData.detailsConversation(), locate: { _ in }))
+    AppNavigationController(rootViewController: ConversationSearchViewController(runtime: ConversationPreviewData.detailsRuntime(), conversation: ConversationPreviewData.detailsConversation(), locate: { _ in }))
 }
 #endif

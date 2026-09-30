@@ -183,5 +183,5 @@ class AccountScreen: LocalizedQuickLayoutHostingController {
 @available(iOS 17.0, *)
 #Preview("Account field") { QuickLayoutHostingController { AccountField(key: "account.design.password", secure: true, identifier: "preview").padding(24) } }
 @available(iOS 17.0, *)
-#Preview("Account screen") { UINavigationController(rootViewController: AccountScreen()) }
+#Preview("Account screen") { AppNavigationController(rootViewController: AccountScreen()) }
 #endif

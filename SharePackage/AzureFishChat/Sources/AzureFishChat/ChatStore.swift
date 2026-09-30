@@ -404,7 +404,8 @@ public actor ChatStore {
     public func draft(_ conversation: String) throws -> ChatLocalDraft {
         try check()
         return try db.read { db in
-            try Data.fetchOne(
+            let conversation = try Self.canonicalDraftConversation(conversation, db: db)
+            return try Data.fetchOne(
                 db, sql: "SELECT payload FROM draft WHERE id=?", arguments: [conversation]
             ).map {
                 try JSONDecoder().decode(ChatLocalDraft.self, from: $0)
@@ -418,6 +419,9 @@ public actor ChatStore {
         let bytes = try JSONEncoder().encode(snapshot)
         let draft = try JSONEncoder().encode(ChatLocalDraft(text: text))
         try db.write { db in
+            let original = conversation
+            let conversation = try Self.canonicalDraftConversation(original, db: db)
+            let bytes = conversation == original ? bytes : try Self.rebindingEditorDraft(bytes, to: conversation)
             if let message {
                 let original = try Self.reeditText(message: message, conversation: conversation, now: now(), db: db)
                 guard original == expectedText else { throw ChatStoreError.draftChanged }
@@ -432,6 +436,7 @@ public actor ChatStore {
         try check()
         let data = try JSONEncoder().encode(draft)
         try db.write { db in
+            let conversation = try Self.canonicalDraftConversation(conversation, db: db)
             let preview = try Self.draftPreview(conversation, db: db)
             let previous = try Data.fetchOne(db, sql: "SELECT payload FROM draft WHERE id=?", arguments: [conversation])
                 .map { try JSONDecoder().decode(ChatLocalDraft.self, from: $0) }
@@ -760,7 +765,7 @@ public actor ChatStore {
         try put(value.peer, bucket: "profile", id: value.peer.id, revision: value.peer.version, db: db)
         try put(value, bucket: "contact", id: value.peer.id, revision: value.revision, db: db)
     }
-    private static func putConversation(_ value: ChatConversation, userID: UUID, db: Database) throws {
+    static func putConversation(_ value: ChatConversation, userID: UUID, db: Database) throws {
         for member in value.members {
             try put(member.profile, bucket: "profile", id: member.id, revision: member.profile.version, db: db)
         }

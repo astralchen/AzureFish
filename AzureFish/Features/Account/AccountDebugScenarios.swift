@@ -204,7 +204,7 @@ struct AccountDebugScenario {
         else if let scenario = all.first(where: { $0.id == id }) { root = scenario.makeController() }
         else { return nil }
         if root is ProfileSplitViewController { return root }
-        return UINavigationController(rootViewController: root)
+        return AppNavigationController(rootViewController: root)
     }
     @MainActor
     func makeController() -> UIViewController {
@@ -290,7 +290,7 @@ final class AccountScenarioIndexController: AccountScreen {
 }
 
 @available(iOS 17.0, *)
-#Preview("Debug states") { UINavigationController(rootViewController: AccountScenarioIndexController()) }
+#Preview("Debug states") { AppNavigationController(rootViewController: AccountScenarioIndexController()) }
 @available(iOS 17.0, *)
 #Preview("Avatar failure · Debug") { AccountScenarioViewController(scenario: AccountDebugScenario.all.first { $0.id == "avatar.failed" }!) }
 #endif

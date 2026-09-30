@@ -114,16 +114,19 @@ final class AccountFlowUITests: XCTestCase {
         deletion.tap()
         XCTAssertTrue(app.secureTextFields["security.password"].waitForExistence(timeout: 5))
     }
-    @MainActor func testSettingsFromProfileKeepsTabBar() {
+    @MainActor func testSettingsFromProfileShowsTabBarOnlyAtNavigationRoot() {
         continueAfterFailure = false
         let app = XCUIApplication()
         app.launchArguments = ["-account-local-development"]
         app.launch()
+        let me = app.tabBars.buttons.matching(NSPredicate(format: "label IN %@", ["我", "Me"])).firstMatch
+        XCTAssertTrue(me.waitForExistence(timeout: 20), "Requires the existing fictional simulator session")
+        me.tap()
         let settings = app.cells["account.design.settings"]
         XCTAssertTrue(settings.waitForExistence(timeout: 20), "Requires the existing fictional simulator session")
         settings.tap()
         XCTAssertTrue(app.cells["account.design.appearance"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.tabBars.firstMatch.exists)
+        XCTAssertEqual(app.tabBars.firstMatch.isHittable, app.windows.firstMatch.frame.width >= 840)
         func capture(_ name: String) {
             let item = XCTAttachment(screenshot: app.screenshot())
             item.name = name; item.lifetime = .keepAlways; add(item)
@@ -131,12 +134,12 @@ final class AccountFlowUITests: XCTestCase {
         capture("settings-profile-overview")
         app.cells["account.design.appearance"].tap()
         XCTAssertTrue(app.cells["account.appearance.system"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.tabBars.firstMatch.exists)
+        XCTAssertFalse(app.tabBars.firstMatch.isHittable)
         capture("settings-profile-appearance")
         app.navigationBars.buttons.matching(NSPredicate(format: "identifier != %@", "demo.language.menu")).firstMatch.tap()
         app.cells["account.design.language"].tap()
         XCTAssertTrue(app.cells["account.language.system"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.tabBars.firstMatch.exists)
+        XCTAssertFalse(app.tabBars.firstMatch.isHittable)
         capture("settings-profile-language")
     }
     @MainActor func testSettingsListPreferencesAndPersistence() {
@@ -370,8 +373,12 @@ final class AccountFlowUITests: XCTestCase {
         let edit = app.cells["account.design.editProfile"]
         XCTAssertTrue(edit.waitForExistence(timeout: 20))
         app.terminate(); app.launch()
+        let chatTab = app.tabBars.buttons["Chat"]
+        XCTAssertTrue(chatTab.waitForExistence(timeout: 20))
+        XCTAssertTrue(chatTab.isSelected)
+        app.tabBars.buttons["Me"].tap()
         XCTAssertTrue(edit.waitForExistence(timeout: 20))
-        let meCapture = XCTAttachment(screenshot: app.screenshot()); meCapture.name = "me-restored-live"; meCapture.lifetime = .keepAlways; add(meCapture)
+        let meCapture = XCTAttachment(screenshot: app.screenshot()); meCapture.name = "me-after-relaunch-live"; meCapture.lifetime = .keepAlways; add(meCapture)
         app.cells["account.design.security"].tap()
         XCTAssertTrue(app.cells["account.design.deleteAccount"].waitForExistence(timeout: 5))
         app.cells["account.design.deleteAccount"].tap()

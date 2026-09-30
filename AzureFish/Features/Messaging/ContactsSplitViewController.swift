@@ -17,8 +17,8 @@ final class ContactsSplitViewController: UIViewController, UISplitViewController
         contacts.showProfile = { [weak self] contact in self?.open(contact) }
         split.delegate = self; split.minimumPrimaryColumnWidth = 280; split.maximumPrimaryColumnWidth = 360
         split.preferredPrimaryColumnWidth = 320; split.preferredDisplayMode = .oneBesideSecondary; split.preferredSplitBehavior = .tile
-        split.setViewController(UINavigationController(rootViewController: contacts), for: .primary)
-        split.setViewController(UINavigationController(rootViewController: ContactSelectionViewController()), for: .secondary)
+        split.setViewController(AppNavigationController(rootViewController: contacts), for: .primary)
+        split.setViewController(AppNavigationController(rootViewController: ContactSelectionViewController()), for: .secondary)
         addChild(split); view.addSubview(split.view)
         // UIKit 系统容器托管边界；具体内容由 QuickLayout 和 ListKit 管理。
         split.view.translatesAutoresizingMaskIntoConstraints = false
@@ -73,7 +73,7 @@ final class ContactsSplitViewController: UIViewController, UISplitViewController
     private func open(_ contact: ChatContact) {
         if selectedID == contact.peer.id { split.show(.secondary); return }
         selectedID = contact.peer.id
-        split.showDetailViewController(UINavigationController(rootViewController: FriendViewController(runtime: runtime, contact: contact)), sender: self)
+        split.showDetailViewController(AppNavigationController(rootViewController: FriendViewController(runtime: runtime, contact: contact)), sender: self)
     }
     func splitViewController(_ svc: UISplitViewController, topColumnForCollapsingToProposedTopColumn proposedTopColumn: UISplitViewController.Column) -> UISplitViewController.Column {
         selectedID == nil ? .primary : .secondary

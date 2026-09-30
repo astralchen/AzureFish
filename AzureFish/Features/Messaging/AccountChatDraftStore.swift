@@ -22,15 +22,20 @@ final class AccountChatDraftStore: ChatDraftStoring {
     }
     func load(conversationID: String, into directory: URL) -> Task<ChatDraftLoadResult, Error> {
         enqueue { [self] in
-            if let snapshot: ChatDraftSnapshot = try await store.meta("rich-draft:" + conversationID) {
-                guard snapshot.version == 1, snapshot.conversationID == conversationID else { throw ChatStoreError.scopeMismatch }
-                return try await materialize(snapshot, into: directory)
+            let requestedID = conversationID
+            let state = try await store.editorDraftState(requestedID, as: ChatDraftSnapshot.self)
+            if let snapshot = state.editor {
+                guard snapshot.version == 1, snapshot.conversationID == state.conversation else { throw ChatStoreError.scopeMismatch }
+                var restored = snapshot
+                restored.conversationID = requestedID
+                return try await materialize(restored, into: directory)
             }
-            let old = try await store.draft(conversationID)
-            var snapshot = ChatDraftSnapshot(conversationID: conversationID)
+            let old = state.legacy
+            var snapshot = ChatDraftSnapshot(conversationID: requestedID)
             if !old.text.isEmpty { snapshot.segments = [.text(old.text)] }
             var missing = false
-            if let items: [ChatUploadItem] = try await store.meta("attachments:" + conversationID), !items.isEmpty {
+            let items = state.attachments
+            if !items.isEmpty {
                 if let loader = legacyLoaders[directory] {
                     do {
                         snapshot.documents = try await loader(items)

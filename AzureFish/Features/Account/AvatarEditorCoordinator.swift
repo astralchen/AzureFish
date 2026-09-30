@@ -92,7 +92,7 @@ final class AvatarEditorCoordinator: NSObject, PHPickerViewControllerDelegate {
     private func review(_ image: UIImage?) {
         guard let host else { return }
         let page = AvatarConfirmationViewController(session: session, image: image, changed: changed)
-        host.present(UINavigationController(rootViewController: page), animated: true)
+        host.present(AppNavigationController(rootViewController: page), animated: true)
     }
     private func showError() {
         let alert = UIAlertController(title: Localization.text("account.avatar.invalid"), message: nil, preferredStyle: .alert)
@@ -154,7 +154,7 @@ final class AvatarConfirmationViewController: AccountScreen {
 }
 #if DEBUG
 @available(iOS 17.0, *)
-#Preview("默认头像确认") { UINavigationController(rootViewController: AvatarConfirmationViewController(session: .configured(), image: nil, changed: {})) }
+#Preview("默认头像确认") { AppNavigationController(rootViewController: AvatarConfirmationViewController(session: .configured(), image: nil, changed: {})) }
 @available(iOS 17.0, *)
 #Preview("默认头像") { AccountAvatarView() }
 #endif

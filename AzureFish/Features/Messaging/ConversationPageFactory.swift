@@ -29,7 +29,6 @@ enum ConversationPageFactory {
                 }
                 return attachments
             }
-            controller.hidesBottomBarWhenPushed = true
             return controller
         }
         return LiveConversationViewController(runtime: runtime, conversation: conversation)

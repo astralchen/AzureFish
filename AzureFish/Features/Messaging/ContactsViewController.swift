@@ -471,15 +471,15 @@ extension UIViewController {
     return QuickLayoutHostingController { cell.resizable(axis: .horizontal).frame(height: 72) }
 }
 @available(iOS 17.0, *)
-#Preview("通讯录") { UINavigationController(rootViewController: ContactsViewController(runtime: ChatRuntime(previewContacts: ConversationPreviewData.contacts))) }
+#Preview("通讯录") { AppNavigationController(rootViewController: ContactsViewController(runtime: ChatRuntime(previewContacts: ConversationPreviewData.contacts))) }
 @available(iOS 17.0, *)
-#Preview("通讯录 · 字母索引") { UINavigationController(rootViewController: ContactsViewController(runtime: ChatRuntime(previewContacts: ConversationPreviewData.indexedContacts))) }
+#Preview("通讯录 · 字母索引") { AppNavigationController(rootViewController: ContactsViewController(runtime: ChatRuntime(previewContacts: ConversationPreviewData.indexedContacts))) }
 @available(iOS 17.0, *)
-#Preview("空通讯录") { UINavigationController(rootViewController: ContactsViewController(runtime: ChatRuntime(previewContacts: []))) }
+#Preview("空通讯录") { AppNavigationController(rootViewController: ContactsViewController(runtime: ChatRuntime(previewContacts: []))) }
 @available(iOS 17.0, *)
-#Preview("新的朋友") { UINavigationController(rootViewController: FriendRequestsViewController(runtime: ChatRuntime(previewContacts: ConversationPreviewData.contacts))) }
+#Preview("新的朋友") { AppNavigationController(rootViewController: FriendRequestsViewController(runtime: ChatRuntime(previewContacts: ConversationPreviewData.contacts))) }
 @available(iOS 17.0, *)
-#Preview("黑名单") { UINavigationController(rootViewController: BlockedContactsViewController(runtime: ChatRuntime(previewContacts: ConversationPreviewData.contacts))) }
+#Preview("黑名单") { AppNavigationController(rootViewController: BlockedContactsViewController(runtime: ChatRuntime(previewContacts: ConversationPreviewData.contacts))) }
 @available(iOS 17.0, *)
 #Preview("好友申请行") {
     let cell = ContactRequestCell(frame: CGRect(x: 0, y: 0, width: 390, height: 260))

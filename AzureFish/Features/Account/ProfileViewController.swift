@@ -244,9 +244,9 @@ private final class ProfileBioTextView: UITextView {
 
 #if DEBUG
 @available(iOS 17.0, *)
-#Preview("Me") { UINavigationController(rootViewController: ProfileViewController(session: .configured())) }
+#Preview("Me") { AppNavigationController(rootViewController: ProfileViewController(session: .configured())) }
 @available(iOS 17.0, *)
-#Preview("Edit profile") { UINavigationController(rootViewController: EditProfileViewController(session: .configured(), profile: AccountProfile(userID: UUID(), accountName: "azure_fish", nickname: "小鱼", bio: "", version: 1))) }
+#Preview("Edit profile") { AppNavigationController(rootViewController: EditProfileViewController(session: .configured(), profile: AccountProfile(userID: UUID(), accountName: "azure_fish", nickname: "小鱼", bio: "", version: 1))) }
 @available(iOS 17.0, *)
-#Preview("Long profile") { UINavigationController(rootViewController: EditProfileViewController(session: .configured(), profile: AccountProfile(userID: UUID(), accountName: "azure_fish", nickname: "小鱼", bio: String(repeating: "A long profile. 個人資料。", count: 20), version: 1))) }
+#Preview("Long profile") { AppNavigationController(rootViewController: EditProfileViewController(session: .configured(), profile: AccountProfile(userID: UUID(), accountName: "azure_fish", nickname: "小鱼", bio: String(repeating: "A long profile. 個人資料。", count: 20), version: 1))) }
 #endif

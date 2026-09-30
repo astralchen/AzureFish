@@ -226,21 +226,21 @@ final class AccountRecoveryViewController: AccountScreen {
 
 #if DEBUG
 @available(iOS 17.0, *)
-#Preview("Settings") { UINavigationController(rootViewController: AccountSettingsViewController()) }
+#Preview("Settings") { AppNavigationController(rootViewController: AccountSettingsViewController()) }
 @available(iOS 17.0, *)
-#Preview("Appearance options") { UINavigationController(rootViewController: AccountSettingsViewController(page: .appearance)) }
+#Preview("Appearance options") { AppNavigationController(rootViewController: AccountSettingsViewController(page: .appearance)) }
 @available(iOS 17.0, *)
 #Preview("Language options · large text") {
     let controller = AccountSettingsViewController(page: .language)
     controller.traitOverrides.preferredContentSizeCategory = .accessibilityExtraExtraExtraLarge
-    return UINavigationController(rootViewController: controller)
+    return AppNavigationController(rootViewController: controller)
 }
 @available(iOS 17.0, *)
 #Preview("Settings · RTL") {
     let controller = AccountSettingsViewController()
     controller.loadViewIfNeeded()
     controller.reloadLayoutDirection(.rightToLeft)
-    return UINavigationController(rootViewController: controller)
+    return AppNavigationController(rootViewController: controller)
 }
 @available(iOS 17.0, *)
 #Preview("Recovery") { AccountRecoveryViewController(session: .configured()) }

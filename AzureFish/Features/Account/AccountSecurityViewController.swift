@@ -141,18 +141,18 @@ final class AccountSecurityViewController: LocalizedQuickLayoutHostingController
 
 #if DEBUG
 @available(iOS 17.0, *)
-#Preview("Security") { UINavigationController(rootViewController: AccountSecurityViewController(session: .configured())) }
+#Preview("Security") { AppNavigationController(rootViewController: AccountSecurityViewController(session: .configured())) }
 @available(iOS 17.0, *)
 #Preview("Security · large text") {
     let controller = AccountSecurityViewController(session: .configured())
     controller.traitOverrides.preferredContentSizeCategory = .accessibilityExtraExtraExtraLarge
-    return UINavigationController(rootViewController: controller)
+    return AppNavigationController(rootViewController: controller)
 }
 @available(iOS 17.0, *)
 #Preview("Security · RTL") {
     let controller = AccountSecurityViewController(session: .configured())
     controller.loadViewIfNeeded()
     controller.reloadLayoutDirection(.rightToLeft)
-    return UINavigationController(rootViewController: controller)
+    return AppNavigationController(rootViewController: controller)
 }
 #endif

@@ -19,7 +19,8 @@ final class ChatDetailsRegressionController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         // 隔离 UI 回归不等待系统搜索动画的空闲通知；正式页面不改变系统动画。
-        if !ProcessInfo.processInfo.arguments.contains("-contacts-list") { UIView.setAnimationsEnabled(false) }
+        if !ProcessInfo.processInfo.arguments.contains("-contacts-list"),
+           !ProcessInfo.processInfo.arguments.contains("-navigation-tabs") { UIView.setAnimationsEnabled(false) }
         view.backgroundColor = .systemBackground
         title = "详情回归"
         task = Task { [weak self] in
@@ -36,8 +37,20 @@ final class ChatDetailsRegressionController: UIViewController {
                 let engine = ChatEngine(store: store, session: APISessionManager(api: AccountAPI(environment: environment), store: DetailsEmptySession()))
                 let args = ProcessInfo.processInfo.arguments
                 if args.contains("-details-large") { navigationController?.traitOverrides.preferredContentSizeCategory = .accessibilityExtraExtraExtraLarge }
-                let conversation = ConversationPreviewData.detailsConversation(group: !args.contains("-details-direct"), owner: !args.contains("-details-member"))
+                var conversation = ConversationPreviewData.detailsConversation(group: !args.contains("-details-direct") && !args.contains("-contacts-send-message"), owner: !args.contains("-details-member"))
+                if args.contains("-contacts-send-message") || args.contains("-contacts-empty-chat") {
+                    preview.session.installDebugProfile(offline: true)
+                }
+                if args.contains("-contacts-send-message") {
+                    let peer = ConversationPreviewData.contact.peer
+                    conversation.members[1].id = peer.id
+                    conversation.members[1].profile = peer
+                }
                 try await store.save(conversation)
+                if args.contains("-navigation-stored-conversation") {
+                    // 模拟旧版本遗留的详情选择；启动列表不得消费它并自动导航。
+                    try await store.setMeta(conversation.id, id: "selectedConversation")
+                }
                 for offset in 0..<(args.contains("-contacts-list") ? 0 : 260) {
                     let i = offset + 1
                     let object: [String: Any] = ["id": "fixture-\(i)", "conversationID": conversation.id, "clientID": "", "serverID": "fixture-\(i)",
@@ -60,19 +73,46 @@ final class ChatDetailsRegressionController: UIViewController {
                     try await store.save(empty)
                     conversations += [direct, empty]
                 }
-                let contacts = args.contains("-contacts-list")
+                let contacts = args.contains("-contacts-list") || args.contains("-navigation-tabs")
                     ? (args.contains("-contacts-index") ? ConversationPreviewData.indexedContacts : ConversationPreviewData.contacts) : []
                 for contact in contacts { try await store.save(contact) }
                 let runtime = ChatRuntime(session: preview.session, engine: engine, media: media, conversations: conversations, pageLeaseRoot: root, contacts: contacts)
                 self.runtime = runtime
                 try await runtime.refreshListStates()
                 if args.contains("-details-dark") { navigationController?.overrideUserInterfaceStyle = .dark }
+                if args.contains("-navigation-tabs") {
+                    let tabs = UITabBarController()
+                    let chat = ChatSplitViewController(runtime: runtime)
+                    let pages: [UIViewController] = [
+                        chat,
+                        ContactsSplitViewController(runtime: runtime),
+                        ProfileSplitViewController(session: runtime.session, runtime: runtime),
+                    ]
+                    let keys = ["account.design.chat", "chat.live.contacts", "account.design.me"]
+                    let images = ["bubble.left.and.bubble.right", "person.2", "person.crop.circle"]
+                    for (index, page) in pages.enumerated() {
+                        page.tabBarItem = UITabBarItem(title: Localization.text(keys[index]), image: UIImage(systemName: images[index]), tag: index)
+                        page.tabBarItem.accessibilityIdentifier = "navigation.tab.\(index)"
+                    }
+                    tabs.viewControllers = pages
+                    runtime.openConversation = { [weak tabs, weak chat] conversation in
+                        tabs?.selectedIndex = 0
+                        chat?.open(conversation)
+                    }
+                    navigationController?.setNavigationBarHidden(true, animated: false)
+                    navigationController?.pushViewController(tabs, animated: false)
+                    if args.contains("-navigation-stored-conversation") {
+                        // 模拟正式启动在容器显示后发布本地快照。
+                        try await runtime.refreshListStates()
+                    }
+                    return
+                }
                 if args.contains("-contacts-list") {
                     navigationController?.overrideUserInterfaceStyle = args.contains("-details-dark") ? .dark : .light
                     let tabs = UITabBarController()
                     let contacts = ContactsSplitViewController(runtime: runtime)
                     contacts.tabBarItem = UITabBarItem(title: Localization.text("chat.live.contacts"), image: UIImage(systemName: "person.2"), tag: 0)
-                    let settings = UINavigationController(rootViewController: AccountSettingsViewController(runtime: runtime))
+                    let settings = AppNavigationController(rootViewController: AccountSettingsViewController(runtime: runtime))
                     settings.tabBarItem = UITabBarItem(title: Localization.text("account.design.settings"), image: UIImage(systemName: "gearshape"), tag: 1)
                     tabs.viewControllers = [contacts, settings]
                     navigationController?.setNavigationBarHidden(true, animated: false)
@@ -100,5 +140,5 @@ final class ChatDetailsRegressionController: UIViewController {
     }
 }
 @available(iOS 26.0, *)
-#Preview("详情交互回归") { UINavigationController(rootViewController: ChatDetailsRegressionController()) }
+#Preview("详情交互回归") { AppNavigationController(rootViewController: ChatDetailsRegressionController()) }
 #endif

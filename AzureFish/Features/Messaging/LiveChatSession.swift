@@ -44,11 +44,7 @@ final class LiveChatSession: ChatSessionProviding {
     func start(in controller: ChatViewController) {
         self.controller = controller
         controller.navigationItem.titleView = nil
-        let selfConversation = conversation
-        ConversationDetailsNavigation.install(on: controller, runtime: runtime, conversation: { [weak self] in self?.conversation ?? selfConversation }) { [weak self] message in
-            guard let self else { throw ChatStoreError.unavailable }
-            try await locate(message)
-        }
+        installConversationDetails()
         observer = runtime.observe { [weak self] in self?.refresh() }
         clockTask = Task { [weak self] in
             while !Task.isCancelled {
@@ -61,7 +57,21 @@ final class LiveChatSession: ChatSessionProviding {
         refresh()
         loadHistory()
     }
-    func didAppear() { runtime.enteredConversation(conversation.id) }
+    func installConversationDetails() {
+        guard let controller else { return }
+        guard ChatStore.localDirectPeer(conversation.id) == nil else {
+            controller.navigationItem.rightBarButtonItem = nil
+            return
+        }
+        let selfConversation = conversation
+        ConversationDetailsNavigation.install(on: controller, runtime: runtime, conversation: { [weak self] in self?.conversation ?? selfConversation }) { [weak self] message in
+            guard let self else { throw ChatStoreError.unavailable }
+            try await locate(message)
+        }
+    }
+    func didAppear() {
+        if ChatStore.localDirectPeer(conversation.id) == nil { runtime.enteredConversation(conversation.id) }
+    }
     func locate(_ message: ChatMessage) async throws {
         guard let engine = runtime.engine, let controller,
               try await engine.store.visibleMessage(message.id, conversation: conversation.id) != nil,
@@ -128,6 +138,14 @@ final class LiveChatSession: ChatSessionProviding {
         reloadTask = Task { [weak self] in
             guard let self else { return }
             do {
+                let bound = try await runtime.boundDirectConversation(conversation)
+                try Task.checkCancellation()
+                if bound.id != conversation.id {
+                    conversation = bound
+                    page = nil
+                    installConversationDetails()
+                    loadHistory()
+                }
                 let loaded: [ChatMessage]
                 if let contextAnchor { loaded = try await engine.store.messageContext(contextAnchor, conversation: conversation.id) }
                 else { loaded = try await engine.store.messages(conversation.id, limit: historyLimit) }
@@ -244,6 +262,10 @@ final class LiveChatSession: ChatSessionProviding {
             sentAt: batch.createdAt, deliveryState: batch.state == "failed" ? .failed : .sending, statusText: status, canCancel: true)
     }
     func loadHistory() {
+        guard ChatStore.localDirectPeer(conversation.id) == nil else {
+            controller?.viewModel.historyState = .exhausted
+            return
+        }
         guard contextAnchor == nil, !stopped, !loadingHistory, page?.hasMore != false, let engine = runtime.engine else { return }
         let initialPage = page == nil
         loadingHistory = true

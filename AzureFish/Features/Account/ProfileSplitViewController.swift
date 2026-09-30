@@ -8,7 +8,7 @@ final class ProfileSplitViewController: UIViewController, UISplitViewControllerD
     private var selected = false
     private weak var preservedFocus: UIView?
     private var preservedSelection: (start: Int, end: Int)?
-    private let detailNavigation = UINavigationController()
+    private let detailNavigation = AppNavigationController()
     init(session: SessionCoordinator, runtime: ChatRuntime) {
         self.session = session; self.runtime = runtime
         super.init(nibName: nil, bundle: nil)
@@ -34,7 +34,7 @@ final class ProfileSplitViewController: UIViewController, UISplitViewControllerD
             detailNavigation.setViewControllers([controller], animated: false)
             split.showDetailViewController(detailNavigation, sender: self)
         }
-        split.setViewController(UINavigationController(rootViewController: master), for: .primary)
+        split.setViewController(AppNavigationController(rootViewController: master), for: .primary)
         detailNavigation.setViewControllers([overview], animated: false)
         split.setViewController(detailNavigation, for: .secondary)
         addChild(split); view.addSubview(split.view); split.view.translatesAutoresizingMaskIntoConstraints = false

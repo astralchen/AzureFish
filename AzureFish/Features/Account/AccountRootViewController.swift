@@ -4,7 +4,8 @@ import UIKit
 import QuickLayoutKit
 
 /// 只在认证阶段改变时切换根容器，外观和语言变化保持当前导航栈。
-final class AccountRootViewController: LocalizedViewController, UITabBarControllerDelegate {
+/// 新建已登录主界面默认显示聊天列表，不恢复上次启动的 Tab 或聊天详情。
+final class AccountRootViewController: LocalizedViewController {
     private let session: SessionCoordinator
     private var sessionObserver: UUID?
     private let sceneIdentity = UUID()
@@ -13,7 +14,6 @@ final class AccountRootViewController: LocalizedViewController, UITabBarControll
     private var current: UIViewController?
     private weak var tabs: UITabBarController?
     private var chatRuntime: ChatRuntime?
-    private var tabRestored = false
     private var bannerCoordinator: ChatIncomingBannerCoordinator?
     init(session: SessionCoordinator = .configured()) { self.session = session; super.init(nibName: nil, bundle: nil) }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
@@ -42,16 +42,16 @@ final class AccountRootViewController: LocalizedViewController, UITabBarControll
             (current as? UINavigationController)?.viewControllers.compactMap { $0 as? AccountRecoveryViewController }.forEach { $0.reloadLocalizedContent() }
             return
         }
-        if session.phase != .signedIn || renderedIdentity != session.sessionIdentity { bannerCoordinator?.stop(); bannerCoordinator = nil; chatRuntime?.stop(); chatRuntime = nil; tabRestored = false }
+        if session.phase != .signedIn || renderedIdentity != session.sessionIdentity { bannerCoordinator?.stop(); bannerCoordinator = nil; chatRuntime?.stop(); chatRuntime = nil }
         renderedPhase = session.phase
         renderedIdentity = session.sessionIdentity
         let next: UIViewController
         switch session.phase {
         case .welcome:
             if let remembered = session.rememberedAccount {
-                next = UINavigationController(rootViewController: AuthenticationViewController(session: session, register: false, remembered: remembered))
-            } else { next = UINavigationController(rootViewController: WelcomeViewController(session: session)) }
-        case .restoring, .recovery: next = UINavigationController(rootViewController: AccountRecoveryViewController(session: session))
+                next = AppNavigationController(rootViewController: AuthenticationViewController(session: session, register: false, remembered: remembered))
+            } else { next = AppNavigationController(rootViewController: WelcomeViewController(session: session)) }
+        case .restoring, .recovery: next = AppNavigationController(rootViewController: AccountRecoveryViewController(session: session))
         case .signedIn:
             let tabs = UITabBarController()
             let runtime = ChatRuntime(session: session); chatRuntime = runtime
@@ -62,17 +62,10 @@ final class AccountRootViewController: LocalizedViewController, UITabBarControll
             runtime.openConversation = { [weak tabs, weak chat] conversation in
                 tabs?.selectedIndex = 0; chat?.open(conversation)
             }
-            tabs.selectedIndex = 0; tabs.delegate = self
+            tabs.selectedIndex = 0
             _ = runtime.observe { [weak self, weak runtime] in
                 guard let self, let runtime, chatRuntime === runtime else { return }
                 updateUnreadBadges()
-                guard !tabRestored, let store = runtime.engine?.store else { return }
-                tabRestored = true
-                Task { [weak self] in
-                    let selected: Int? = try? await store.meta("selectedTab")
-                    guard let self, chatRuntime === runtime else { return }
-                    if let selected, (0...2).contains(selected) { self.tabs?.selectedIndex = selected }
-                }
             }
             bannerCoordinator = ChatIncomingBannerCoordinator(host: self, runtime: runtime) { [weak tabs, weak chat] conversation in
                 tabs?.selectedIndex = 0
@@ -110,11 +103,6 @@ final class AccountRootViewController: LocalizedViewController, UITabBarControll
             controllers[index].tabBarItem.badgeColor = .systemRed
         }
     }
-    func tabBarController(_ tabBarController: UITabBarController, didSelect viewController: UIViewController) {
-        let index = tabBarController.selectedIndex
-        Task { try? await chatRuntime?.engine?.store.setMeta(index, id: "selectedTab") }
-    }
-
 }
 
 /// 聊天继续使用独立本地演示，不把既有草稿解释为登录账号的数据。

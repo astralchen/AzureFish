@@ -538,7 +538,7 @@ final class ConversationListViewController: LiveChatListController {
 }
 @available(iOS 17.0, *)
 #Preview("会话列表 · 折叠置顶") {
-    UINavigationController(rootViewController: ConversationListViewController(
+    AppNavigationController(rootViewController: ConversationListViewController(
         runtime: ConversationPreviewData.conversationListRuntime(collapsed: true)))
 }
 #endif

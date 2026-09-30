@@ -97,5 +97,5 @@ class LocalizedViewController: UIViewController, UIKitLocalizationApplying {
 
 @available(iOS 17.0, *)
 #Preview {
-   UINavigationController(rootViewController: LocalizedQuickLayoutHostingController())
+   AppNavigationController(rootViewController: LocalizedQuickLayoutHostingController())
 }

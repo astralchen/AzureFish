@@ -191,6 +191,7 @@ extension ChatStore {
     public func saveDraftAttachments(_ items: [ChatUploadItem], conversation: String) throws {
         try check()
         try db.write { db in
+            let conversation = try Self.canonicalDraftConversation(conversation, db: db)
             let previous = try Self.draftPreview(conversation, db: db)
             try db.execute(sql: "INSERT OR REPLACE INTO meta VALUES (?,?)",
                            arguments: ["attachments:" + conversation, JSONEncoder().encode(items)])

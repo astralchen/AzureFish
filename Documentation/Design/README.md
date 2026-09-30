@@ -41,6 +41,14 @@
 
 主界面使用系统 tab：聊天／通讯录／我。个人中心 tab 的自适应容器在单列／双列间保存同一选择与详情状态；宽屏首次展示个人资料概览，未选项显示明确概览内容。折叠时优先显示当前详情，并保留返回主列表路径；展开时在左列恢复选择。尺寸变化不自动跳回根页面。
 
+导航容器统一使用 `AppNavigationController` 管理 `hidesBottomBarWhenPushed`：每个导航栈的根控制器为 `false`，后续页面为 `true`；初始化、push 和整体替换栈均按当前位置重新判定。当前 Tab 中可见的内外层导航栈都参与判定：任一栈顶不是第一个控制器就隐藏 TabBar，全部回到根位置才恢复。分栏折叠时，详情容器已压入主栈，因此聊天详情、联系人资料和设置详情也隐藏；展开后两列均在各自根位置时显示。业务页面不单独设置显隐，不直接操作 `tabBar.isHidden`；返回转场、安全区域及系统外观交由 UIKit 处理。该规则同样应用于 Debug 入口和预览，不为原本没有 TabBar 的导航容器增加底部栏。
+
+iOS 18 起通过系统 `setTabBarHidden(_:animated:)` 同步嵌套分栏的 TabBar；仅当前 Tab 中可见的导航栈参与判定，交互式返回取消后按最终页面恢复；内层处于根位置不能覆盖外层已经 push 的状态。iOS 15～17 保留 `hidesBottomBarWhenPushed` 原生路径，旧系统的实际运行效果仍需对应模拟器或真机验证。
+
+新建已登录主界面默认进入聊天 Tab 的会话列表，不恢复旧版保存的 `selectedTab` 或 `selectedConversation`。显式打开会话后，前后台切换及尺寸变化继续保留当前页面；草稿、未读和阅读状态沿用原有存储规则。旧选择键忽略，不清空账号数据。
+
+2026-09-30 统一导航容器和启动列表行为的范围、截图与验证状态见[导航显隐验证记录](Validation/navigation-2026-09-30/README.md)。
+
 ## 3. iPhone、iPad、iPhone Duo
 
 普通 iPhone 验证小屏、横屏及安全区域；iPad 验证全屏、分屏、窗口连续缩放、横竖屏、外接键盘和触控板。菜单／action sheet／popover 必须绑定发起控件及其当前 windowScene，旋转后更新锚点，不寻找 connectedScenes.first。

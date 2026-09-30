@@ -188,15 +188,15 @@ final class AuthenticationViewController: AccountScreen {
 
 #if DEBUG
 @available(iOS 17.0, *)
-#Preview("Welcome · 方案 2") { UINavigationController(rootViewController: WelcomeViewController(session: .configured())) }
+#Preview("Welcome · 方案 2") { AppNavigationController(rootViewController: WelcomeViewController(session: .configured())) }
 @available(iOS 17.0, *)
-#Preview("Registration") { UINavigationController(rootViewController: AuthenticationViewController(session: .configured(), register: true)) }
+#Preview("Registration") { AppNavigationController(rootViewController: AuthenticationViewController(session: .configured(), register: true)) }
 #endif
 
 #if DEBUG
 @available(iOS 17.0, *)
 #Preview("Remembered account") {
-    UINavigationController(rootViewController: AuthenticationViewController(session: .configured(), register: false,
+    AppNavigationController(rootViewController: AuthenticationViewController(session: .configured(), register: false,
         remembered: .init(environmentID: "preview", userID: UUID(uuidString: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")!, accountName: "fictional_user")))
 }
 #endif

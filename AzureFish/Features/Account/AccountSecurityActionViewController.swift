@@ -108,5 +108,5 @@ final class AccountSecurityActionViewController: AccountScreen, UITextFieldDeleg
 }
 #if DEBUG
 @available(iOS 17.0, *)
-#Preview("修改密码") { UINavigationController(rootViewController: AccountSecurityActionViewController(session: .configured(), runtime: nil, action: .changePassword)) }
+#Preview("修改密码") { AppNavigationController(rootViewController: AccountSecurityActionViewController(session: .configured(), runtime: nil, action: .changePassword)) }
 #endif

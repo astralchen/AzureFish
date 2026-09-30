@@ -589,7 +589,7 @@ private func makeChatViewControllerPreview() -> UIViewController {
             try await Task.sleep(for: duration)
         }
     )
-    return UINavigationController(
+    return AppNavigationController(
         rootViewController: ChatViewController(viewModel: viewModel)
     )
 }

@@ -10,7 +10,7 @@ nonisolated struct ChatDraftSnapshot: Codable, Equatable, Sendable {
     /// 当前清单的保存修订号；由磁盘存储在提交时递增，页面快照默认使用 0。
     var revision: UInt64 = 0
     /// 草稿所属会话的稳定标识，用于隔离不同聊天的存储目录。
-    let conversationID: String
+    var conversationID: String
     /// 按编辑器顺序排列的语义片段，保留用户输入的空白、换行和内联附件位置。
     var segments: [DraftSegment] = []
     /// 正文片段引用的已就绪附件，按其在正文中出现的顺序排列。

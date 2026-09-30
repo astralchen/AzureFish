@@ -11,8 +11,14 @@ extension LiveChatSession {
               let manager = runtime.session.sessionManager, let controller else { completion(false); return }
         contextAnchor = nil
         let release = (controller.attachmentStore as? PageAttachmentStore)?.acquireFileLease()
-        let conversationID = conversation.id
         let task = drafts.enqueue { [self] in
+            let wasLocal = ChatStore.localDirectPeer(conversation.id) != nil
+            conversation = try await runtime.resolveDirectConversationForSending(conversation)
+            let conversationID = conversation.id
+            if wasLocal {
+                installConversationDetails()
+                loadHistory()
+            }
             let credentials = try await manager.localIdentity()
             guard runtime.engine === engine, credentials.userID == engine.store.userID else { throw ChatStoreError.scopeMismatch }
             var items: [ChatCompositionItem] = []

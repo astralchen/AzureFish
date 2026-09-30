@@ -116,7 +116,6 @@ final class FriendViewController: ContactFormController {
     private var contact: ChatContact
     private var observation: UUID?
     private let avatar = AccountAvatarView()
-    private var resolveOperation = UUID()
     init(runtime: ChatRuntime, contact: ChatContact) {
         self.runtime = runtime
         self.contact = runtime.contacts.first { $0.peer.id == contact.peer.id }.map { contact.merging($0) } ?? contact
@@ -201,15 +200,18 @@ final class FriendViewController: ContactFormController {
         }
     }
     private func openChat() {
-        guard !busy, let api = runtime.api, let engine = runtime.engine else { return }; busy = true
+        guard !busy else { return }
+        guard let engine = runtime.engine, let openConversation = runtime.openConversation else {
+            report(ContactOperationError.unavailable)
+            return
+        }
+        busy = true; statusKey = nil
         Task { [weak self] in
             guard let self else { return }; defer { busy = false }
             do {
-                let conversation = try await api.resolve(peer: contact.peer.id, operationID: resolveOperation)
-                guard runtime.engine === engine else { return }
-                try await engine.store.save(conversation)
+                let conversation = try await runtime.directConversation(for: contact)
                 guard runtime.engine === engine, viewIfLoaded?.window != nil else { return }
-                runtime.changed(); runtime.openConversation?(conversation)
+                openConversation(conversation)
             } catch { if runtime.engine === engine, viewIfLoaded?.window != nil { report(error) } }
         }
     }
@@ -316,7 +318,7 @@ final class ContactManagementViewController: ContactFormController {
 }
 #if DEBUG
 @available(iOS 17.0, *)
-#Preview("好友资料") { UINavigationController(rootViewController: FriendViewController(runtime: ChatRuntime(session: .configured()), contact: ConversationPreviewData.contact)) }
+#Preview("好友资料") { AppNavigationController(rootViewController: FriendViewController(runtime: ChatRuntime(session: .configured()), contact: ConversationPreviewData.contact)) }
 @available(iOS 17.0, *)
 #Preview("好友管理") { ContactManagementViewController(runtime: ChatRuntime(session: .configured()), contact: ConversationPreviewData.contact) }
 @available(iOS 17.0, *)

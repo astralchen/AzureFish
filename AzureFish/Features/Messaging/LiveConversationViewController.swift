@@ -155,7 +155,6 @@ final class LiveConversationViewController: LocalizedQuickLayoutHostingControlle
         self.runtime = runtime
         self.conversation = conversation
         super.init(nibName: nil, bundle: nil)
-        hidesBottomBarWhenPushed = true
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
     override var body: Layout {
@@ -207,15 +206,7 @@ final class LiveConversationViewController: LocalizedQuickLayoutHostingControlle
         latestButton.addAction(
             UIAction { [weak self] _ in self?.scrollLatest() }, for: .touchUpInside)
         latestButton.isHidden = true
-        let current = conversation
-        ConversationDetailsNavigation.install(on: self, runtime: runtime, conversation: { [weak self] in self?.conversation ?? current }) { [weak self] message in
-            guard let self, let engine = runtime.engine,
-                  try await engine.store.visibleMessage(message.id, conversation: conversation.id) != nil,
-                  runtime.engine === engine else { throw ChatStoreError.unavailable }
-            contextAnchor = message.id
-            focusMessage = message.id
-            reloadMessages()
-        }
+        installConversationDetails()
         mediaCoordinator = LiveMediaCoordinator(controller: self)
         observer = runtime.observe { [weak self] in self?.reloadMessages() }
         NotificationCenter.default.addObserver(
@@ -225,22 +216,33 @@ final class LiveConversationViewController: LocalizedQuickLayoutHostingControlle
         loadHistory()
         Task { [weak self] in
             guard let self, let store = runtime.engine?.store else { return }
-            if let draft = try? await store.draft(conversation.id) {
+            if let state = try? await store.editorDraftState(conversation.id, as: ChatDraftSnapshot.self) {
                 restoringDraft = true
-                editor.text = draft.text
+                editor.text = state.legacy.text
                 restoringDraft = false
-                if let saved: [ChatUploadItem] = try? await store.meta(
-                    "attachments:" + conversation.id)
-                {
-                    attachments = saved
-                }
+                attachments = state.attachments
                 setNeedsQuickLayout()
             }
         }
     }
+    private func installConversationDetails() {
+        guard ChatStore.localDirectPeer(conversation.id) == nil else {
+            navigationItem.rightBarButtonItem = nil
+            return
+        }
+        let current = conversation
+        ConversationDetailsNavigation.install(on: self, runtime: runtime, conversation: { [weak self] in self?.conversation ?? current }) { [weak self] message in
+            guard let self, let engine = runtime.engine,
+                  try await engine.store.visibleMessage(message.id, conversation: conversation.id) != nil,
+                  runtime.engine === engine else { throw ChatStoreError.unavailable }
+            contextAnchor = message.id
+            focusMessage = message.id
+            reloadMessages()
+        }
+    }
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        runtime.enteredConversation(conversation.id)
+        if ChatStore.localDirectPeer(conversation.id) == nil { runtime.enteredConversation(conversation.id) }
         reloadMessages()
         markVisibleRead()
     }
@@ -304,6 +306,14 @@ final class LiveConversationViewController: LocalizedQuickLayoutHostingControlle
         Task { [weak self] in
             guard let self else { return }
             do {
+                let bound = try await runtime.boundDirectConversation(conversation)
+                guard generation == reloadGeneration, runtime.engine === engine else { return }
+                if bound.id != conversation.id {
+                    conversation = bound
+                    page = nil
+                    installConversationDetails()
+                    loadHistory()
+                }
                 if let current = runtime.conversations.first(where: { $0.id == conversation.id }) {
                     conversation = current
                 }
@@ -482,6 +492,7 @@ final class LiveConversationViewController: LocalizedQuickLayoutHostingControlle
         }
     }
     private func loadHistory() {
+        guard ChatStore.localDirectPeer(conversation.id) == nil else { historyButton.isHidden = true; return }
         guard !loading, let engine = runtime.engine else { return }
         loading = true
         Task { [weak self] in
@@ -518,6 +529,9 @@ final class LiveConversationViewController: LocalizedQuickLayoutHostingControlle
                 if runtime.engine === engine { scheduleDraftSave() }
             }
             do {
+                let wasLocal = ChatStore.localDirectPeer(conversation.id) != nil
+                conversation = try await runtime.resolveDirectConversationForSending(conversation)
+                if wasLocal { installConversationDetails(); loadHistory() }
                 let credentials = try await manager.localIdentity()
                 var batches: [ChatUploadBatch] = []
                 var group: [ChatUploadItem] = []
