@@ -72,8 +72,8 @@ public actor ChatStore {
     public nonisolated static func openDatabase(url: URL, key: Data, environment: String, userID: UUID,
                                                 migrations: [AccountMigration] = []) throws -> AccountDatabase {
         do {
-            let database = try AccountDatabase(url: url, key: key, environment: environment, userID: userID, baseline: ChatSchema.create, migrations: migrations)
-            try database.registerResourceReferences(domain: "chat") { db, id in try ResourceReferences.all(in: db).contains(id) }
+            let database = try AccountDatabase(url: url, key: key, environment: environment, userID: userID, baseline: ChatSchema.create, migrations: [mediaImportMigration] + migrations)
+            try database.registerResourceReferences(domain: "chat") { db, id in try Self.hasImportReference(id, db: db) || ResourceReferences.all(in: db).contains(id) }
             return database
         }
         catch AccountStorageError.invalidKey { throw ChatStoreError.invalidKey }
@@ -86,7 +86,7 @@ public actor ChatStore {
     public init(database: AccountDatabase, now: @escaping @Sendable () -> Date = { Date() }) throws {
         db = database; userID = database.userID; environment = database.environment
         ownsDatabase = false; self.now = now
-        try database.registerResourceReferences(domain: "chat") { db, id in try ResourceReferences.all(in: db).contains(id) }
+        try database.registerResourceReferences(domain: "chat") { db, id in try Self.hasImportReference(id, db: db) || ResourceReferences.all(in: db).contains(id) }
         try database.write { try Self.expireReedits(now: now(), db: $0) }
     }
     /// 为独立测试或单一所有者创建存储；关闭此实例会关闭它创建的数据库。
@@ -112,8 +112,12 @@ public actor ChatStore {
         return try db.read { (try DirectoryRepository.contacts(in: $0), try CheckpointRecord.fetchOne($0, key: "account_events") != nil) }
     }
     /// 从同一数据库快照恢复会话、成员、读状态和最新摘要；不保证结果排序。
-    public func conversations() throws -> [ChatConversation] {
-        try check(); return try db.read { try DirectoryRepository.conversations(in: $0) }
+    public func conversations(identifiers: Set<String>? = nil) throws -> [ChatConversation] {
+        try check()
+        return try db.read { db in
+            if let identifiers { return try identifiers.sorted().compactMap { try DirectoryRepository.conversation($0, in: db) } }
+            return try DirectoryRepository.conversations(in: db)
+        }
     }
     /// 构造指定会话排除本机隐藏消息的查询；不额外验证成员权限或撤回状态。
     static func visibleMessages(_ conversation: String) -> QueryInterfaceRequest<MessageRecord> {

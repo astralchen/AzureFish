@@ -56,6 +56,9 @@ final class AccountBusinessStorage {
                     do {
                         let media = try EncryptedMediaStore(root: root.appendingPathComponent("media"), key: mediaKey,
                             environment: environment, userID: userID)
+                        let chat = try ChatStore(database: database)
+                        try await chat.recoverMediaImports(using: ChatMediaStore(storage: media))
+                        try await chat.close()
                         let oldPages = root.appendingPathComponent("page-leases")
                         if FileManager.default.fileExists(atPath: oldPages.path) { try FileManager.default.removeItem(at: oldPages) }
                         return Resources(database: database, media: media)

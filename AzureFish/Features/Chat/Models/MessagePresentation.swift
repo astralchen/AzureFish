@@ -91,6 +91,18 @@ nonisolated struct MessagePresentation: Equatable, Hashable, Sendable {
     }
 
     /// 图片和视频媒体组；消息不包含媒体组时为 `nil`。
+    var audioPresentation: AudioPresentation? {
+        guard case .attachment(let attachment) = content else { return nil }
+        switch attachment {
+        case .audio(let audio): return .init(audio)
+        case .remote(let remote) where remote.kind == "audio": return .init(remote)
+        default: return nil
+        }
+    }
+    var mediaPresentation: MediaGroupPresentation? {
+        guard case .attachment(let attachment) = content else { return nil }
+        return attachment.mediaPresentation
+    }
     var mediaGroup: MediaGroupAttachment? {
         guard case .attachment(let attachment) = content else { return nil }
         return attachment.mediaGroup

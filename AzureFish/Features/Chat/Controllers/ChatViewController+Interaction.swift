@@ -4,6 +4,7 @@
 //
 
 import Combine
+import AVFAudio
 import AppLocalization
 import QuickLayout
 import QuickLayoutKit
@@ -390,13 +391,28 @@ extension ChatViewController {
                 return message
             }).first(where: { $0.id == messageID && $0.content == .attachment(attachment) }) else { return }
             attachmentSaveCoordinator.save(message: message, from: self)
+        case .openAttachment(let messageID, let attachment, let index):
+            openAttachmentPreview(.init(attachment: attachment, initialIndex: index, source: .message(messageID)))
         case .openDocument(let messageID, let attachment):
             openAttachmentPreview(.init(attachment: attachment, source: .message(messageID)))
         case .toggleAudioPlayback(let messageID, let attachment):
-            audioController.toggleMessagePlayback(
-                messageID: messageID,
-                attachment: attachment
-            )
+            if let session, audioController.playbackTarget != .message(id: messageID, attachmentID: attachment.id)
+                || (audioController.player?.isPlaying != true && !audioController.playbackTask.isRunning) {
+                attachmentPreviewTask?.cancel()
+                attachmentPreviewGeneration += 1
+                let generation = attachmentPreviewGeneration
+                attachmentPreviewTask = Task { [weak self] in
+                    do {
+                        let resolved = try await session.resolveAttachment(.audio(attachment), messageID: messageID)
+                        try Task.checkCancellation()
+                        guard let self, !hasCleanedUpChat, generation == attachmentPreviewGeneration,
+                              case .audio(let audio) = resolved else { return }
+                        audioController.toggleMessagePlayback(messageID: messageID, attachment: audio)
+                    } catch is CancellationError {} catch { self?.presentAttachmentSaveFailure(error) }
+                }
+            } else {
+                audioController.toggleMessagePlayback(messageID: messageID, attachment: attachment)
+            }
         case .openMediaGroup(let messageID, let attachment, let index):
             openAttachmentPreview(.init(attachment: .mediaGroup(attachment), initialIndex: index, source: .message(messageID)))
         }

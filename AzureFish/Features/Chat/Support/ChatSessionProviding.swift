@@ -7,6 +7,7 @@ protocol ChatSessionProviding: AnyObject {
     func start(in controller: ChatViewController)
     func didAppear()
     func stop()
+    func resolveAttachment(_ attachment: Attachment, messageID: Int) async throws -> Attachment
     func refresh()
     func loadHistory()
     /// 先将消息写入本地发送队列，再启动网络发送。
@@ -25,4 +26,8 @@ protocol ChatSessionProviding: AnyObject {
 @available(iOS 26.0, *)
 extension ChatSessionProviding {
     func didAppear() {}
+    func resolveAttachment(_ attachment: Attachment, messageID: Int) async throws -> Attachment {
+        if case .remote = attachment { throw AttachmentSaveError.invalidAttachment }
+        return attachment
+    }
 }

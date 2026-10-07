@@ -147,7 +147,7 @@ extension ChatStore {
     }
 
     /// 原子保存旧系统编辑器的附件；重复保存与资源路径变化不会恢复隐藏会话。
-    public func saveDraftAttachments(_ items: [ChatUploadItem], conversation: String) throws {
+    public func saveDraftAttachments(_ items: [ChatUploadItem], conversation: String, completingImport batch: UUID? = nil) throws {
         try check()
         try db.write { db in
             let conversation = try Self.canonicalDraftConversation(conversation, db: db)
@@ -155,17 +155,19 @@ extension ChatStore {
             try DraftRepository.row(conversation, in: db).upsert(db)
             try DraftUploadRepository.saveItems(items, owner: conversation, in: db)
             try Self.recordDraftChange(previous, conversation: conversation, db: db)
+            try Self.completeMediaImport(batch, db: db)
         }
     }
 
     /// 在同一读取事务中返回列表状态、草稿与折叠偏好，避免摘要和可见性取自不同保存时刻。
-    public func conversationListSnapshot() throws -> (states: [String: ConversationListState], drafts: [String: ConversationDraftPreview], pinnedCollapsed: Bool) {
+    public func conversationListSnapshot(identifiers: Set<String>? = nil) throws -> (states: [String: ConversationListState], drafts: [String: ConversationDraftPreview], pinnedCollapsed: Bool) {
         try check()
         return try db.read { db in
-            let states = Dictionary(uniqueKeysWithValues: try LocalStateRecord.fetchAll(db).map {
+            let rows = try identifiers.map { try LocalStateRecord.filter($0.contains(LocalStateRecord.Columns.conversationID)).fetchAll(db) } ?? LocalStateRecord.fetchAll(db)
+            let states = Dictionary(uniqueKeysWithValues: rows.map {
                 ($0.conversationID, ConversationListState($0))
             })
-            let drafts = try DraftRepository.previews(in: db).filter { !$0.value.isEmpty }
+            let drafts = try DraftRepository.previews(identifiers.map(Array.init), in: db).filter { !$0.value.isEmpty }
             let collapsed = try AccountPreferenceRecord.fetchOne(db, key: 1)?.pinnedCollapsed ?? false
             return (states, drafts, collapsed)
         }

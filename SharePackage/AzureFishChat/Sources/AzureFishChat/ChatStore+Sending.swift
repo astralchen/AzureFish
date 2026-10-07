@@ -8,7 +8,8 @@ extension ChatStore {
         try enqueueComposition((text.map { [.message($0)] } ?? []) + batches.map(ChatCompositionItem.upload), conversation: conversation)
     }
     /// 按编辑器顺序入队；全部成功后才消费草稿及附件。
-    public func enqueueComposition(_ items: [ChatCompositionItem], conversation: String) throws {
+    public func enqueueComposition(_ items: [ChatCompositionItem], conversation: String,
+                                   presentations: [String: StoredChatDraft] = [:], completingImport batch: UUID? = nil) throws {
         try check()
         guard !items.isEmpty else { throw ChatStoreError.unavailable }
         try db.write { db in
@@ -26,6 +27,13 @@ extension ChatStore {
             }
             try Self.recordListSend(conversation, at: now(), db: db)
             try DraftRepository.remove(conversation, in: db)
+            for (message, value) in presentations {
+                guard value.version == 1, value.conversationID == conversation else { throw ChatStoreError.scopeMismatch }
+                try Self.checkPresentation(message, db: db)
+                try PresentationRecord(messageID: message, conversationID: conversation, version: value.version, revision: String(value.revision)).upsert(db)
+                try PresentationGraphRepository.save(value, owner: message, in: db)
+            }
+            try Self.completeMediaImport(batch, db: db)
         }
     }
     /// 为消息登记会话内发送顺序；已有相同会话登记时不重复插入，跨会话身份冲突时抛错。
@@ -59,8 +67,8 @@ extension ChatStore {
         }
     }
     /// 按持久发送顺序恢复消息任务；上传占位本身不作为消息任务返回。
-    public func pending() throws -> [ChatPendingMessage] {
-        try check(); return try db.read { try SendRepository.pending(in: $0) }
+    public func pending(conversation: String? = nil) throws -> [ChatPendingMessage] {
+        try check(); return try db.read { try SendRepository.pending(conversation: conversation, in: $0) }
     }
     /// 只更新仍存在的发送任务状态及失败码；身份不一致时抛错，已被移除时忽略迟到结果。
     public func update(_ value: ChatPendingMessage) throws {
@@ -90,8 +98,8 @@ extension ChatStore {
         }
     }
     /// 读取尚未 removed 或 submitted 的上传批次及条目；结果未按创建时间排序。
-    public func transfers() throws -> [ChatUploadBatch] {
-        try check(); return try db.read { try SendRepository.batches(in: $0) }
+    public func transfers(conversation: String? = nil) throws -> [ChatUploadBatch] {
+        try check(); return try db.read { try SendRepository.batches(conversation: conversation, in: $0) }
     }
     /// 保存上传批次；取消终态优先于迟到的进度回调。
     public func saveTransfer(_ value: ChatUploadBatch) throws {

@@ -111,7 +111,7 @@ extension MediaMessageView {
 
         /// 绑定媒体项目及完整加载身份，并在异步图像返回时校验身份后显示。
         func configure(
-            _ item: MediaItem,
+            _ item: MediaThumbnailItem,
             index: Int,
             identity: BindingIdentity,
             badgeLeadingInset: CGFloat = 12

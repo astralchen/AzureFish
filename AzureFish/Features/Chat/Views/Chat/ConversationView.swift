@@ -14,6 +14,7 @@ import UIKit
 /// 图片、视频和音频操作均由 ViewController 路由到对应协调器；Conversation View
 /// 和 Cell 不直接创建页面级播放器。
 nonisolated enum MessageAction: Equatable, Sendable {
+    case openAttachment(messageID: Int, attachment: Attachment, index: Int)
     /// 请求重试指定身份的失败消息。
     case retryMessage(messageID: Int)
     /// 执行菜单打开时锁定的内容操作。
@@ -340,7 +341,7 @@ final class ConversationView: QuickLayoutView, UICollectionViewDelegate, UIGestu
             guard case .message(let message) = item.content else { return nil }; return message
         }).first(where: { $0.id == messageID }), case .attachment(let attachment) = message.content,
               attachment.id == attachmentID else { return nil }
-        if case .mediaGroup(let group) = attachment {
+        if let group = attachment.mediaPresentation {
             if synchronize { mediaStackStateStore.setIndex(index, for: messageID, itemCount: group.items.count) }
             guard let cell = collectionView.visibleCells.compactMap({ $0 as? MediaBubbleCell }).first(where: { $0.previewMessageID == messageID }) else { return nil }
             if synchronize {
@@ -544,7 +545,7 @@ final class ConversationView: QuickLayoutView, UICollectionViewDelegate, UIGestu
         timelineCount = state.timeline.count
         let mediaMessageIDs = Set(state.timeline.compactMap { item -> Int? in
             guard case .message(let message) = item.content,
-                  message.mediaGroup != nil else { return nil }
+                  message.mediaPresentation != nil else { return nil }
             return message.id
         })
         mediaStackStateStore.retainMessages(mediaMessageIDs)
@@ -571,6 +572,9 @@ final class ConversationView: QuickLayoutView, UICollectionViewDelegate, UIGestu
             updatePolicy: .serial
         )
 
+        let submittedOffset = collectionView.contentOffset.y
+        let submittedMaximum = max(-collectionView.adjustedContentInset.top,
+            collectionView.contentSize.height - collectionView.bounds.height + collectionView.adjustedContentInset.bottom)
         adapter.apply(
             transaction: transaction,
             completion: { [weak self] _ in
@@ -584,6 +588,11 @@ final class ConversationView: QuickLayoutView, UICollectionViewDelegate, UIGestu
                     self.isApplyingTimeline = false
                     self.debugLogScroll("render.end", detail: "reason=\(reason)")
                 }
+                // 提交期间 ListKit 不转发 didScroll；扣除内容缩短导致的系统补偿后，再判断是否向上阅读。
+                let currentMaximum = max(-self.collectionView.adjustedContentInset.top,
+                    self.collectionView.contentSize.height - self.collectionView.bounds.height + self.collectionView.adjustedContentInset.bottom)
+                let movedUp = submittedOffset - self.collectionView.contentOffset.y
+                    > max(0, submittedMaximum - currentMaximum) + 1
                 self.collectionView.layoutIfNeeded()
                 self.refreshMaterializedContentLayoutDirection()
                 if self.applyMessageFocus() { return }
@@ -594,6 +603,7 @@ final class ConversationView: QuickLayoutView, UICollectionViewDelegate, UIGestu
                     return
                 }
 
+                if movedUp { self.pendingExplicitScroll = false }
                 self.pendingHistoryAnchor = nil
                 let explicitScroll = self.pendingExplicitScroll
                 self.pendingExplicitScroll = false
@@ -616,9 +626,9 @@ final class ConversationView: QuickLayoutView, UICollectionViewDelegate, UIGestu
                 case .historyLoaded:
                     !preservesHistoryPosition
                 case .initial, .sentMessage:
-                    true
+                    !movedUp
                 case .receivedMessage, .localization, .audioTranscript, .messageStatus:
-                    wasNearBottom
+                    wasNearBottom && !movedUp
                 }
                 guard explicitScroll || shouldScroll else { return }
                 self.scrollToBottom(
@@ -699,12 +709,11 @@ final class ConversationView: QuickLayoutView, UICollectionViewDelegate, UIGestu
                                     cell.deliveryStatusView.retryRequested = { [weak self] in self?.actionRequested?(.retryMessage(messageID: $0)) }
                                     cell.playbackRequested = {
                                         [weak self] id, audio in
-                                        self?.actionRequested?(
-                                            .toggleAudioPlayback(
-                                                messageID: id,
-                                                attachment: audio
-                                            )
-                                        )
+                                        if let local = message.audio {
+                                            self?.actionRequested?(.toggleAudioPlayback(messageID: id, attachment: local))
+                                        } else {
+                                            self?.actionRequested?(.openAttachment(messageID: id, attachment: attachment, index: 0))
+                                        }
                                     }
                                     cell.configure(
                                         message,
@@ -725,7 +734,60 @@ final class ConversationView: QuickLayoutView, UICollectionViewDelegate, UIGestu
                                 })
                                 .refreshID(message)
                                 .refresh(when: .automatic, action: .reconfigure(layout: .invalidate))
-                            case .mediaGroup(let group):
+                            case .remote(let remote) where remote.kind == "audio":
+                                Row(
+                                    model: message,
+                                    cell: AudioBubbleCell.self
+                                ) { [weak self] cell, message, _ in
+                                    guard let self else { return }
+                                    cell.deliveryStatusView.retryRequested = { [weak self] in self?.actionRequested?(.retryMessage(messageID: $0)) }
+                                    cell.playbackRequested = {
+                                        [weak self] id, audio in
+                                        if let local = message.audio {
+                                            self?.actionRequested?(.toggleAudioPlayback(messageID: id, attachment: local))
+                                        } else {
+                                            self?.actionRequested?(.openAttachment(messageID: id, attachment: attachment, index: 0))
+                                        }
+                                    }
+                                    cell.configure(
+                                        message,
+                                        playback: playbackState,
+                                        playAccessibilityLabel: Localization.text(
+                                            "imessage.audio.play"
+                                        ),
+                                        pauseAccessibilityLabel: Localization.text(
+                                            "imessage.audio.pause"
+                                        )
+                                    )
+                                    configureMessageMenu(cell, message: message)
+                                }
+                                .contextMenuPreview(highlighting: { [weak self] _ in
+                                    self?.messageMenuCoordinator.preview(for: message.id)
+                                }, dismissal: { [weak self] _ in
+                                    self?.messageMenuCoordinator.preview(for: message.id, dismissing: true)
+                                })
+                                .refreshID(message)
+                                .refresh(when: .automatic, action: .reconfigure(layout: .invalidate))
+                            case .remote(let remote) where !remote.isMediaGroup:
+                                Row(model: message, cell: DocumentBubbleCell.self) { [weak self] cell, message, _ in
+                                    cell.deliveryStatusView.retryRequested = { [weak self] in self?.actionRequested?(.retryMessage(messageID: $0)) }
+                                    cell.open = { [weak self] in self?.actionRequested?(.openDocument(messageID: message.id, attachment: $0)) }
+                                    cell.saveRequested = { [weak self] in
+                                        self?.actionRequested?(.saveAttachment(messageID: message.id, attachment: attachment))
+                                    }
+                                    cell.configure(message, saveState: self?.saveState(for: message) ?? .available)
+                                    self?.configureMessageMenu(cell, message: message)
+                                }
+                                .contextMenuPreview(highlighting: { [weak self] _ in
+                                    self?.messageMenuCoordinator.preview(for: message.id)
+                                }, dismissal: { [weak self] _ in
+                                    self?.messageMenuCoordinator.preview(for: message.id, dismissing: true)
+                                })
+                                .refreshID(saveRefreshIdentity(message))
+                                .refresh(when: .automatic, action: .reconfigure(layout: .invalidate))
+                            case .mediaGroup, .remote:
+                                let group = attachment.mediaPresentation!
+
                                 Row(
                                     model: message,
                                     cell: MediaBubbleCell.self
@@ -741,17 +803,11 @@ final class ConversationView: QuickLayoutView, UICollectionViewDelegate, UIGestu
                                         )
                                     }
                                     cell.previewRequested = {
-                                        [weak self] messageID, attachment, index in
-                                        self?.actionRequested?(
-                                            .openMediaGroup(
-                                                messageID: messageID,
-                                                attachment: attachment,
-                                                index: index
-                                            )
-                                        )
+                                        [weak self] messageID, _, index in
+                                        self?.actionRequested?(.openAttachment(messageID: messageID, attachment: attachment, index: index))
                                     }
                                     cell.saveRequested = { [weak self] in
-                                        self?.actionRequested?(.saveAttachment(messageID: message.id, attachment: .mediaGroup(group)))
+                                        self?.actionRequested?(.saveAttachment(messageID: message.id, attachment: attachment))
                                     }
                                     cell.configure(
                                         message,

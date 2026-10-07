@@ -183,6 +183,7 @@ final class AccountService: Sendable {
               (allowExpired || session.accessExpiry > now), session.refreshExpiry > now, allowRevoked || !session.revoked else {
             throw APIError(.unauthorized, "UNAUTHENTICATED")
         }
+        IMCommitSignals.current?.insert([session.userID])
         return session
     }
 

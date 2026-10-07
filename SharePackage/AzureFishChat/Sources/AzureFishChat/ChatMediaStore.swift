@@ -30,8 +30,8 @@ public actor ChatMediaStore {
             mime: input.mime, bytes: input.bytes, sha256: input.sha256))
     }
     /// 分块导入临时源文件并校验完整摘要，返回本机资源身份及聊天元数据；底层失败原样抛出。
-    public func importFile(_ source: URL, filename: String, mime: String, role: String = "original") async throws -> ChatLocalMedia {
-        let value = try await storage.importFile(source, filename: filename, mime: mime, role: role)
+    public func importFile(_ source: URL, filename: String, mime: String, role: String = "original", id: UUID = UUID()) async throws -> ChatLocalMedia {
+        let value = try await storage.importFile(source, filename: filename, mime: mime, role: role, id: id)
         return .init(id: value.id, input: .init(role: value.input.role, filename: value.input.filename,
             mime: value.input.mime, bytes: value.input.bytes, sha256: value.input.sha256))
     }

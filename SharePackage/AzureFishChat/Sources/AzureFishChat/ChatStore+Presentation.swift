@@ -14,7 +14,7 @@ extension ChatStore {
         }
     }
     /// 保存类型化派生展示前重查消息终态；旧版本资源保留到消息失效时清理。
-    public func savePresentation(_ value: StoredChatDraft, message: String) throws {
+    public func savePresentation(_ value: StoredChatDraft, message: String, completingImport batch: UUID? = nil) throws {
         try check()
         guard value.version == 1 else { throw ChatStoreError.incompatibleSchema }
         try db.write { db in
@@ -24,6 +24,7 @@ extension ChatStore {
             }
             try PresentationRecord(messageID: message, conversationID: value.conversationID, version: value.version, revision: String(value.revision)).upsert(db)
             try PresentationGraphRepository.save(value, owner: message, in: db)
+            try Self.completeMediaImport(batch, db: db)
         }
     }
     /// 读取消息已保存的转写文字；没有转写记录时返回 nil。

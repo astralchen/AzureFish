@@ -26,6 +26,7 @@ final class ChatViewController: LocalizedQuickLayoutHostingController, MediaImag
 
     /// 异步文件分类任务及当前预览来源，拒绝过期展示请求。
     var attachmentPreviewTask: Task<Void, Never>?
+    var attachmentActionTasks: [UUID: Task<Void, Never>] = [:]
     #if DEBUG
     /// 页面退出时取消测试资源导入，迟到结果不得插入已清理的会话。
     private var resourceFixtureTask: Task<Void, Never>?
@@ -497,6 +498,7 @@ final class ChatViewController: LocalizedQuickLayoutHostingController, MediaImag
         resourceFixtureTask?.cancel()
         resourceFixtureTask = nil
         #endif
+        attachmentActionTasks.values.forEach { $0.cancel() }; attachmentActionTasks.removeAll()
         attachmentPreviewTask?.cancel()
         attachmentPreviewGeneration += 1
         let activePreview = attachmentPreviewController

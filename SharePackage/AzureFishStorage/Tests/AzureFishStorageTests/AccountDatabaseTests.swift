@@ -97,4 +97,20 @@ struct AccountDatabaseTests {
         #expect(try database.removeResourceIfUnreferenced(id) {})
         try database.close()
     }
+    @Test func leaseCleanupIsRepeatableAndDoesNotRecreateRemovedAccount() async throws {
+        let root = try folder()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = try EncryptedMediaStore(root: root, key: Data(repeating: 45, count: 32), environment: "cleanup", userID: UUID())
+        let lease = try await store.temporaryFile(filename: "fixture.bin")
+        try Data([1, 2, 3]).write(to: lease)
+        try await store.clearLeases()
+        #expect(!FileManager.default.fileExists(atPath: lease.path))
+        try FileManager.default.removeItem(at: root.appendingPathComponent("leases"))
+        try await store.clearLeases()
+        #expect(FileManager.default.fileExists(atPath: root.appendingPathComponent("leases").path))
+        try FileManager.default.removeItem(at: root)
+        try await store.clearLeases()
+        #expect(!FileManager.default.fileExists(atPath: root.path))
+    }
+
 }

@@ -183,7 +183,7 @@ extension MediaMessageView {
     }
 
     /// 有效提交收尾后给出一次触觉和辅助功能反馈；不再次发布索引。
-    private func announcePosition(in group: MediaGroupAttachment) {
+    private func announcePosition(in group: MediaGroupPresentation) {
         UISelectionFeedbackGenerator().selectionChanged()
         let kind = group.items[frontMediaIndex].kind.isVideo ? strings?.video : strings?.image
         UIAccessibility.post(

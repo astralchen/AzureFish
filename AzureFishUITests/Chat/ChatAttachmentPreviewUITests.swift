@@ -15,14 +15,9 @@ final class ChatAttachmentPreviewUITests: XCTestCase {
         app.launchArguments += ["-chat-ui-test-root"]
         app.launch()
         let route = app.cells["demo.imessage.title"]
-        if extra.contains("-UIPreferredContentSizeCategoryName") {
-            let search = app.searchFields.firstMatch
-            XCTAssertTrue(search.waitForExistence(timeout: 10))
-            search.tap()
-            search.typeText("iMessage\n")
-        } else {
-            for _ in 0..<8 where !route.exists { app.collectionViews.firstMatch.swipeUp() }
-        }
+        XCTAssertTrue(app.collectionViews.firstMatch.waitForExistence(timeout: 10))
+        // 专用回归入口直接展示聊天路由；大字体也通过同一稳定标识进入，不依赖首页搜索栏。
+        for _ in 0..<8 where !route.exists { app.collectionViews.firstMatch.swipeUp() }
         XCTAssertTrue(route.waitForExistence(timeout: 10))
         route.tap()
         XCTAssertTrue(app.textViews["imessage.composer.text"].waitForExistence(timeout: 10))

@@ -81,12 +81,18 @@ struct IMIntervalState: Codable, Sendable {
     var joined: Int64
     var left: Int64 = 0
 }
+/// 仅持久化在加密会话 payload 内；缺失或未知版本在同事务重建。
+struct IMUnreadProjection: Codable, Sendable {
+    var version: Int = 1
+    var count: Int64 = 0
+}
 struct IMMemberState: Codable, Sendable {
     var user: UUID
     var intervals: [IMIntervalState]
     var read: Int64 = 0
     var delivered: Int64 = 0
     var closedConversation: Data? = nil
+    var unread: IMUnreadProjection? = .init()
     var active: Bool { intervals.last?.left == 0 }
     func upperBound(_ latest: Int64) -> Int64 { active ? latest : (intervals.last?.left ?? 1) - 1 }
     func sees(_ seq: Int64) -> Bool { intervals.contains { seq >= $0.joined && ($0.left == 0 || seq < $0.left) } }

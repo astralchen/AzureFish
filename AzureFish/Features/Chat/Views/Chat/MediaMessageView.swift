@@ -55,7 +55,7 @@ final class MediaMessageView: QuickLayoutView, UIGestureRecognizerDelegate {
     /// 当前消息的接收或发出方向，用于确定气泡外观与语义对齐。
     var direction: MessageDirection = .incoming
     /// 当前显示的有序媒体组；未配置或重置后为 `nil`。
-    var group: MediaGroupAttachment?
+    var group: MediaGroupPresentation?
     /// 当前媒体内容的本地化文字集合。
     var strings: MediaStrings?
     /// 当前位于堆叠最前方的媒体项目索引。
@@ -76,7 +76,7 @@ final class MediaMessageView: QuickLayoutView, UIGestureRecognizerDelegate {
     /// 封面位置改变后调用的闭包，参数依次为消息身份与媒体索引。
     var frontIndexDidChange: ((Int, Int) -> Void)?
     /// 用户请求预览媒体时调用的闭包，参数为消息身份、媒体组与起始索引。
-    var previewRequested: ((Int, MediaGroupAttachment, Int) -> Void)?
+    var previewRequested: ((Int, MediaGroupPresentation, Int) -> Void)?
 
     /// 多张媒体才显示数量标题，并启用卡片堆叠布局。
     var hasMultipleItems: Bool { (group?.items.count ?? 0) > 1 }
@@ -194,10 +194,14 @@ final class MediaMessageView: QuickLayoutView, UIGestureRecognizerDelegate {
     }
 
     /// 绑定有序媒体组与封面位置，更新卡片数量、固有尺寸和辅助功能信息。
+    func configure(messageID: Int, direction: MessageDirection, group: MediaGroupAttachment,
+                   frontIndex: Int, strings: MediaStrings) {
+        configure(messageID: messageID, direction: direction, group: MediaGroupPresentation(group), frontIndex: frontIndex, strings: strings)
+    }
     func configure(
         messageID: Int,
         direction: MessageDirection,
-        group: MediaGroupAttachment,
+        group: MediaGroupPresentation,
         frontIndex: Int,
         strings: MediaStrings
     ) {

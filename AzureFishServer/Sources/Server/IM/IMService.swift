@@ -8,8 +8,12 @@ final class IMService: Sendable {
     let accounts: AccountService
     let epoch: String
     let media: MediaService?
+    let live: IMLiveCoordinator
     var crypto: Cryptography { accounts.crypto }
-    init(accounts: AccountService, epoch: String, media: MediaService? = nil) { self.accounts = accounts; self.epoch = epoch; self.media = media }
+    init(accounts: AccountService, epoch: String, media: MediaService? = nil, live: IMLiveCoordinator? = nil) {
+        self.accounts = accounts; self.epoch = epoch; self.media = media
+        self.live = live ?? IMLiveCoordinator(accounts: accounts, epoch: epoch)
+    }
 
     func register(on routes: any RoutesBuilder) {
         let im = routes.grouped("im")
@@ -31,6 +35,13 @@ final class IMService: Sendable {
         registerLive(on: im)
     }
 
+    /// 包装已自行组织事务的账号操作；仅成功返回后唤醒受影响在线账号。
+    func committing<T: Sendable>(_ body: () async throws -> T) async throws -> T {
+        let signals = IMCommitSignals()
+        let result = try await IMCommitSignals.$current.withValue(signals, operation: body)
+        await live.changed(signals.affected)
+        return result
+    }
     func read<M: Message & Sendable>(_ req: Request, _ body: @escaping @Sendable (SessionRecord, any Database) async throws -> M) async throws -> Response {
         let result = try await accounts.gate.run {
             try await req.db.transaction { db in
@@ -44,24 +55,28 @@ final class IMService: Sendable {
     func write<M: Message & Sendable>(_ req: Request, operation: String, bytes: Data, name: String,
                                       _ body: @escaping @Sendable (SessionRecord, any Database) async throws -> M) async throws -> Response {
         let id = try Validation.uuid(operation, field: "operation_id")
-        let result = try await accounts.gate.run {
-            try await req.db.transaction { db in
-                let session = try await self.accounts.authenticate(req, db: db)
-                try await self.accounts.limiter.check("im:" + session.userID.uuidString, limit: 120, now: self.accounts.clock())
-                let scope = "im:" + name + ":" + (try session.requireID()).uuidString
-                if let replay = try await self.accounts.replay(id, scope: scope, bytes: bytes, db: db) {
-                    return try await self.materialize(replay, name: name, user: session.userID, db: db)
+        let signals = IMCommitSignals()
+        let result = try await IMCommitSignals.$current.withValue(signals) {
+            try await accounts.gate.run {
+                try await req.db.transaction { db in
+                    let session = try await self.accounts.authenticate(req, db: db)
+                    try await self.accounts.limiter.check("im:" + session.userID.uuidString, limit: 120, now: self.accounts.clock())
+                    let scope = "im:" + name + ":" + (try session.requireID()).uuidString
+                    if let replay = try await self.accounts.replay(id, scope: scope, bytes: bytes, db: db) {
+                        return try await self.materialize(replay, name: name, user: session.userID, db: db)
+                    }
+                    var result = try await body(session, db).serializedData()
+                    if name == "send" || name == "revoke" {
+                        let message = try IMMessage(serializedBytes: result)
+                        var identity = IMMessage(); identity.conversationID = message.conversationID; identity.messageUuid = message.messageUuid
+                        result = try identity.serializedData()
+                    }
+                    try await self.accounts.record(id, scope: scope, bytes: bytes, result: result, session: session, db: db)
+                    return try await self.materialize(result, name: name, user: session.userID, db: db)
                 }
-                var result = try await body(session, db).serializedData()
-                if name == "send" || name == "revoke" {
-                    let message = try IMMessage(serializedBytes: result)
-                    var identity = IMMessage(); identity.conversationID = message.conversationID; identity.messageUuid = message.messageUuid
-                    result = try identity.serializedData()
-                }
-                try await self.accounts.record(id, scope: scope, bytes: bytes, result: result, session: session, db: db)
-                return try await self.materialize(result, name: name, user: session.userID, db: db)
             }
         }
+        await live.changed(signals.affected)
         return Response(status: .ok, headers: ["Content-Type": "application/protobuf"], body: .init(data: result))
     }
 
@@ -81,9 +96,10 @@ final class IMService: Sendable {
     func load(_ id: String, user: UUID, db: any Database, active: Bool = false) async throws -> (IMConversationRecord, IMConversationState) {
         let uuid = try Validation.uuid(id, field: "conversation_id")
         guard let row = try await IMConversationRecord.find(uuid, on: db) else { throw APIError(.notFound, "CONVERSATION_NOT_FOUND") }
-        let state: IMConversationState = try decrypt(row.payload, context: "conversation:" + uuid.uuidString)
+        var state: IMConversationState = try decrypt(row.payload, context: "conversation:" + uuid.uuidString)
         guard let member = state.members.first(where: { $0.user == user }) else { throw APIError(.notFound, "CONVERSATION_NOT_FOUND") }
         if active && (!member.active || state.dissolved) { throw APIError(.forbidden, "CONVERSATION_CLOSED") }
+        try await ensureUnread(row, state: &state, db: db)
         return (row, state)
     }
     func save(_ row: IMConversationRecord, _ state: IMConversationState, db: any Database) async throws {
@@ -119,6 +135,7 @@ final class IMService: Sendable {
         return max(messages, contacts)
     }
     func emit(_ conversation: UUID, users: [UUID], kind: String, message: UUID? = nil, db: any Database) async throws {
+        IMCommitSignals.current?.insert(users)
         for user in Set(users) {
             let event = IMEventRecord()
             event.id = UUID(); event.userID = user; event.position = try await tail(user, db: db) + 1
@@ -133,28 +150,28 @@ final class IMService: Sendable {
         result.ownerUserID = state.owner?.uuidString.lowercased() ?? ""
         result.serverRevision = state.revision; result.boundaryRevision = state.boundary
         result.latestSeq = member.upperBound(state.latest); result.closed = !member.active || state.dissolved
+        var state = state
+        try await ensureUnread(row, state: &state, db: db)
+        let memberIDs = state.members.map(\.user)
+        let profiles = try await UserRecord.query(on: db).filter(\.$id ~~ memberIDs).all()
+        let users = Dictionary(uniqueKeysWithValues: try profiles.map { (try $0.requireID(), $0) })
         for value in state.members {
             var m = IMMember(); m.userID = value.user.uuidString.lowercased(); m.active = value.active
             m.intervals = value.intervals.map { interval in
                 var i = IMMembershipInterval(); i.joinedSeq = interval.joined; i.leftSeq = interval.left; return i
             }
-            if let userRow = try await UserRecord.find(value.user, on: db) {
-                m.profile.userID = m.userID; m.profile.nickname = try accounts.payload(userRow).nickname
+            if let userRow = users[value.user] {
+                let payload = try accounts.payload(userRow)
+                m.profile.userID = m.userID; m.profile.nickname = payload.nickname
                 m.profile.profileVersion = userRow.version
-                m.profile.avatarID = try accounts.payload(userRow).avatarID ?? ""
-                m.profile.deleted = try accounts.payload(userRow).deleted == true
+                m.profile.avatarID = payload.avatarID ?? ""
+                m.profile.deleted = payload.deleted == true
             }
             result.members.append(m)
         }
         var read = IMReadState(); read.readThroughSeq = member.read; read.deliveredThroughSeq = member.delivered
         read.summaryAtSeq = result.latestSeq; read.serverRevision = state.summaryRevision
-        // 单实例开发版按受众检查，不能用最高序号减阅读水位替代未读计数。
-        let rows = try await IMMessageRecord.query(on: db).filter(\.$conversationID == row.requireID())
-            .filter(\.$sequence > member.read).filter(\.$sequence <= result.latestSeq).all()
-        for message in rows where member.sees(message.sequence) {
-            let value = try storedMessage(message)
-            if !value.revoked && value.senderUserID != user.uuidString.lowercased() { read.unreadCount += 1 }
-        }
+        read.unreadCount = state.members.first { $0.user == user }?.unread?.count ?? 0
         for interval in member.intervals.reversed() {
             let upper = min(result.latestSeq, interval.left == 0 ? result.latestSeq : interval.left - 1)
             if let latest = try await IMMessageRecord.query(on: db)

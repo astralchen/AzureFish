@@ -74,6 +74,7 @@ private extension Attachment {
         case .mediaGroup(let v): return .mediaGroup(try v.storageValue())
         case .file(let v): return .file(.init(id: v.id, resourceID: try resourceID(v.fileURL), displayName: v.displayName,
             typeIdentifier: v.typeIdentifier, byteCount: v.byteCount, thumbnailID: try v.thumbnailURL.map(resourceID)))
+        case .remote: throw ChatMediaStoreError.invalidResource
         case .link(let v): return .link(.init(id: v.id, url: v.url.absoluteString, title: v.title,
             imageID: try v.imageURL.map(resourceID), iconID: try v.iconURL.map(resourceID)))
         }

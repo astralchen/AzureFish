@@ -40,11 +40,11 @@ extension AccountService {
         }
         for action in ["change_password", "logout_all", "delete_account"] {
             routes.post("me", "security", PathComponent(stringLiteral: action)) { req async throws -> Response in
-                try await self.securityAction(req, action: action, im: im)
+                try await im.committing { try await self.securityAction(req, action: action, im: im) }
             }
         }
         routes.on(.POST, "me", "avatar", body: .collect(maxSize: "260kb")) { req async throws -> Response in
-            try await self.updateAvatar(req, im: im)
+            try await im.committing { try await self.updateAvatar(req, im: im) }
         }
         routes.get("users", ":user", "avatar", use: avatar)
     }
@@ -159,6 +159,7 @@ extension AccountService {
                 }
                 state.members[index].closedConversation = nil
                 state.members[index].read = 0; state.members[index].delivered = 0
+                state.members[index].unread = nil
                 state.revision += 1; state.boundary += 1
                 var closedViewers: [UUID] = []
                 // 已退群成员仍保留历史边界，但注销身份不能继续展示旧资料快照。

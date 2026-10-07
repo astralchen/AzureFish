@@ -911,3 +911,14 @@ Record：[ PresentationWaveRecord ](../../SharePackage/AzureFishChat/Sources/Azu
 SQLite 外键不能要求每个父行一定有正文子行，Repository 在事务内成组维护，并在读取缺失必要子记录时报告不可用。版本、稳定身份、上传取消、资源描述摘要冲突和历史范围有效性由业务事务校验。主键／外键不能替代版本合并规则。
 
 扩展应增加新的领域表、引用和有序迁移；无需更改既有消息身份。当前没有通用 meta、entity JSON、动态 content_table、泛型上传载荷，也没有未上线业务空表。搜索后台重建、容量索引调整等须根据真实测量另行迁移。
+
+## 追加迁移：chat-media-import-v1
+
+来源为 [ChatStore+MediaImports](../../SharePackage/AzureFishChat/Sources/AzureFishChat/ChatStore+MediaImports.swift)，沿用当前 SQLCipher 加密库。创建 `media_import_resource`，联合主键为 `(batch, resource_id)`，两个 TEXT 字段均非空。
+
+| 字段 | 含义 |
+| --- | --- |
+| batch | 当前导入批次 UUID；同批资源合并提交或补偿 |
+| resource_id | 开始写文件之前登记的资源 UUID；也可登记需要保留到提交结束的复用资源 |
+
+完成事务将资源加入 `media_cleanup_request` 后删除对应日志。最终是否删除仍检查全部业务引用；日志不是业务附件表，不存页面 URL 或明文正文。

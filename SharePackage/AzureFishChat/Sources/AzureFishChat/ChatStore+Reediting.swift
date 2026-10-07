@@ -76,8 +76,17 @@ extension ChatStore {
             .filter(ReeditRecord.Columns.state != "expired").fetchAll(db) { try expireRecovery(row.messageID, db: db) }
     }
     /// 清除已到截止时间的重新编辑正文及格式片段，保留过期状态和原操作身份。
-    public func expireReedits() throws {
-        try check(); try db.write { try Self.expireReedits(now: now(), db: $0) }
+    ///
+    /// - Returns: 实际清除副本的会话身份；没有过期副本时为空。
+    @discardableResult
+    public func expireReedits() throws -> Set<String> {
+        try check()
+        return try db.write { db in
+            let rows = try ReeditRecord.filter(ReeditRecord.Columns.expires <= now().timeIntervalSince1970)
+                .filter(ReeditRecord.Columns.state != "expired").fetchAll(db)
+            for row in rows { try Self.expireRecovery(row.messageID, db: db) }
+            return Set(rows.map(\.conversationID))
+        }
     }
     /// 先清理过期副本，再返回指定会话已确认、未隐藏且含文字的重新编辑入口；不保证排序。
     public func reeditAvailability(conversation: String) throws -> [ChatReeditAvailability] {

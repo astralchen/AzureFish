@@ -13,7 +13,7 @@ def digest(data):
 
 
 def committed_server_revision(server):
-    # 嵌入客户端仓库后，不能把父仓库 HEAD 误当成尚未提交的协议来源。
+    # 只记录权威协议输入最近的提交；客户端清单及无关提交不参与来源版本。
     paths = ['Protos/generation.json', 'Protos/azurefish.proto',
              'Sources/Server/Protocol/azurefish.pb.swift', 'Package.resolved']
     tracked = subprocess.run(
@@ -27,7 +27,7 @@ def committed_server_revision(server):
     if status.returncode != 0 or status.stdout.strip():
         return None
     revision = subprocess.run(
-        ['git', '-C', str(server), 'rev-parse', 'HEAD'], capture_output=True, text=True)
+        ['git', '-C', str(server), 'log', '-1', '--format=%H', '--', *paths], capture_output=True, text=True)
     return revision.stdout.strip() if revision.returncode == 0 else None
 
 

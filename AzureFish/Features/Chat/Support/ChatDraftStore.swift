@@ -242,6 +242,7 @@ private nonisolated struct ChatDraftFiles: Sendable {
             case .audio(let audio):
                 guard exists(audio.fileURL) else { missing = true; return nil }
                 return .audio(try audio.mappingDraftFiles(copy))
+            case .remote: throw CocoaError(.fileReadCorruptFile)
             case .mediaGroup(let group): return try restoreMedia(group).map(Attachment.mediaGroup)
             case .file(var file):
                 guard exists(file.fileURL) else { missing = true; return nil }

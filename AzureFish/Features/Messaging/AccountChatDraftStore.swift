@@ -10,16 +10,32 @@ final class AccountChatDraftStore: ChatDraftStoring {
     let media: ChatMediaStore
     var didSave: (() async -> Void)?
     private var tail: Task<Void, Never>?
+    private var cancellations: [UUID: () -> Void] = [:]
+    private var stopped = false
     var legacyLoaders: [URL: ([ChatUploadItem]) async throws -> [Attachment]] = [:]
     private var imported: [URL: (Date?, Int64, UUID)] = [:]
     init(store: ChatStore, media: ChatMediaStore) { self.store = store; self.media = media }
 
     /// 所有页面共用该顺序链，离开后立即重进也不会读到更早的保存结果。
     func enqueue<T: Sendable>(_ work: @escaping @MainActor () async throws -> T) -> Task<T, Error> {
-        let previous = tail
-        let task = Task { await previous?.value; return try await work() }
+        guard !stopped else { return Task<T, Error> { throw CancellationError() } }
+        let previous = tail, id = UUID()
+        let task = Task { [self] in
+            await previous?.value
+            defer { cancellations[id] = nil }
+            try Task.checkCancellation()
+            return try await work()
+        }
+        cancellations[id] = { task.cancel() }
         tail = Task { _ = await task.result }
         return task
+    }
+    /// 结束当前所有草稿操作并等待排空，之后禁止再读取或保存。
+    func stopAndWait() async {
+        stopped = true
+        cancellations.values.forEach { $0() }
+        await tail?.value
+        tail = nil
     }
     func load(conversationID: String, into directory: URL) -> Task<ChatDraftLoadResult, Error> {
         enqueue { [self] in
@@ -50,22 +66,36 @@ final class AccountChatDraftStore: ChatDraftStoring {
     }
     func save(_ snapshot: ChatDraftSnapshot) -> Task<Void, Error> {
         enqueue { [self] in
-            let value = try await encrypt(snapshot)
-            let text = snapshot.segments.map { segment -> String in
-                switch segment { case .text(let text): text; case .richText(let text): text.text; case .attachment: "" }
-            }.joined()
-            try await store.saveEditorDraft(value.storageValue(), text: text, conversation: snapshot.conversationID)
-            try? await store.cleanupMedia(using: media)
-            await didSave?()
+            let batch = try await store.beginMediaImport()
+            do {
+                let value = try await encrypt(snapshot, batch: batch)
+                let text = snapshot.segments.map { segment -> String in
+                    switch segment { case .text(let text): text; case .richText(let text): text.text; case .attachment: "" }
+                }.joined()
+                try await store.saveEditorDraft(value.storageValue(), text: text, conversation: snapshot.conversationID, completingImport: batch)
+                try? await store.cleanupMedia(using: media)
+                await didSave?()
+            } catch {
+                try? await store.cancelMediaImport(batch)
+                try? await store.cleanupMedia(using: media)
+                throw error
+            }
         }
     }
     func saveReedited(_ snapshot: ChatDraftSnapshot, message: String, original: String) -> Task<Void, Error> {
         enqueue { [self] in
-            let value = try await encrypt(snapshot)
-            try await store.saveEditorDraft(value.storageValue(), text: original, conversation: snapshot.conversationID,
-                reediting: message, expectedText: original)
-            try? await store.cleanupMedia(using: media)
-            await didSave?()
+            let batch = try await store.beginMediaImport()
+            do {
+                let value = try await encrypt(snapshot, batch: batch)
+                try await store.saveEditorDraft(value.storageValue(), text: original, conversation: snapshot.conversationID,
+                    reediting: message, expectedText: original, completingImport: batch)
+                try? await store.cleanupMedia(using: media)
+                await didSave?()
+            } catch {
+                try? await store.cancelMediaImport(batch)
+                try? await store.cleanupMedia(using: media)
+                throw error
+            }
         }
     }
     func remove(conversationID: String) -> Task<Void, Error> {
@@ -75,7 +105,7 @@ final class AccountChatDraftStore: ChatDraftStoring {
             await didSave?()
         }
     }
-    func encrypt(_ snapshot: ChatDraftSnapshot, reuseResources: Bool = true) async throws -> ChatDraftSnapshot {
+    func encrypt(_ snapshot: ChatDraftSnapshot, reuseResources: Bool = true, batch: UUID) async throws -> ChatDraftSnapshot {
         var replacements: [URL: URL] = [:]
         for url in Set(snapshot.localFileURLs) {
             let info = try url.resourceValues(forKeys: [.contentModificationDateKey, .fileSizeKey])
@@ -84,8 +114,9 @@ final class AccountChatDraftStore: ChatDraftStoring {
             if reuseResources, let old = imported[url], old.0 == info.contentModificationDate, old.1 == bytes,
                (try? await media.completed(old.2)) != nil {
                 id = old.2
+                try await store.retainImportedResource(id, batch: batch)
             } else {
-                let resource = try await media.importFile(url, filename: url.lastPathComponent, mime: "application/octet-stream")
+                let resource = try await store.importMedia(url, filename: url.lastPathComponent, mime: "application/octet-stream", using: media, batch: batch)
                 id = resource.id
                 if reuseResources { imported[url] = (info.contentModificationDate, bytes, id) }
             }

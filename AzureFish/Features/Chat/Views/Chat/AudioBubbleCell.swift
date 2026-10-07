@@ -22,7 +22,7 @@ final class AudioBubbleCell: QuickLayoutCollectionViewCell {
     var deliveryLabel: UILabel { deliveryStatusView.label }
 
     /// 用户请求切换播放时调用的闭包，参数为消息身份与音频附件。
-    var playbackRequested: ((Int, AudioAttachment) -> Void)?
+    var playbackRequested: ((Int, AudioPresentation) -> Void)?
 
     /// 当前绑定的消息展示模型；未配置或复用清理后为 `nil`。
     private var message: MessagePresentation?
@@ -100,7 +100,7 @@ final class AudioBubbleCell: QuickLayoutCollectionViewCell {
         playAccessibilityLabel: String,
         pauseAccessibilityLabel: String
     ) {
-        guard let attachment = message.audio else { return }
+        guard let attachment = message.audioPresentation else { return }
         self.message = message
         bubbleView.configure(
             attachment: attachment,
@@ -112,7 +112,7 @@ final class AudioBubbleCell: QuickLayoutCollectionViewCell {
         bubbleView.playbackRequested = { [weak self] in
             guard let self,
                   let message = self.message,
-                  let attachment = message.audio else { return }
+                  let attachment = message.audioPresentation else { return }
             self.playbackRequested?(message.id, attachment)
         }
         deliveryStatusView.configure(message)
@@ -132,7 +132,7 @@ final class AudioBubbleCell: QuickLayoutCollectionViewCell {
         playAccessibilityLabel: String,
         pauseAccessibilityLabel: String
     ) {
-        guard let message, let attachment = message.audio else { return }
+        guard let message, let attachment = message.audioPresentation else { return }
         bubbleView.configure(
             attachment: attachment,
             direction: message.direction,

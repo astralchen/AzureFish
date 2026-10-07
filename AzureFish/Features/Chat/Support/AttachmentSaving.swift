@@ -37,6 +37,7 @@ nonisolated enum AttachmentSavePolicy {
         switch attachment {
         case .mediaGroup(let group): !group.items.isEmpty
         case .file, .audio: true
+        case .remote(let remote): !remote.items.isEmpty || !remote.filename.isEmpty
         case .link: false
         }
     }
@@ -48,6 +49,7 @@ nonisolated enum AttachmentSavePolicy {
         guard message.direction == .incoming,
               case .attachment(let attachment) = message.content else { return false }
         if case .audio = attachment { return false }
+        if case .remote(let remote) = attachment, remote.kind == "audio" { return false }
         return supports(attachment)
     }
 }
@@ -195,6 +197,7 @@ final class SystemAttachmentSaver: AttachmentSaving {
         case .file, .audio:
             let session = DocumentExportSession()
             return try await session.export(snapshot.files, from: presenter)
+        case .remote: throw AttachmentSaveError.invalidAttachment
         case .link:
             throw AttachmentSaveError.invalidAttachment
         }
@@ -327,7 +330,11 @@ final class AttachmentSaveCoordinator {
         Task { [weak self] in
             guard self?.active == true else { return }
             do {
-                let result = try await saver.save(attachment, from: presenter)
+                let resolved: Attachment
+                if #available(iOS 26.0, *), let controller = presenter as? ChatViewController, let session = controller.session {
+                    resolved = try await session.resolveAttachment(attachment, messageID: message.id)
+                } else { resolved = attachment }
+                let result = try await saver.save(resolved, from: presenter)
                 guard let self, active else { return }
                 switch result {
                 case .cancelled: update(key, .available)

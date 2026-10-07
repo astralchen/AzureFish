@@ -30,7 +30,8 @@ extension ComposerView {
 
     /// 混合选区统一添加格式；只有全部文字已设置该格式时才取消，附件保持原样。
     func toggleFormatting(_ style: MessageText.Style, range: NSRange) {
-        guard !self.textView.isInputSuspended, textView.markedTextRange == nil,
+        guard !isShowingRecordingUnavailableHint, !isSubmissionPending,
+              !self.textView.isInputSuspended, textView.markedTextRange == nil,
               range.location != NSNotFound, range.length > 0,
               NSMaxRange(range) <= textView.textStorage.length else { return }
         let styles = selectedStyles(in: range)

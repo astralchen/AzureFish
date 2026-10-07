@@ -14,16 +14,20 @@
 
 ## 代码与资源
 
-- `AzureFish/Features/Chat/`：完整聊天业务模块，共 122 个 Swift 文件。包括富文本、语音录制与识别、照片/视频/GIF/Live Photo、文件/链接、附件浏览、菜单操作、历史分页、草稿存储及媒体调度。
+- `AzureFish/Features/Chat/`：完整聊天业务模块。包括富文本、语音录制与识别、照片/视频/GIF/Live Photo、文件/链接、附件浏览、菜单操作、历史分页、草稿存储及媒体调度。
 - `AzureFish/Support/Concurrency/`：聊天使用的异步任务工具。
 - `AzureFish/App/`：本地化支持、旧系统适配入口和 Debug UI 测试导航入口。
-- `AzureFish/Resources/AttachmentPreviewResources.bundle`：完整样例及测试媒体资源，约 108 MB。
+- `AzureFish/Resources/AttachmentPreviewResources.bundle`：完整样例及测试媒体资源，约 108 MB；只进入 Debug 和 MediaBenchmark 构建，正式 Release 排除。
 - `AzureFish/Localizable.xcstrings`：聊天、通用操作和语言菜单所需的简中／繁中／英文／阿拉伯语文案。
 - `AzureFish/InfoPlist.xcstrings`：应用名称及麦克风、相册、语音识别权限文案。
 - `Scripts/media-benchmark/`：媒体性能测试工具；`ChatRegression` 和 `MediaBenchmark` 共享 scheme 已同步迁移。
 - `AzureFishTests/Chat/`、`AzureFishUITests/Chat/`：迁移的单元、组件和 UI 测试；测试模块已改为 `AzureFish`。
 
 `Features/Chat/README.md` 随原模块完整保留，其中历史验证记录描述的是来源工程，不能作为 AzureFish 的测试结论。新工程验证记录见 `CHAT_MIGRATION.md`。
+
+## 本次修复
+
+2026-10-06 分阶段修复了历史窗口、任务生命周期、导入补偿、媒体按需加载与服务端共享查询。代码实施、本次验证和待验收范围分列于[修复记录](Documentation/Engineering/2026-10-06-staged-repairs.md)。下文早期设计说明不作为本次实现或验收证据。
 
 ## 数据库开发设计
 
@@ -45,12 +49,12 @@
 
 ## 远程框架依赖
 
-共享 UI／本地化框架通过远程 Swift Package 引用，工程中不复制这些框架源码，也不依赖相邻工程目录。当前 App 的三个远程直接依赖使用 `main` 分支，以下是迁移验证时锁文件记录的具体提交。
+共享 UI／本地化框架通过远程 Swift Package 引用，工程中不复制这些框架源码，也不依赖相邻工程目录。当前 App 的三个远程直接依赖固定到现有锁文件 revision，项目声明与锁定结果保持一致，不进行功能升级。
 
 | 框架 | 本次解析 revision |
 | --- | --- |
 | QuickLayoutKit | `54d74d9032e85f310f122493256f41bc04790a41` |
-| ListKit | `005aaa36780a1db0850cee7dbccc826886935905` |
+| ListKit | `7c453c49660574a0028bb78825af8b09cf459aa3` |
 | AppLocalization | `a15471628569cb10404f599466b11f1036f9c86b` |
 
 QuickLayout 和 swift-syntax 由 UI 依赖图间接引入；本地协议／账号包另行引入精确版本 SwiftProtobuf 1.38.1。`AzureFish.xcworkspace/xcshareddata/swiftpm/Package.resolved` 保存解析结果。
@@ -78,6 +82,6 @@ xcodebuild -workspace AzureFish.xcworkspace -scheme AzureFish \
 
 现有聊天 UI 回归通过 Debug 参数 `-chat-ui-test-root` 进入一个单会话测试列表，以保留返回、再次进入及草稿恢复的测试场景；正常启动直接进入聊天页。语言偏好键已改为 `azurefish.locale.identifier`。`AzureFishLaunchTests` 验证正常启动路径。
 
-真实录音、语音识别及相册写入测试沿用原有显式开关；默认运行不代表这些权限和真机媒体流程已验收。
+照片／音频混合录音 UI 流程需显式设置 `CHAT_AUDIO_RECORDING=1`，Photos 写入测试需 `CHAT_MENU_PHOTOS_WRITE=1`。真实录音、语音识别及真机媒体流程仅在专项环境验收；默认回归不代表这些权限和硬件路径已通过。
 
 本轮动画测试与日志参数修复详见 [2026-09-24 验证记录](Documentation/ChatMigration/animation-diagnostics-2026-09-24.md)。

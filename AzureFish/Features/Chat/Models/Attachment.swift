@@ -57,6 +57,8 @@ nonisolated enum Attachment: Codable, Equatable, Hashable, Sendable {
     case file(FileAttachment)
     /// 保留原始 URL 与可选缓存元数据的网页链接。
     case link(LinkAttachment)
+    /// 服务端附件的元数据和可选预览；进入系统操作前必须解析原件。
+    case remote(RemoteAttachment)
 
     /// 附件的稳定标识符。
     var id: UUID {
@@ -67,6 +69,7 @@ nonisolated enum Attachment: Codable, Equatable, Hashable, Sendable {
             attachment.id
         case .file(let attachment): attachment.id
         case .link(let attachment): attachment.id
+        case .remote(let attachment): attachment.id
         }
     }
 
@@ -82,6 +85,7 @@ nonisolated enum Attachment: Codable, Equatable, Hashable, Sendable {
             attachment.localFileURLs
         case .file(let file): [file.fileURL] + [file.thumbnailURL].compactMap { $0 }
         case .link(let link): [link.imageURL, link.iconURL].compactMap { $0 }
+        case .remote(let remote): remote.items.compactMap(\.thumbnailFileURL)
         }
     }
 
@@ -117,6 +121,7 @@ extension Attachment {
             return .file(.init(id: UUID(), fileURL: file.fileURL, displayName: file.displayName,
                                typeIdentifier: file.typeIdentifier, byteCount: file.byteCount,
                                thumbnailURL: file.thumbnailURL))
+        case .remote: return self
         case .link(var link):
             link.id = UUID()
             return .link(link)

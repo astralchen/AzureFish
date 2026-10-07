@@ -9,8 +9,6 @@ public final class URLSessionHTTPTransport: HTTPTransport, Sendable {
     private let session: URLSession
     /// 发送前检查请求地址的安全策略。
     private let security: TransportSecurityPolicy
-    /// 逐任务拒绝重定向的代理，防止凭据和正文被转发。
-    private let redirectDelegate = RedirectDelegate()
 
     /// 创建采用指定地址策略的临时 session，尚不发起请求。
     ///
@@ -34,7 +32,7 @@ public final class URLSessionHTTPTransport: HTTPTransport, Sendable {
     /// 使所属 session 失效并请求取消尚未结束的任务。
     deinit { session.invalidateAndCancel() }
 
-    /// 发送一次请求，逐字节接收响应，并在完成后返回内存中的正文。
+    /// 发送一次请求，按系统提供的数据块接收响应，并在完成后返回内存中的正文。
     ///
     /// 若已知响应长度或实际收到的数据超过上限，则终止任务并抛错。拒绝重定向时保留原始
     /// 3xx 响应，是否接受该状态由上层判断。取消会请求取消底层任务；接收流程结束时同样清理任务。
@@ -46,26 +44,16 @@ public final class URLSessionHTTPTransport: HTTPTransport, Sendable {
         try Task.checkCancellation()
         try security.validate(request.url)
         do {
-            let (bytes, response) = try await session.bytes(for: request.urlRequest(), delegate: redirectDelegate)
-            defer { bytes.task.cancel() }
-            return try await withTaskCancellationHandler {
-                guard let response = response as? HTTPURLResponse else { throw NetworkError.nonHTTPResponse }
-                guard response.expectedContentLength <= request.maximumResponseBytes else {
-                    throw NetworkError.responseTooLarge(limit: request.maximumResponseBytes)
+            let delegate = ResponseReceiver(limit: request.maximumResponseBytes)
+            let task = session.dataTask(with: try request.urlRequest())
+            task.delegate = delegate
+            let response = try await withTaskCancellationHandler {
+                try await withCheckedThrowingContinuation { continuation in
+                    delegate.begin(task, continuation: continuation)
                 }
-                var data = Data()
-                for try await byte in bytes {
-                    try Task.checkCancellation()
-                    guard data.count < request.maximumResponseBytes else {
-                        throw NetworkError.responseTooLarge(limit: request.maximumResponseBytes)
-                    }
-                    data.append(byte)
-                }
-                try Task.checkCancellation()
-                var headers: [String: String] = [:]
-                for (key, value) in response.allHeaderFields { headers[String(describing: key)] = String(describing: value) }
-                return HTTPResponse(statusCode: response.statusCode, headers: headers, body: data)
-            } onCancel: { bytes.task.cancel() }
+            } onCancel: { delegate.cancel() }
+            try Task.checkCancellation()
+            return response
         } catch {
             if error is CancellationError || Task.isCancelled || (error as? URLError)?.code == .cancelled { throw CancellationError() }
             if let error = error as? NetworkError { throw error }
@@ -75,11 +63,84 @@ public final class URLSessionHTTPTransport: HTTPTransport, Sendable {
     }
 }
 
-private final class RedirectDelegate: NSObject, URLSessionTaskDelegate, Sendable {
-    /// 由 URLSession 在即将重定向时调用；以 nil 恢复 completionHandler，拒绝此次重定向。
+/// 回调及取消共同访问的接收状态由 lock 保护；每个请求持有独立实例。
+private final class ResponseReceiver: NSObject, URLSessionDataDelegate, @unchecked Sendable {
+    private let lock = NSLock()
+    private let limit: Int
+    private var task: URLSessionDataTask?
+    private var continuation: CheckedContinuation<HTTPResponse, Error>?
+    private var response: HTTPURLResponse?
+    private var data = Data()
+    private var finished = false
+    private var cancelled = false
+    init(limit: Int) { self.limit = limit }
+
+    func begin(_ task: URLSessionDataTask, continuation: CheckedContinuation<HTTPResponse, Error>) {
+        lock.lock()
+        if cancelled {
+            finished = true
+            lock.unlock()
+            task.cancel()
+            continuation.resume(throwing: CancellationError())
+        } else {
+            self.task = task; self.continuation = continuation
+            task.resume()
+            lock.unlock()
+        }
+    }
+    func cancel() {
+        lock.lock(); cancelled = true; lock.unlock()
+        finish(.failure(CancellationError()), cancelling: true)
+    }
+    private func finish(_ result: Result<HTTPResponse, Error>, cancelling: Bool = false) {
+        lock.lock()
+        guard !finished, let continuation else { lock.unlock(); return }
+        finished = true
+        let task = task
+        self.task = nil; self.continuation = nil
+        data = Data(); response = nil
+        lock.unlock()
+        if cancelling { task?.cancel() }
+        continuation.resume(with: result)
+    }
+    func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive response: URLResponse,
+                    completionHandler: @escaping @Sendable (URLSession.ResponseDisposition) -> Void) {
+        guard let response = response as? HTTPURLResponse else {
+            completionHandler(.cancel); finish(.failure(NetworkError.nonHTTPResponse)); return
+        }
+        guard response.expectedContentLength <= Int64(limit) else {
+            completionHandler(.cancel); finish(.failure(NetworkError.responseTooLarge(limit: limit))); return
+        }
+        lock.lock()
+        self.response = finished ? nil : response
+        let allow = !finished
+        lock.unlock()
+        completionHandler(allow ? .allow : .cancel)
+    }
+    func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive bytes: Data) {
+        lock.lock()
+        guard !finished else { lock.unlock(); return }
+        guard bytes.count <= limit - data.count else {
+            lock.unlock()
+            finish(.failure(NetworkError.responseTooLarge(limit: limit)), cancelling: true)
+            return
+        }
+        data.append(bytes)
+        lock.unlock()
+    }
+    func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
+        lock.lock()
+        let response = response, body = data
+        lock.unlock()
+        if let error { finish(.failure(error)) }
+        else if let response {
+            var headers: [String: String] = [:]
+            for (key, value) in response.allHeaderFields { headers[String(describing: key)] = String(describing: value) }
+            finish(.success(HTTPResponse(statusCode: response.statusCode, headers: headers, body: body)))
+        } else { finish(.failure(NetworkError.nonHTTPResponse)) }
+    }
     func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse,
                     newRequest request: URLRequest, completionHandler: @escaping @Sendable (URLRequest?) -> Void) {
-        // 不把 Authorization 或含密码的正文转发给重定向地址，包括同域的 307／308。
         completionHandler(nil)
     }
 }

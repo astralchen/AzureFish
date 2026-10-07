@@ -45,10 +45,24 @@ extension ChatViewController {
         let hadFocus = composerView.textView.isFirstResponder
         let selection = composerView.textView.selectedRange
         let document = NSAttributedString(attributedString: composerView.textView.attributedText)
-        let work = Task.detached(priority: .userInitiated) { AttachmentPreviewItem.prepare(request.attachment) }
         attachmentPreviewTask = Task { [weak self] in
+            guard let self else { return }
+            let attachment: Attachment
+            do {
+                if case .message(let id) = request.source, let session {
+                    attachment = try await session.resolveAttachment(request.attachment, messageID: id)
+                } else { attachment = request.attachment }
+                try Task.checkCancellation()
+            } catch is CancellationError { return }
+            catch { if !hasCleanedUpChat { presentAttachmentSaveFailure(error) }; return }
+            guard generation == attachmentPreviewGeneration, !hasCleanedUpChat else { return }
+            if case .audio(let audio) = attachment, case .message(let id) = request.source {
+                audioController.toggleMessagePlayback(messageID: id, attachment: audio)
+                return
+            }
+            let work = Task.detached(priority: .userInitiated) { AttachmentPreviewItem.prepare(attachment) }
             var items = await withTaskCancellationHandler(operation: { await work.value }, onCancel: { work.cancel() })
-            guard !Task.isCancelled, let self, generation == attachmentPreviewGeneration, !hasCleanedUpChat, !items.isEmpty else { return }
+            guard !Task.isCancelled, generation == attachmentPreviewGeneration, !hasCleanedUpChat, !items.isEmpty else { return }
             switch request.source {
             case .documentDraft(let id): guard documentController.drafts[id]?.status == .ready else { return }
             case .photoDraft(let id): guard photoController.draft?.groupID == id else { return }

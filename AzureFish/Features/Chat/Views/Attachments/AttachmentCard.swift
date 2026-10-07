@@ -261,6 +261,12 @@ final class AttachmentCard: QuickLayoutView, UIGestureRecognizerDelegate {
                 titleLabel.text = Localization.text("imessage.media.image")
                 icon.image = UIImage(systemName: "photo")
             }
+        case .remote(let remote):
+            titleLabel.text = remote.kind == "audio" ? Localization.text("imessage.audio.attachment.recording") : remote.filename
+            detailLabel.text = remote.kind == "audio" ? AudioBubbleView.durationText(remote.duration)
+                : ByteCountFormatter.string(fromByteCount: remote.byteCount, countStyle: .file)
+            icon.image = UIImage(systemName: remote.kind == "audio" ? "waveform" : "doc.text")
+            accessibilityIdentifier = "imessage.attachment.\(remote.kind).card"
         case .audio(let audio):
             titleLabel.text = Localization.text("imessage.audio.attachment.recording")
             detailLabel.text = AudioBubbleView.durationText(audio.duration)

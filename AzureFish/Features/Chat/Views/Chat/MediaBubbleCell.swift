@@ -33,7 +33,7 @@ final class MediaBubbleCell: QuickLayoutCollectionViewCell {
     /// 媒体封面变化时向时间线转发消息身份和索引的闭包。
     var frontIndexDidChange: ((Int, Int) -> Void)?
     /// 向页面请求媒体全屏预览的闭包，携带消息、媒体组和起始索引。
-    var previewRequested: ((Int, MediaGroupAttachment, Int) -> Void)?
+    var previewRequested: ((Int, MediaGroupPresentation, Int) -> Void)?
 
     /// 需要随单元格同步更新布局方向的内容视图。
     override var quickLayoutDirectionViews: [UIView] {
@@ -96,9 +96,13 @@ final class MediaBubbleCell: QuickLayoutCollectionViewCell {
     }
 
     /// 配置媒体消息的内容、封面位置、本地化文字与附件保存状态。
+    func configure(_ message: MessagePresentation, group: MediaGroupAttachment, frontIndex: Int,
+                   strings: MediaStrings, saveState: AttachmentSaveState = .available) {
+        configure(message, group: MediaGroupPresentation(group), frontIndex: frontIndex, strings: strings, saveState: saveState)
+    }
     func configure(
         _ message: MessagePresentation,
-        group: MediaGroupAttachment,
+        group: MediaGroupPresentation,
         frontIndex: Int,
         strings: MediaStrings,
         saveState: AttachmentSaveState = .available

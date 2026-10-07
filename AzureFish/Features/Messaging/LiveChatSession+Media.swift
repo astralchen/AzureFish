@@ -11,6 +11,7 @@ extension LiveChatSession {
     func scheduleMedia() {
         guard !stopped, let controller, let drafts = runtime.originalDraftStore else { return }
         let visibleKeys = Set(controller.conversationView.visibleMessageIDs.compactMap { sourceIDs[$0] })
+        for (key, task) in mediaTasks where !visibleKeys.contains(key) { task.cancel() }
         let keys = messages.reversed().filter { !$0.revoked && $0.isKnownContent && !$0.assets.isEmpty }.map(\.id)
             + uploads.map { $0.messageID.uuidString.lowercased() }
             + pending.filter { $0.outgoing.kind != "text" }.map { $0.outgoing.id.uuidString.lowercased() }
@@ -27,13 +28,13 @@ extension LiveChatSession {
                     defer { if !installed { files.removeAll() } }
                     var restored = false
                     var attachment: Attachment?
-                    if let stored = try await drafts.store.presentation(message: key) {
+                    if !messages.contains(where: { $0.id == key && !$0.assets.isEmpty }), let stored = try await drafts.store.presentation(message: key) {
                         let saved = try ChatDraftSnapshot(storage: stored)
                         attachment = try await drafts.materialize(saved, into: files.directoryURL).snapshot?.documents.first
                         restored = attachment != nil
                     }
                     if attachment == nil, let message = messages.first(where: { $0.id == key && !$0.revoked }) {
-                        attachment = try await resolve(message, files: files)
+                        attachment = try await resolvePreview(message, files: files)
                     }
                     if attachment == nil, let batch = uploads.first(where: { $0.messageID.uuidString.lowercased() == key }) {
                         attachment = try await resolve(batch, files: files)
@@ -41,7 +42,8 @@ extension LiveChatSession {
                     guard let attachment else { throw ChatMediaStoreError.unavailable }
                     try Task.checkCancellation()
                     guard !stopped, !messages.contains(where: { $0.id == key && $0.revoked }) else { return }
-                    if !restored { try await cache(attachment, key: key, drafts: drafts) }
+                    if !restored, case .remote = attachment {}
+                    else if !restored { try await cache(attachment, key: key, drafts: drafts) }
                     try Task.checkCancellation()
                     guard !stopped, !messages.contains(where: { $0.id == key && $0.revoked }) else { return }
                     files.registerCommitted(attachment)
@@ -56,6 +58,63 @@ extension LiveChatSession {
             }
         }
     }
+    func remoteMetadata(_ message: ChatMessage, thumbnails: [String: URL] = [:]) -> RemoteAttachment {
+        let source = message.assets.flatMap(\.resources).first { $0.role == "original" }
+        return RemoteAttachment(id: RemoteAttachment.identity(message.id), messageID: message.id, kind: message.kind,
+            items: message.assets.map { asset in
+                MediaThumbnailItem(id: RemoteAttachment.identity(asset.id), thumbnailFileURL: thumbnails[asset.id],
+                    pixelSize: CGSize(width: Int(asset.width), height: Int(asset.height)),
+                    kind: asset.kind == "video" ? .video(duration: Double(asset.duration) / 1000) : .image,
+                    isAnimatedImage: asset.animated, isLivePhoto: asset.kind == "live_photo")
+            }, filename: source?.filename ?? "", byteCount: source?.bytes ?? 0,
+            duration: Double(message.assets.first?.duration ?? 0) / 1000, waveform: message.assets.first?.waveform ?? [])
+    }
+    /// 列表只下载服务器已生成的缩略图或封面；没有预览的文件和音频保留元数据。
+    func resolvePreview(_ message: ChatMessage, files: any AttachmentStoring) async throws -> Attachment {
+        guard let transfers = runtime.transfers, let media = runtime.media else { throw ChatMediaStoreError.unavailable }
+        var thumbnails: [String: URL] = [:]
+        for asset in message.assets where message.kind == "media_group" {
+            guard let resource = asset.resources.first(where: { ["thumbnail", "cover"].contains($0.role) }) else { continue }
+            let id = try await transfers.download(resource, message: message.id)
+            let lease = try await media.lease(id)
+            do {
+                thumbnails[asset.id] = try files.importFile(at: lease, prefix: "received-preview", pathExtension: lease.pathExtension)
+                try await media.release(lease)
+            } catch { try? await media.release(lease); throw error }
+        }
+        var remote = remoteMetadata(message, thumbnails: thumbnails)
+        remote.transcript = try await runtime.engine?.store.transcript(message: message.id)
+        return .remote(remote)
+    }
+    /// 进入预览、播放或导出前重新检查消息终态及授权，解析真正的本地原件。
+    func resolveAttachment(_ attachment: Attachment, messageID: Int) async throws -> Attachment {
+        guard let key = sourceIDs[messageID], let engine = runtime.engine, !stopped else { throw CancellationError() }
+        guard let message = try await engine.store.visibleMessage(key, conversation: conversation.id) else {
+            // 尚未发送的本机附件由页面持有。
+            guard !messages.contains(where: { $0.id == key }) else { throw ChatMediaStoreError.unavailable }
+            return attachment
+        }
+        guard !message.revoked, message.isKnownContent else { throw ChatMediaStoreError.unavailable }
+        if message.assets.isEmpty { return attachment }
+        var requested = message
+        if case .remote(let remote) = attachment, remote.isMediaGroup {
+            let ids = Set(remote.items.map { $0.id.uuidString.lowercased() })
+            requested.assets = message.assets.filter { ids.contains($0.id.lowercased()) }
+            guard !requested.assets.isEmpty else { throw ChatMediaStoreError.invalidResource }
+        }
+        let files = PageAttachmentStore(parentDirectory: controller?.attachmentStore.directoryURL)
+        var installed = false
+        defer { if !installed { files.removeAll() } }
+        let resolved = try await resolve(requested, files: files)
+        try Task.checkCancellation()
+        guard !stopped, runtime.engine === engine,
+              let current = try await engine.store.visibleMessage(key, conversation: conversation.id), !current.revoked else { throw CancellationError() }
+        files.registerCommitted(resolved)
+        mediaStores[key + ":original:" + UUID().uuidString] = files
+        installed = true
+        if message.kind == "audio" || message.kind == "file" { contents[key] = .attachment(resolved); refresh() }
+        return resolved
+    }
     func resolve(_ message: ChatMessage, files: any AttachmentStoring) async throws -> Attachment {
         guard let transfers = runtime.transfers, let media = runtime.media else { throw ChatMediaStoreError.unavailable }
         let id = UUID(uuidString: message.id) ?? UUID()
@@ -65,7 +124,7 @@ extension LiveChatSession {
         var items: [MediaItem] = []
         for asset in message.assets {
             var urls: [String: URL] = [:]
-            for resource in asset.resources where ["original", "paired_video"].contains(resource.role) {
+            for resource in asset.resources where ["original", "paired_video", "thumbnail", "cover"].contains(resource.role) {
                 let resourceID = try await transfers.download(resource, message: message.id)
                 let lease = try await media.lease(resourceID)
                 do {
@@ -85,12 +144,17 @@ extension LiveChatSession {
                 return .audio(.init(id: id, fileURL: original, duration: Double(asset.duration) / 1000,
                     waveform: asset.waveform, transcript: transcript))
             }
-            let thumbnail = files.makeFileURL(prefix: "received-thumbnail", pathExtension: "jpg")
-            let metadata = try await MediaImportProcessor.makeMetadata(originalURL: original, thumbnailURL: thumbnail, isVideo: asset.kind == "video")
+            let thumbnail: URL
+            if let preview = urls["thumbnail"] ?? urls["cover"] { thumbnail = preview }
+            else {
+                thumbnail = files.makeFileURL(prefix: "received-thumbnail", pathExtension: "jpg")
+                _ = try await MediaImportProcessor.makeMetadata(originalURL: original, thumbnailURL: thumbnail, isVideo: asset.kind == "video")
+            }
             if asset.kind == "live_photo", urls["paired_video"] == nil { throw ChatMediaStoreError.invalidResource }
             items.append(.init(id: UUID(uuidString: asset.id) ?? UUID(), assetIdentifier: nil, originalFileURL: original,
-                thumbnailFileURL: thumbnail, pixelSize: metadata.pixelSize, kind: metadata.kind,
-                isAnimatedImage: metadata.isAnimatedImage, livePhotoVideoURL: urls["paired_video"]))
+                thumbnailFileURL: thumbnail, pixelSize: CGSize(width: Int(asset.width), height: Int(asset.height)),
+                kind: asset.kind == "video" ? .video(duration: Double(asset.duration) / 1000) : .image,
+                isAnimatedImage: asset.animated, livePhotoVideoURL: urls["paired_video"]))
         }
         guard !items.isEmpty else { throw ChatMediaStoreError.invalidResource }
         return .mediaGroup(.init(id: id, items: items))
@@ -140,7 +204,9 @@ extension LiveChatSession {
     }
     func evict(_ key: String) {
         mediaTasks.removeValue(forKey: key)?.cancel()
-        mediaStores.removeValue(forKey: key)?.removeAll()
+        for storedKey in mediaStores.keys.filter({ $0 == key || $0.hasPrefix(key + ":original:") }) {
+            mediaStores.removeValue(forKey: storedKey)?.removeAll()
+        }
         if case .attachment(let attachment) = contents.removeValue(forKey: key) {
             if let id = identities[key] {
                 controller?.audioTranscription.cancel(messageID: id)

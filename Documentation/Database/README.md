@@ -21,3 +21,5 @@ AzureFishStorage 提供每环境、每账号的 SQLCipher 数据库和 AES-GCM �
 2026-09-30：借鉴 Nirvana 的类型化 Record、分类型消息内容和专用状态更新；不复制物理表名关联、媒体独占模型、`.replace` 父记录写入或普通 SQLite 初始化。Nirvana 仅作只读源码参考，本次没有修改或运行其测试。
 
 未来业务增加自身领域表、Repository、资源引用查询和有序迁移。收藏、红包、动态、群回执成员明细及百万消息性能尚未实施或验证，不预建空表，也不把其他业务塞入聊天 `meta`。
+
+2026-10-06：在现有基线后追加 `chat-media-import-v1` 导入日志迁移；不替换基线或重建已有库。导入事务与共享资源补偿见[生命周期](lifecycle-and-migration.md#媒体导入补偿)，本次验证见[修复记录](../Engineering/2026-10-06-staged-repairs.md)。

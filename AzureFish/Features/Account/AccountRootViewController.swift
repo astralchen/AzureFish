@@ -29,8 +29,9 @@ final class AccountRootViewController: LocalizedViewController {
     }
     func setSceneActive(_ active: Bool) { session.setActive(active, scene: sceneIdentity) }
     deinit {
-        let session = session, observer = sessionObserver, identity = sceneIdentity
+        let session = session, observer = sessionObserver, identity = sceneIdentity, runtime = chatRuntime
         Task { @MainActor in
+            runtime?.stop()
             if let observer { session.removeObserver(observer) }
             session.setActive(false, scene: identity)
         }

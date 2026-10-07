@@ -7,7 +7,7 @@ Swift 6.3 的协议 library，最低 iOS 15／macOS 12。协议类型由官方 `
 - `Sources/AzureFishProtocol/azurefish.proto`：从 `AzureFishServer/Protos/azurefish.proto` 同步的契约副本，包含中文消息和字段注释。修改权威服务端协议后再同步，不在客户端独立修改。
 - `Sources/AzureFishProtocol/swift-protobuf-config.json`：生成输入和 `Public` 可见性配置。
 - `Sources/AzureFishProtocol/AzureFishProtocol.swift`：仅含注释的 SwiftPM target 识别占位文件，没有协议或业务实现；删除会导致 target 被识别为空。
-- `generation.json`：协议内容 hash、SwiftProtobuf 版本／revision 和来源提交记录；来源尚未提交或有修改时 revision 为 null。
+- `generation.json`：协议内容 hash、SwiftProtobuf 版本／revision 和来源提交记录；来源尚未提交或有修改时 revision 为 null。来源版本取协议清单、proto、服务端生成 Swift 与 Package.resolved 最近的相关提交，兼容独立仓库和嵌入目录；无关提交不会改变此版本。
 
 SwiftProtobuf 精确锁定 1.38.1。该版本的插件依赖自带的 `protoc` 和 `protoc-gen-swift` 工具，由 SwiftPM／Xcode 构建，不要求手工安装系统 protoc；首次构建需要下载依赖并编译工具。请勿配置机器专用的 `protocPath` 或 `PROTOC_PATH` 覆盖默认工具。
 

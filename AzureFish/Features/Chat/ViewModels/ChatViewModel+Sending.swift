@@ -103,6 +103,7 @@ extension ChatViewModel {
     /// - Returns: 附件文件和类型专属元数据均有效时为 `true`。
     private func validates(_ attachment: Attachment) -> Bool {
         switch attachment {
+        case .remote: false
         case .file(let file):
             file.fileURL.isFileURL && !file.displayName.isEmpty
                 && FileManager.default.isReadableFile(atPath: file.fileURL.path)

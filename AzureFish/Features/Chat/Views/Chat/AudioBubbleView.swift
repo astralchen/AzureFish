@@ -61,7 +61,7 @@ final class AudioBubbleView: QuickLayoutView {
     var playbackRequested: (() -> Void)?
 
     /// 当前气泡显示的音频附件；未配置时为 `nil`。
-    private var attachment: AudioAttachment?
+    private var attachment: AudioPresentation?
     /// 当前附件是否包含转写文本。
     private var hasTranscript: Bool {
         attachment?.transcript != nil
@@ -150,8 +150,13 @@ final class AudioBubbleView: QuickLayoutView {
     ///   - playback: 页面级播放状态。
     ///   - playAccessibilityLabel: 本地化的“播放”操作。
     ///   - pauseAccessibilityLabel: 本地化的“暂停”操作。
+    func configure(attachment: AudioAttachment, direction: MessageDirection, playback: PlaybackState,
+                   playAccessibilityLabel: String, pauseAccessibilityLabel: String) {
+        configure(attachment: AudioPresentation(attachment), direction: direction, playback: playback,
+                  playAccessibilityLabel: playAccessibilityLabel, pauseAccessibilityLabel: pauseAccessibilityLabel)
+    }
     func configure(
-        attachment: AudioAttachment,
+        attachment: AudioPresentation,
         direction: MessageDirection,
         playback: PlaybackState,
         playAccessibilityLabel: String,

@@ -49,3 +49,17 @@ nonisolated struct AudioAttachment: Codable, Equatable, Hashable, Sendable {
         self.transcript = text?.isEmpty == false ? text : nil
     }
 }
+
+/// 音频气泡的展示元数据，不包含原件路径。
+nonisolated struct AudioPresentation: Equatable, Sendable {
+    let id: UUID
+    let duration: TimeInterval
+    let waveform: [Float]
+    let transcript: String?
+    init(_ audio: AudioAttachment) {
+        id = audio.id; duration = audio.duration; waveform = audio.waveform; transcript = audio.transcript
+    }
+    init(_ remote: RemoteAttachment) {
+        id = remote.id; duration = remote.duration; waveform = remote.waveform; transcript = remote.transcript
+    }
+}

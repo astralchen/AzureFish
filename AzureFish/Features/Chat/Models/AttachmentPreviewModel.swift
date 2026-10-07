@@ -54,7 +54,7 @@ nonisolated struct AttachmentPreviewItem: Sendable {
         case .file(let file):
             return [Self(id: file.id, url: file.fileURL, thumbnailURL: file.thumbnailURL,
                          title: file.displayName, kind: fileKind(url: file.fileURL, typeIdentifier: file.typeIdentifier))]
-        case .audio, .link:
+        case .audio, .link, .remote:
             return []
         }
     }

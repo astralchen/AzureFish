@@ -8,6 +8,24 @@ extension ChatViewController {
         guard !hasCleanedUpChat, let message = conversationView.message(for: target),
               MessageMenuPolicy.items(for: message, target: target, saveState: menuSaveCoordinator.state(for: target))
                 .contains(where: { $0.operation == operation && $0.isEnabled }) else { return }
+        if [.copy, .save, .share].contains(operation), let session,
+           let attachment = target.attachment(in: message) {
+            let id = UUID()
+            attachmentActionTasks[id] = Task { [weak self] in
+                defer { self?.attachmentActionTasks[id] = nil }
+                do {
+                    let resolved = try await session.resolveAttachment(attachment, messageID: target.messageID)
+                    guard let self, !hasCleanedUpChat, conversationView.message(for: target) != nil else { return }
+                    var local = MessagePresentation(id: message.id, direction: message.direction, attachment: resolved,
+                        deliveryText: message.deliveryText, deliveryState: message.deliveryState)
+                    local.canRevoke = message.canRevoke; local.canCancel = message.canCancel
+                    local.canRetryMedia = message.canRetryMedia
+                    performMenuOperation(operation, target: target, message: local)
+                } catch is CancellationError {} catch { self?.presentAttachmentSaveFailure(error) }
+            }
+        } else { performMenuOperation(operation, target: target, message: message) }
+    }
+    private func performMenuOperation(_ operation: MessageMenuOperation, target: MessageMenuTarget, message: MessagePresentation) {
         switch operation {
         case .copy:
             Task { [weak self] in
@@ -47,7 +65,7 @@ extension ChatViewController {
             return
         }
         let index: Int
-        if case .mediaGroup(let group) = attachment {
+        if let group = attachment.mediaPresentation {
             guard let selected = group.items.firstIndex(where: { $0.id == target.mediaItemID }) else { return }
             index = selected
         } else { index = 0 }

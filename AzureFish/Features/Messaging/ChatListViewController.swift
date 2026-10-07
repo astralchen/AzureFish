@@ -264,12 +264,12 @@ final class ConversationListViewController: LiveChatListController {
     private var savingPinnedToggle = false
     override var body: Layout {
         VStack(spacing: 0) {
-            if runtime.session.readOnly { connectionLabel.resizable(axis: .horizontal).padding(16) }
+            if runtime.session.phase == .signedIn && runtime.session.readOnly { connectionLabel.resizable(axis: .horizontal).padding(16) }
             if showsPinnedToggle {
                 pinnedToggle.resizable(axis: .horizontal).frame(minHeight: 44).padding(.horizontal, 16)
             }
             list.resizable().frame(maxWidth: .infinity, maxHeight: .infinity)
-        }.safeAreaPadding(.top, 0)
+        }.ignoresSafeArea(.container)
     }
     override var localizedTitleKey: String? { "account.design.chat" }
     override var showsSeparators: Bool { false }

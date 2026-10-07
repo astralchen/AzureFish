@@ -117,8 +117,10 @@ public func configure(_ app: Application, configuration: ServerConfiguration) as
     service.registerSecurity(on: v1, im: baseIM)
     try await service.recoverDeletions(im: baseIM, db: app.db)
     v1.patch("me") { req async throws -> Response in
-        try await service.update(req) { user, db in
-            try await baseIM.publicProfileChanged(user, db: db)
+        try await baseIM.committing {
+            try await service.update(req) { user, db in
+                try await baseIM.publicProfileChanged(user, db: db)
+            }
         }
     }
     let directory = URL(fileURLWithPath: configuration.directory)
@@ -129,6 +131,6 @@ public func configure(_ app: Application, configuration: ServerConfiguration) as
     try await media.recover(app.db)
     app.storage[MediaServiceKey.self] = media
     app.lifecycle.use(MediaLifecycle(service: media))
-    IMService(accounts: service, epoch: epoch, media: media).register(on: v1)
+    IMService(accounts: service, epoch: epoch, media: media, live: baseIM.live).register(on: v1)
     media.register(on: v1)
 }

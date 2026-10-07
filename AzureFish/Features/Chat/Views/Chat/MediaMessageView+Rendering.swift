@@ -174,7 +174,8 @@ extension MediaMessageView {
     }
 
     /// 根据媒体数量和原始宽高比返回单图气泡或堆叠视图的尺寸。
-    static func size(for group: MediaGroupAttachment) -> CGSize {
+    static func size(for group: MediaGroupAttachment) -> CGSize { size(for: MediaGroupPresentation(group)) }
+    static func size(for group: MediaGroupPresentation) -> CGSize {
         guard group.items.count == 1, let item = group.items.first else {
             let backCardCount = min(
                 group.items.count,

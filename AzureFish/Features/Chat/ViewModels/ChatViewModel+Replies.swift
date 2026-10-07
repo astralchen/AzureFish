@@ -20,7 +20,7 @@ extension ChatViewModel {
                 locale: SpeechConfiguration.speechLocale(for: localeProvider()),
                 fallback: reply
             )
-        case .mediaGroup, .file, .link:
+        case .mediaGroup, .file, .link, .remote:
             return .attachment(reply)
         }
     }

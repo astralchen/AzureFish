@@ -18,11 +18,13 @@ enum SendRepository {
         for (position, asset) in value.assets.enumerated() { try SendAssetRecord(messageID: id, position: position, assetID: asset).insert(db) }
     }
     /// 按持久发送位置恢复消息任务及其格式、资产列表；身份 UUID 无效时抛错。
-    static func pending(in db: Database) throws -> [ChatPendingMessage] {
-        let rows = Dictionary(uniqueKeysWithValues: try SendTaskRecord.fetchAll(db).map { ($0.id, $0) })
-        let runs = Dictionary(grouping: try SendRunRecord.order(SendRunRecord.Columns.position).fetchAll(db), by: \.messageID)
-        let assets = Dictionary(grouping: try SendAssetRecord.order(SendAssetRecord.Columns.position).fetchAll(db), by: \.messageID)
-        return try SendOrderRecord.order(SendOrderRecord.Columns.position).fetchAll(db).compactMap { order in
+    static func pending(conversation: String? = nil, in db: Database) throws -> [ChatPendingMessage] {
+        let values = try conversation.map { try SendTaskRecord.filter(SendTaskRecord.Columns.conversationID == $0).fetchAll(db) } ?? SendTaskRecord.fetchAll(db)
+        let rows = Dictionary(uniqueKeysWithValues: values.map { ($0.id, $0) })
+        let ids = values.map(\.id)
+        let runs = Dictionary(grouping: try SendRunRecord.filter(ids.contains(SendRunRecord.Columns.messageID)).order(SendRunRecord.Columns.position).fetchAll(db), by: \.messageID)
+        let assets = Dictionary(grouping: try SendAssetRecord.filter(ids.contains(SendAssetRecord.Columns.messageID)).order(SendAssetRecord.Columns.position).fetchAll(db), by: \.messageID)
+        return try SendOrderRecord.filter(ids.contains(SendOrderRecord.Columns.messageID)).order(SendOrderRecord.Columns.position).fetchAll(db).compactMap { order in
             guard let row = rows[order.messageID] else { return nil }
             let outgoing = ChatOutgoing(conversationID: row.conversationID, deviceID: try storageUUID(row.deviceID), kind: row.kind,
                 text: row.text, assets: (assets[row.id] ?? []).map(\.assetID), id: try storageUUID(row.id),
@@ -77,8 +79,10 @@ enum SendRepository {
         try saveItems(batch.items, owner: batch.id.uuidString, in: db)
     }
     /// 恢复非 removed、非 submitted 的上传批次及子项；结果没有排序保证。
-    static func batches(in db: Database) throws -> [ChatUploadBatch] {
-        let rows = try UploadBatchRecord.filter(!["removed", "submitted"].contains(UploadBatchRecord.Columns.state)).fetchAll(db)
+    static func batches(conversation: String? = nil, in db: Database) throws -> [ChatUploadBatch] {
+        var query = UploadBatchRecord.filter(!["removed", "submitted"].contains(UploadBatchRecord.Columns.state))
+        if let conversation { query = query.filter(UploadBatchRecord.Columns.conversationID == conversation) }
+        let rows = try query.fetchAll(db)
         let items = try items(rows.map(\.id), in: db)
         return try rows.map { .init(id: try storageUUID($0.id), messageID: try storageUUID($0.messageID),
             clientID: try storageUUID($0.clientID), operationID: try storageUUID($0.operationID), deviceID: try storageUUID($0.deviceID),

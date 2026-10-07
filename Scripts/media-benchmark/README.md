@@ -14,11 +14,11 @@
 ## 构建与运行
 
 使用现有签名配置对真机构建 MediaBenchmark scheme，Release `-O` 与 whole-module optimization 保持不变。
-传入 `SWIFT_ACTIVE_COMPILATION_CONDITIONS='$(inherited) MEDIA_BENCHMARK DEBUG'`。
+使用 `MediaBenchmark` configuration，已内置 `MEDIA_BENCHMARK DEBUG` 编译条件及固定素材。
 `DEBUG` 仅供已有 Demo 测试夹具编译；A/B 必须使用同一个已签名应用与测试运行器。
 使用 `-onlyUsePackageVersionsFromResolvedFile` 固定依赖，不能在测量中构建其他版本。
 
-1. `xcodebuild -workspace AzureFish.xcworkspace -scheme MediaBenchmark ... -configuration Release ... build-for-testing`（从仓库根目录执行）
+1. `xcodebuild -workspace AzureFish.xcworkspace -scheme MediaBenchmark ... -configuration MediaBenchmark ... build-for-testing`（从仓库根目录执行）
 2. `python3 Scripts/media-benchmark/configure-run.py <生成的.xctestrun> <输出.xctestrun> --pairs 20`
 3. `xcodebuild test-without-building -xctestrun <输出> -destination 'platform=iOS,id=<UDID>' -parallel-testing-enabled NO -only-testing:AzureFishUITests/ChatMediaConcurrencyPerformanceTests -resultBundlePath <结果.xcresult>`
 
@@ -61,9 +61,10 @@ python3 Scripts/media-benchmark/summarize.py --log <测试日志> --metrics <指
 卡顿输入每行包含 `scenario`、`pair`、`limit`、`ratioMsPerSecond`、`newMediaStallOver100ms` 和指向原始 trace 的 `evidence`。
 缺少配对或归因复核时，脚本返回 `incomplete_keep_2`；不能用空数组冒充零卡顿。
 
-单元测试用 Demo scheme，UI 回归用 ChatRegression scheme。共享 DerivedData 时，后一个 scheme 的构建可能移除
+单元测试用 AzureFish scheme，UI 回归用 ChatRegression scheme。共享 DerivedData 时，后一个 scheme 的构建可能移除
 前一个 scheme 的测试插件，因此应按“构建该 scheme → 运行其测试”的顺序执行，再切换 scheme。
-`configure-run.py --limit 1/2` 同时传递期望值，`benchmarkLaunchConfigurationReachesPageLoader` 验证参数确实进入页面调度器。
+`configure-run.py --limit 1/2` 同时传递期望值；专用 MediaBenchmark scheme 默认运行 UI 基准测试。
+`benchmarkLaunchConfigurationReachesPageLoader` 是另一个带 `MEDIA_BENCHMARK` 条件的单元测试，仅在对应测试目标也启用该条件及应用 testability 时可运行，不将普通 Debug 测试视作该入口的验证。
 
 ## 日常使用的小样本对照
 

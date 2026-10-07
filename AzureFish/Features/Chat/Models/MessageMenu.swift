@@ -12,7 +12,7 @@ nonisolated struct MessageMenuTarget: Hashable, Sendable {
         case .text, .richText: return attachmentID == nil && mediaItemID == nil
         case .attachment(let attachment):
             guard attachment.id == attachmentID else { return false }
-            if case .mediaGroup(let group) = attachment {
+            if let group = attachment.mediaPresentation {
                 return group.items.contains { $0.id == mediaItemID }
             }
             return mediaItemID == nil
@@ -25,6 +25,10 @@ nonisolated struct MessageMenuTarget: Hashable, Sendable {
         if case .mediaGroup(let group) = attachment,
            let item = group.items.first(where: { $0.id == mediaItemID }) {
             return .mediaGroup(.init(id: group.id, items: [item]))
+        }
+        if case .remote(var remote) = attachment, remote.isMediaGroup {
+            remote.items = remote.items.filter { $0.id == mediaItemID }
+            return .remote(remote)
         }
         return attachment
     }
@@ -65,6 +69,12 @@ nonisolated enum MessageMenuPolicy {
                     append(.copy, "copyTranscript", "doc.on.doc")
                 }
                 append(.save, "saveFiles", "square.and.arrow.down")
+            case .remote(let remote):
+                let item = remote.items.first
+                if remote.isMediaGroup, item?.kind.isVideo == false {
+                    append(.copy, item?.isLivePhoto == true ? "copyStill" : "copy", "doc.on.doc")
+                }
+                append(.save, remote.isMediaGroup ? (item?.kind.isVideo == true ? "saveVideo" : item?.isLivePhoto == true ? "saveLivePhoto" : item?.isAnimatedImage == true ? "saveGIF" : "savePhoto") : "saveFiles", "square.and.arrow.down")
             case .file:
                 append(.save, "saveFiles", "square.and.arrow.down")
             case .mediaGroup(let group):

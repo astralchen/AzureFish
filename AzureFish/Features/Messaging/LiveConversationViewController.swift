@@ -83,7 +83,7 @@ final class LiveMessageCell: QuickLayoutCollectionViewCell {
     }
     func configureMedia(_ message: ChatMessage?, runtime: ChatRuntime) {
         let asset = message?.assets.first
-        let resource = asset?.resources.first { $0.role == "preview" }
+        let resource = asset?.resources.first { ["thumbnail", "cover", "preview"].contains($0.role) }
         let identity = message.map { $0.id + ":" + (resource?.id ?? "") }
         guard identity != mediaIdentity else { return }
         mediaTask?.cancel(); mediaIdentity = identity
@@ -130,14 +130,18 @@ final class LiveConversationViewController: LocalizedQuickLayoutHostingControlle
     private let historyButton = UIButton(type: .system), latestButton = UIButton(type: .system),
         notice = UILabel()
     private var rows: [LiveMessageRow] = []
+    private var renderedRowIDs: [String] = []
     private var messages: [ChatMessage] = []
     private var pending: [ChatPendingMessage] = []
     private var uploads: [ChatUploadBatch] = []
     private var actuallyRead = Set<Int64>()
     private var revokeIDs: [String: UUID] = [:]
     private var page: ChatHistory?
+    private var timeline = ChatTimelineWindow()
     private var observer: UUID?
     private var loading = false, initial = true, restoringDraft = false
+    private var historyTask: Task<Void, Never>?
+    private var historyID: UUID?
     private var draftTask: Task<Void, Never>?
     private var reeditExpiryTask: Task<Void, Never>?
     private var reediting = false
@@ -208,7 +212,12 @@ final class LiveConversationViewController: LocalizedQuickLayoutHostingControlle
         latestButton.isHidden = true
         installConversationDetails()
         mediaCoordinator = LiveMediaCoordinator(controller: self)
-        observer = runtime.observe { [weak self] in self?.reloadMessages() }
+        observer = runtime.observeConversation({ [weak self] in self?.conversation.id },
+            status: { [weak self] in
+                guard let self else { return }
+                sendButton.isEnabled = runtime.canSend(conversation) && !submitting
+                title = runtime.title(conversation)
+            }, changed: { [weak self] scope in self?.reloadMessages(readMessages: scope.contains(.messages) || scope.contains(.conversations)) })
         NotificationCenter.default.addObserver(
             self, selector: #selector(refreshAfterForeground),
             name: UIApplication.didBecomeActiveNotification, object: nil)
@@ -264,6 +273,17 @@ final class LiveConversationViewController: LocalizedQuickLayoutHostingControlle
         setNeedsQuickLayout()
         if !restoringDraft, !submitting { scheduleDraftSave() }
     }
+    /// 导入资源与旧系统草稿引用同事务提交，随后才更新页面附件。
+    func acceptImported(_ item: ChatUploadItem, batch: UUID, engine: ChatEngine) async throws {
+        draftTask?.cancel()
+        await draftTask?.value
+        try Task.checkCancellation()
+        guard runtime.engine === engine else { throw CancellationError() }
+        let updated = attachments + [item]
+        try await engine.store.saveDraftAttachments(updated, conversation: conversation.id, completingImport: batch)
+        guard runtime.engine === engine else { throw CancellationError() }
+        attachments = updated
+    }
     private func scheduleDraftSave() {
         let previous = draftTask
         previous?.cancel()
@@ -300,8 +320,9 @@ final class LiveConversationViewController: LocalizedQuickLayoutHostingControlle
     private var contextAnchor: String?
     private var focusMessage: String?
     private var focusLatestAfterLoad = false
-    private func reloadMessages() {
-        guard isViewLoaded, let engine = runtime.engine else { return }
+    private func reloadMessages(readMessages: Bool = true) {
+        guard isViewLoaded else { return }
+        guard let engine = runtime.engine else { mediaCoordinator?.stop(); return }
         reloadGeneration += 1
         let generation = reloadGeneration
         Task { [weak self] in
@@ -312,6 +333,7 @@ final class LiveConversationViewController: LocalizedQuickLayoutHostingControlle
                 if bound.id != conversation.id {
                     conversation = bound
                     page = nil
+                    timeline = ChatTimelineWindow()
                     installConversationDetails()
                     loadHistory()
                 }
@@ -323,8 +345,13 @@ final class LiveConversationViewController: LocalizedQuickLayoutHostingControlle
                     || list.contentSize.height - list.contentOffset.y - list.bounds.height < 80
                 let previousLast = messages.last?.id
                 let loaded: [ChatMessage]
-                if let contextAnchor { loaded = try await engine.store.messageContext(contextAnchor, conversation: conversation.id) }
-                else { loaded = try await engine.store.messages(conversation.id, limit: 200) }
+                if !readMessages { loaded = messages }
+                else if let contextAnchor { loaded = try await engine.store.messageContext(contextAnchor, conversation: conversation.id) }
+                else {
+                    loaded = try await timeline.messages(in: engine.store, conversation: conversation.id)
+                    try Task.checkCancellation()
+                    timeline.include(loaded)
+                }
                 let availability = try await engine.store.reeditAvailability(
                     conversation: conversation.id)
                 guard runtime.engine === engine, generation == reloadGeneration else { return }
@@ -333,12 +360,8 @@ final class LiveConversationViewController: LocalizedQuickLayoutHostingControlle
                     return confirmedRevocations[message.id] ?? message
                 }
                 scheduleReeditExpiry(availability.map(\.expiresAt).min())
-                uploads = try await engine.store.transfers().filter {
-                    $0.conversation == conversation.id
-                }.sorted { $0.createdAt < $1.createdAt }
-                pending = try await engine.store.pending().filter {
-                    $0.outgoing.conversationID == conversation.id
-                }
+                uploads = try await engine.store.transfers(conversation: conversation.id).sorted { $0.createdAt < $1.createdAt }
+                pending = try await engine.store.pending(conversation: conversation.id)
                 rows =
                     messages.map { message in
                         let outgoing = message.senderID == runtime.userID
@@ -396,7 +419,7 @@ final class LiveConversationViewController: LocalizedQuickLayoutHostingControlle
                             + (batch.state == "uploading" ? " · \(percent)%" : ""), outgoing: true,
                         sequence: 0)
                 }
-                render()
+                render(preserveReadingPosition: !wasAtEnd)
                 guard runtime.engine === engine, generation == reloadGeneration else { return }
                 let allowed = runtime.canSend(conversation) && !reediting && !submitting
                 editor.isEditable = runtime.canCompose(conversation) && !reediting && !submitting
@@ -423,9 +446,20 @@ final class LiveConversationViewController: LocalizedQuickLayoutHostingControlle
             } catch { showFailure() }
         }
     }
-    private func render() {
+    private func render(preserveReadingPosition: Bool = true) {
         let values = rows
-        adapter.apply(transaction: .disabled, completion: { [weak self] _ in
+        let surviving = Set(values.map(\.id))
+        let anchor = list.indexPathsForVisibleItems.sorted().compactMap { path -> String? in
+            guard renderedRowIDs.indices.contains(path.item) else { return nil }
+            let id = renderedRowIDs[path.item]
+            return surviving.contains(id) ? id : nil
+        }.first
+        var transaction = ListTransaction.disabled
+        if preserveReadingPosition, focusMessage == nil, !focusLatestAfterLoad, let anchor {
+            transaction = transaction.scrollBehavior(.preserveVisiblePosition(of: .init(anchor, in: "timeline")))
+        }
+        renderedRowIDs = values.map(\.id)
+        adapter.apply(transaction: transaction, completion: { [weak self] _ in
             guard let self else { return }
             if focusLatestAfterLoad, contextAnchor == nil {
                 focusLatestAfterLoad = false
@@ -497,17 +531,22 @@ final class LiveConversationViewController: LocalizedQuickLayoutHostingControlle
         guard ChatStore.localDirectPeer(conversation.id) == nil else { historyButton.isHidden = true; return }
         guard !loading, let engine = runtime.engine else { return }
         loading = true
-        Task { [weak self] in
+        let id = UUID(), conversationID = conversation.id
+        historyID = id
+        historyTask = Task { [weak self] in
             guard let self else { return }
-            defer { loading = false }
+            defer { if historyID == id { loading = false; historyTask = nil; historyID = nil } }
             do {
                 let result = try await engine.history(
-                    conversation.id, before: page?.before ?? 0, upper: page?.upper ?? 0,
+                    conversation.id, before: timeline.historyBefore(pageCursor: page?.before), upper: page?.upper ?? 0,
                     boundary: page?.boundary ?? 0)
+                try Task.checkCancellation()
+                guard runtime.engine === engine, conversation.id == conversationID, historyID == id else { return }
                 page = result
+                timeline.include(result.messages)
                 historyButton.isHidden = !result.hasMore
                 reloadMessages()
-            } catch { showFailure() }
+            } catch { if !Task.isCancelled, runtime.engine === engine { showFailure() } }
         }
     }
     private var submitting = false
@@ -863,6 +902,7 @@ final class LiveConversationViewController: LocalizedQuickLayoutHostingControlle
         if presentedViewController == nil { present(alert, animated: true) }
     }
     deinit {
+        historyTask?.cancel()
         draftTask?.cancel()
         reeditExpiryTask?.cancel()
         if let observer {

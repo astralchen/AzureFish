@@ -98,7 +98,7 @@ final class ChatRuntime {
     var incomingMessages: (([ChatMessage]) -> Void)?
     private var incomingTask: Task<Void, Never>?
     private var foreground = false
-    private var observers: [UUID: () -> Void] = [:]
+    private var observers: [UUID: (ChatEngineUpdate?) -> Void] = [:]
     private var task: Task<Void, Never>?
     private var generation = UUID()
     var api: IMAPI? { session.readOnly ? nil : session.sessionManager.map(IMAPI.init) }
@@ -124,30 +124,46 @@ final class ChatRuntime {
     #endif
     /// 注入已打开的账号资源，供隔离集成验证使用；不启动后台同步或创建替代密钥。
     init(session: SessionCoordinator, engine: ChatEngine, media: ChatMediaStore,
-         conversations: [ChatConversation], pageLeaseRoot: URL, contacts: [ChatContact] = []) {
+         conversations: [ChatConversation], pageLeaseRoot: URL, contacts: [ChatContact] = [], transfers: ChatTransferQueue? = nil) {
         self.session = session; self.engine = engine; self.media = media
         self.hasSnapshot = true
         self.hasContactSnapshot = true
         self.contacts = contacts
         self.conversations = conversations.sorted {
-                        let left = $0.latestMessage?.createdAt ?? 0, right = $1.latestMessage?.createdAt ?? 0
-                        return left == right ? $0.id < $1.id : left > right
-                    }; self.pageLeaseRoot = pageLeaseRoot
+            let left = $0.latestMessage?.createdAt ?? 0, right = $1.latestMessage?.createdAt ?? 0
+            return left == right ? $0.id < $1.id : left > right
+        }
+        self.pageLeaseRoot = pageLeaseRoot
         rebuildProfileIndex()
         registerInstance()
         originalDraftStore = AccountChatDraftStore(store: engine.store, media: media)
         observeDraftSaves(engine: engine)
-        if let manager = session.sessionManager {
-            transfers = ChatTransferQueue(store: engine.store, media: media, session: manager, engine: engine)
+        if let transfers { self.transfers = transfers }
+        else if let manager = session.sessionManager {
+            self.transfers = ChatTransferQueue(store: engine.store, media: media, session: manager, engine: engine)
         }
     }
     func observe(_ block: @escaping () -> Void) -> UUID {
         let id = UUID()
-        observers[id] = block
+        observers[id] = { _ in block() }
         return id
     }
     func remove(_ id: UUID) { observers[id] = nil }
-    func publish() { observers.values.forEach { $0() } }
+    func publish(_ update: ChatEngineUpdate? = nil) { observers.values.forEach { $0(update) } }
+    /// 页面订阅随当前会话身份解析范围；状态通知不重新读取时间线。
+    func observeConversation(_ conversation: @escaping () -> String?, status: @escaping () -> Void,
+                             changed: @escaping (ChatChangeScope) -> Void) -> UUID {
+        let id = UUID()
+        observers[id] = { update in
+            guard let update else { changed(.all); return }
+            status()
+            if update.scope.isEmpty { return }
+            if update.scope.contains(.directory) || update.conversations == nil || update.conversations?.contains(conversation() ?? "") == true {
+                changed(update.scope)
+            }
+        }
+        return id
+    }
     private var networkTransition: Task<Void, Never>?
     /// 保留已打开的本地存储与页面，仅暂停或恢复联网任务。
     func authenticationDidChange() {
@@ -174,115 +190,126 @@ final class ChatRuntime {
         }
     }
     func start() {
-        guard task == nil, let manager = session.sessionManager, let user = session.profile?.userID
+        guard task == nil, stopping == nil, let manager = session.sessionManager, let user = session.profile?.userID
         else { return }
         let generation = generation
         task = Task { [weak self] in
-            guard let self else { return }
             do {
-                let scope = manager.environment.identifier + ":" + user.uuidString.lowercased()
-                let directoryName = SHA256.hash(data: Data(scope.utf8)).map {
-                    String(format: "%02x", $0)
-                }.joined()
-                var root = FileManager.default.urls(
-                    for: .applicationSupportDirectory, in: .userDomainMask)[0]
-                    .appendingPathComponent("ChatAccounts/" + directoryName, isDirectory: true)
-                guard self.generation == generation else { return }
-                try await AccountBusinessStorage.waitForOpening(environment: manager.environment.identifier, userID: user)
-                let exists = FileManager.default.fileExists(atPath: root.path)
-                let databaseURL = root.appendingPathComponent("main.sqlite")
-                // 恢复只打开既有库；残留目录缺少数据库同样需要明确恢复。
-                guard exists ? FileManager.default.fileExists(atPath: databaseURL.path) : session.canCreateBusinessCache
-                else { throw AccountFailure.damagedCache }
-                @MainActor func key(_ purpose: String) throws -> Data {
-                    let name = "chat." + purpose + "." + scope
-                    if let value = try session.store.values.read(name) {
-                        guard value.count == 32 else { throw AccountFailure.storage }
-                        return value
-                    }
-                    guard !exists else { throw AccountFailure.storage }
-                    let value = SymmetricKey(size: .bits256).withUnsafeBytes { Data($0) }
-                    try session.store.values.write(value, key: name)
-                    return value
-                }
-                let databaseKey = try key("database")
-                let mediaKey = try key("media")
-                try FileManager.default.createDirectory(
-                    at: root, withIntermediateDirectories: true,
-                    attributes: [
-                        .protectionKey: FileProtectionType.completeUntilFirstUserAuthentication
-                    ])
-                var values = URLResourceValues()
-                values.isExcludedFromBackup = true
-                try root.setResourceValues(values)
-                let account = try await AccountBusinessStorage.acquire(root: root, databaseKey: databaseKey,
-                    mediaKey: mediaKey, environment: manager.environment.identifier, userID: user)
-                guard self.generation == generation else { try await account.release(); return }
-                self.accountStorage = account
-                let store = try ChatStore(database: account.resources.database)
-                let media = ChatMediaStore(storage: account.resources.media)
-                let engine = ChatEngine(store: store, session: manager)
-                let pages = root.appendingPathComponent("page-leases/" + UUID().uuidString, isDirectory: true)
-                if FileManager.default.fileExists(atPath: pages.path) { try FileManager.default.removeItem(at: pages) }
-                try FileManager.default.createDirectory(at: pages, withIntermediateDirectories: true,
-                    attributes: [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication])
-                self.pageLeaseRoot = pages
-                self.originalDraftStore = AccountChatDraftStore(store: store, media: media)
-                self.engine = engine
-                session.didOpenBusinessCache()
-                observeDraftSaves(engine: engine)
-                self.media = media
-                let transfers = ChatTransferQueue(
-                    store: store, media: media, session: manager, engine: engine)
-                self.transfers = transfers
-                try await restoreDirectory(engine: engine)
-                self.conversations = try await store.conversations()
-                self.preferences = try await store.allConversationPreferences()
-                self.hasSnapshot = self.hasContactSnapshot
-                try await refreshListStates()
-                publish()
-                incomingTask = Task { [weak self, engine] in
-                    let stream = await engine.incomingMessages()
-                    for await messages in stream {
-                        guard !Task.isCancelled, let self, self.engine === engine else { break }
-                        self.incomingMessages?(messages)
-                    }
-                }
-                await engine.setForegroundNotificationsEnabled(foreground)
+                guard let context = try await self?.openRuntime(manager: manager, user: user, generation: generation) else { return }
+                let (engine, store, media, transfers) = context
                 let changes = await engine.updates()
-                authenticationDidChange()
                 for await update in changes {
-                    guard self.generation == generation, !Task.isCancelled else { break }
+                    guard let self, self.generation == generation, !Task.isCancelled else { break }
                     self.online = update.online && !session.readOnly
                     self.synchronization = update.synchronization
-                    try await restoreDirectory(engine: engine)
-                    let conversations = try await store.conversations()
+                    if update.scope.contains(.directory) { try await restoreDirectory(engine: engine) }
                     guard self.generation == generation, !Task.isCancelled else { break }
-                    self.online = update.online && !session.readOnly
-                    self.synchronization = update.synchronization
                     self.hasSnapshot = self.hasContactSnapshot
-                    self.preferences = try await store.allConversationPreferences()
-                    self.conversations = conversations.sorted {
-                        let left = $0.latestMessage?.createdAt ?? 0, right = $1.latestMessage?.createdAt ?? 0
-                        return left == right ? $0.id < $1.id : left > right
+                    if update.scope.contains(.conversations) {
+                        let conversations = try await store.conversations(identifiers: update.conversations)
+                        guard self.generation == generation, !Task.isCancelled else { break }
+                        let values = update.conversations.map { ids in
+                            self.conversations.filter { !ids.contains($0.id) } + conversations
+                        } ?? conversations
+                        self.conversations = values.sorted {
+                            let left = $0.latestMessage?.createdAt ?? 0, right = $1.latestMessage?.createdAt ?? 0
+                            return left == right ? $0.id < $1.id : left > right
+                        }
+                        try await self.refreshListStates(publishing: false, identifiers: update.conversations)
                     }
-                    try await self.refreshListStates()
+                    self.publish(update)
                     if !session.readOnly && update.ownProfileVersion > (session.profile?.version ?? 0) {
                         try? await session.reloadProfile()
                         guard self.generation == generation, !Task.isCancelled else { break }
                         self.publish()
                     }
-                    try? await store.cleanupMedia(using: media)
+                    if !update.scope.isEmpty { try? await store.cleanupMedia(using: media) }
                     if update.online && !session.readOnly { await transfers.resume() }
                 }
             } catch {
-                guard self.generation == generation else { return }
+                guard let self, self.generation == generation, !Task.isCancelled else { return }
                 self.failure = (error as? ChatStoreError) == .incompatibleSchema ? "chat.live.incompatibleStorage" : "chat.live.storageFailure"
                 self.publish()
                 session.storageUnavailable(notice: self.failure)
             }
         }
     }
+    private func openRuntime(manager: APISessionManager, user: UUID, generation: UUID) async throws
+        -> (ChatEngine, ChatStore, ChatMediaStore, ChatTransferQueue) {
+        let scope = manager.environment.identifier + ":" + user.uuidString.lowercased()
+        let directoryName = SHA256.hash(data: Data(scope.utf8)).map {
+            String(format: "%02x", $0)
+        }.joined()
+        var root = FileManager.default.urls(
+            for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("ChatAccounts/" + directoryName, isDirectory: true)
+        guard self.generation == generation else { throw CancellationError() }
+        try await AccountBusinessStorage.waitForOpening(environment: manager.environment.identifier, userID: user)
+        let exists = FileManager.default.fileExists(atPath: root.path)
+        let databaseURL = root.appendingPathComponent("main.sqlite")
+        // 恢复只打开既有库；残留目录缺少数据库同样需要明确恢复。
+        guard exists ? FileManager.default.fileExists(atPath: databaseURL.path) : session.canCreateBusinessCache
+        else { throw AccountFailure.damagedCache }
+        @MainActor func key(_ purpose: String) throws -> Data {
+            let name = "chat." + purpose + "." + scope
+            if let value = try session.store.values.read(name) {
+                guard value.count == 32 else { throw AccountFailure.storage }
+                return value
+            }
+            guard !exists else { throw AccountFailure.storage }
+            let value = SymmetricKey(size: .bits256).withUnsafeBytes { Data($0) }
+            try session.store.values.write(value, key: name)
+            return value
+        }
+        let databaseKey = try key("database")
+        let mediaKey = try key("media")
+        try FileManager.default.createDirectory(
+            at: root, withIntermediateDirectories: true,
+            attributes: [
+                .protectionKey: FileProtectionType.completeUntilFirstUserAuthentication
+            ])
+        var values = URLResourceValues()
+        values.isExcludedFromBackup = true
+        try root.setResourceValues(values)
+        let account = try await AccountBusinessStorage.acquire(root: root, databaseKey: databaseKey,
+            mediaKey: mediaKey, environment: manager.environment.identifier, userID: user)
+        guard self.generation == generation else { try await account.release(); throw CancellationError() }
+        self.accountStorage = account
+        let store = try ChatStore(database: account.resources.database)
+        let media = ChatMediaStore(storage: account.resources.media)
+        let engine = ChatEngine(store: store, session: manager)
+        let pages = root.appendingPathComponent("page-leases/" + UUID().uuidString, isDirectory: true)
+        if FileManager.default.fileExists(atPath: pages.path) { try FileManager.default.removeItem(at: pages) }
+        try FileManager.default.createDirectory(at: pages, withIntermediateDirectories: true,
+            attributes: [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication])
+        self.pageLeaseRoot = pages
+        self.originalDraftStore = AccountChatDraftStore(store: store, media: media)
+        self.engine = engine
+        session.didOpenBusinessCache()
+        observeDraftSaves(engine: engine)
+        self.media = media
+        let transfers = ChatTransferQueue(
+            store: store, media: media, session: manager, engine: engine)
+        self.transfers = transfers
+        try await restoreDirectory(engine: engine)
+        self.conversations = try await store.conversations()
+        self.preferences = try await store.allConversationPreferences()
+        self.hasSnapshot = self.hasContactSnapshot
+        try await refreshListStates()
+        publish()
+        incomingTask = Task { [weak self, engine] in
+            let stream = await engine.incomingMessages()
+            for await messages in stream {
+                guard !Task.isCancelled, let self, self.engine === engine else { break }
+                self.incomingMessages?(messages)
+            }
+        }
+        await engine.setForegroundNotificationsEnabled(foreground)
+        authenticationDidChange()
+        return (engine, store, media, transfers)
+    }
+    isolated deinit { stop() }
+
     private var stopping: Task<Void, Error>?
     /// 等待所有运行时释放该账号的存储访问；失败时禁止继续删除文件或密钥。
     static func stopAccount(user: UUID, environment: String) async throws {
@@ -314,6 +341,7 @@ final class ChatRuntime {
         let transfers = transfers
         let pages = pageLeaseRoot
         pageLeaseRoot = nil
+        let drafts = originalDraftStore
         originalDraftStore = nil
         engine = nil
         self.media = nil
@@ -329,6 +357,7 @@ final class ChatRuntime {
         stopping = Task {
             await starting?.value
             for check in checks { _ = try? await check.value }
+            await drafts?.stopAndWait()
             await transfers?.stop()
             await old?.stop()
             if accountStorage == nil { try await media?.clearLeases() }
@@ -380,20 +409,24 @@ final class ChatRuntime {
         sortedConversations.filter { listStates[$0.id]?.isVisible == true }
     }
     /// 读取持久列表状态并刷新同账号场景；较早的读取不能覆盖较新的请求。
-    func refreshListStates() async throws {
+    func refreshListStates(publishing: Bool = true, identifiers: Set<String>? = nil) async throws {
         guard let engine else { throw ChatStoreError.unavailable }
         let targets = Self.instances.compactMap(\.value).filter {
             $0.engine?.store.userID == engine.store.userID && $0.engine?.store.environment == engine.store.environment
         }
         let request = UUID()
         for target in targets { target.listRefresh = request }
-        let snapshot = try await engine.store.conversationListSnapshot()
+        let snapshot = try await engine.store.conversationListSnapshot(identifiers: identifiers)
         guard self.engine === engine else { return }
         for target in targets where target.listRefresh == request && target.engine != nil {
-            target.listStates = snapshot.states
-            target.draftPreviews = snapshot.drafts
+            if let identifiers {
+                for id in identifiers { target.listStates[id] = snapshot.states[id]; target.draftPreviews[id] = snapshot.drafts[id] }
+            } else {
+                target.listStates = snapshot.states
+                target.draftPreviews = snapshot.drafts
+            }
             target.pinnedConversationsCollapsed = snapshot.pinnedCollapsed
-            target.publish()
+            if publishing { target.publish() }
         }
     }
     private func observeDraftSaves(engine: ChatEngine) {
@@ -488,5 +521,4 @@ final class ChatRuntime {
             for engine in engines { await engine.changed() }
         }
     }
-    deinit { task?.cancel(); incomingTask?.cancel() }
 }

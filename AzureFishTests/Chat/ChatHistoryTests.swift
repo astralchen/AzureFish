@@ -52,6 +52,7 @@ struct ChatHistoryTests {
                     #expect((PDFDocument(url: file.fileURL)?.pageCount ?? 0) > 0)
                     #expect(file.byteCount > 0)
                 case .mediaGroup(let group): media += group.items
+                case .remote: Issue.record("Local fixture contains remote metadata")
                 case .link(let link):
                     #expect(LinkAttachment.accepts(link.url) && link.title != nil)
                     #expect(link.imageURL == nil && link.iconURL == nil)

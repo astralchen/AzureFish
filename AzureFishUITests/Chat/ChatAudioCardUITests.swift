@@ -248,6 +248,9 @@ final class ChatAudioCardUITests: XCTestCase {
         language: String = "zh-Hans", photosTitle: String = "照片", audioTitle: String = "音频",
         largeText: Bool = false, preview: Bool = true, sendMixed: Bool = false
     ) throws {
+        guard ProcessInfo.processInfo.environment["CHAT_AUDIO_RECORDING"] == "1" else {
+            throw XCTSkip("Requires explicit CHAT_AUDIO_RECORDING=1 and microphone access")
+        }
         continueAfterFailure = false
         let app = XCUIApplication()
         app.launchArguments += ["-imessage-basic-history"]

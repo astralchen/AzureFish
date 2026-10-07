@@ -174,6 +174,7 @@ extension IMService {
                     requester: peer, accepter: user, db: db)
             }
             let recipients = input.action == "remark" ? [(user, peer)] : [(user, peer), (peer, user)]
+            IMCommitSignals.current?.insert(recipients.map { $0.0 })
             for (recipient, otherID) in recipients {
                 let event = ContactEventRecord(); event.id = UUID(); event.userID = recipient; event.peerID = otherID
                 event.position = try await self.tail(recipient, db: db) + 1
@@ -216,6 +217,7 @@ extension IMService {
         record.payload = try encrypt(IMMessageState(envelope: message.serializedData(), audience: [], fingerprint: key),
                                     context: "message:" + id.uuidString)
         try await record.create(on: db)
+        adjustUnread(message, state: &state, delta: 1)
         try await save(conversation, state, db: db)
         try await emit(conversation.requireID(), users: [requester, accepter], kind: "message", message: id, db: db)
     }

@@ -26,7 +26,7 @@ final class LiveChatSession: ChatSessionProviding {
     var mediaStores: [String: PageAttachmentStore] = [:]
     var operations: [UUID: Task<Void, Never>] = [:]
     var page: ChatHistory?
-    var historyLimit = 200
+    var timeline = ChatTimelineWindow()
     var contextAnchor: String?
     private var focusLatestAfterLoad = false
     var reeditable = Set<String>()
@@ -45,7 +45,9 @@ final class LiveChatSession: ChatSessionProviding {
         self.controller = controller
         controller.navigationItem.titleView = nil
         installConversationDetails()
-        observer = runtime.observe { [weak self] in self?.refresh() }
+        observer = runtime.observeConversation({ [weak self] in self?.conversation.id },
+            status: { [weak self] in self?.refreshNotice() },
+            changed: { [weak self] scope in self?.refresh(readMessages: scope.contains(.messages) || scope.contains(.conversations)) })
         clockTask = Task { [weak self] in
             while !Task.isCancelled {
                 do { try await Task.sleep(for: .seconds(1)) } catch { break }
@@ -120,7 +122,8 @@ final class LiveChatSession: ChatSessionProviding {
         for task in mediaTasks.values { task.cancel() }
         for task in operations.values { task.cancel() }
     }
-    func refresh() {
+    func refresh() { refresh(readMessages: true) }
+    func refresh(readMessages: Bool) {
         guard !stopped, let controller, controller.isViewLoaded else { return }
         guard let engine = runtime.engine else {
             stop()
@@ -143,14 +146,16 @@ final class LiveChatSession: ChatSessionProviding {
                 if bound.id != conversation.id {
                     conversation = bound
                     page = nil
+                    timeline = ChatTimelineWindow()
                     installConversationDetails()
                     loadHistory()
                 }
                 let loaded: [ChatMessage]
-                if let contextAnchor { loaded = try await engine.store.messageContext(contextAnchor, conversation: conversation.id) }
-                else { loaded = try await engine.store.messages(conversation.id, limit: historyLimit) }
-                let pending = try await engine.store.pending().filter { $0.outgoing.conversationID == conversation.id }
-                let uploads = try await engine.store.transfers().filter { $0.conversation == conversation.id }
+                if !readMessages { loaded = messages }
+                else if let contextAnchor { loaded = try await engine.store.messageContext(contextAnchor, conversation: conversation.id) }
+                else { loaded = try await timeline.messages(in: engine.store, conversation: conversation.id) }
+                let pending = try await engine.store.pending(conversation: conversation.id)
+                let uploads = try await engine.store.transfers(conversation: conversation.id)
                 let order = try await engine.store.orderedMessageIDs(conversation: conversation.id)
                 let availability = try await engine.store.reeditAvailability(conversation: conversation.id)
                 try Task.checkCancellation()
@@ -164,6 +169,7 @@ final class LiveChatSession: ChatSessionProviding {
                         controller.setNeedsQuickLayout()
                     }
                 }
+                if contextAnchor == nil { timeline.include(loaded) }
                 messages = loaded; self.pending = pending; self.uploads = uploads
                 let current = runtime.conversations.first { $0.id == conversation.id } ?? conversation
                 if current.boundaryRevision != conversation.boundaryRevision { page = nil; visible.removeAll() }
@@ -180,11 +186,7 @@ final class LiveChatSession: ChatSessionProviding {
                     if let item = queued[key] { values.append(presentation(item)) }
                     else if let item = transferring[key] { values.append(presentation(item)) }
                 }
-                let allowed = runtime.canSend(conversation)
-                controller.composerView.isUserInteractionEnabled = runtime.canCompose(conversation) && !controller.isRestoringDraft
-                controller.composerView.submissionAllowed = allowed
-                controller.viewModel.sessionNotice = runtime.session.readOnly ? Localization.text(runtime.session.connectivity == .checking ? "account.connection.checking" : "account.connection.offline") : !allowed ? Localization.text(conversation.closed ? "chat.live.closed" : "chat.live.friendRequired")
-                    : runtime.online ? nil : Localization.text("chat.live.offline")
+                refreshNotice(publishing: false)
                 controller.viewModel.messages = values
                 let reason: ChatViewModel.UpdateReason = pendingReason ?? (!hasRendered ? .historyLoaded
                     : !Set(loaded.map(\.id)).subtracting(previous).isEmpty && !loadingHistory ? .receivedMessage : .messageStatus)
@@ -201,6 +203,15 @@ final class LiveChatSession: ChatSessionProviding {
                 viewportChanged()
             } catch is CancellationError {} catch { showFailure() }
         }
+    }
+    func refreshNotice(publishing: Bool = true) {
+        guard !stopped, let controller else { return }
+        let allowed = runtime.canSend(conversation)
+        controller.composerView.isUserInteractionEnabled = runtime.canCompose(conversation) && !controller.isRestoringDraft
+        controller.composerView.submissionAllowed = allowed
+        controller.viewModel.sessionNotice = runtime.session.readOnly ? Localization.text(runtime.session.connectivity == .checking ? "account.connection.checking" : "account.connection.offline") : !allowed ? Localization.text(conversation.closed ? "chat.live.closed" : "chat.live.friendRequired")
+            : runtime.online ? nil : Localization.text("chat.live.offline")
+        if publishing { controller.viewModel.publish(reason: .messageStatus) }
     }
     func presentation(_ message: ChatMessage) -> Message {
         let id = identity(message.id)
@@ -241,8 +252,8 @@ final class LiveChatSession: ChatSessionProviding {
             let runs = message.textRuns ?? []
             return runs.isEmpty ? .userText(message.text) : .richText(.init(runs: runs.map { .init($0.text, style: .init(rawValue: Int($0.style))) }))
         }
-        let name = message.assets.flatMap(\.resources).filter { $0.role == "original" }.map(\.filename).joined(separator: "\n")
-        return .userText(name.isEmpty ? Localization.text("chat.live.media_group") : name)
+        if !message.assets.isEmpty { return .attachment(.remote(remoteMetadata(message))) }
+        return .userText(Localization.text("chat.live.media_group"))
     }
     func presentation(_ pending: ChatPendingMessage) -> Message {
         let outgoing = pending.outgoing, key = outgoing.id.uuidString.lowercased()
@@ -276,10 +287,10 @@ final class LiveChatSession: ChatSessionProviding {
             guard let self else { return }
             defer { loadingHistory = false }
             do {
-                let value = try await engine.history(conversation.id, before: page?.before ?? 0, upper: page?.upper ?? 0, boundary: page?.boundary ?? 0)
+                let value = try await engine.history(conversation.id, before: timeline.historyBefore(pageCursor: page?.before), upper: page?.upper ?? 0, boundary: page?.boundary ?? 0)
                 try Task.checkCancellation()
                 guard !stopped, runtime.engine === engine else { return }
-                page = value; historyLimit += value.messages.count
+                page = value; timeline.include(value.messages)
                 controller?.viewModel.historyState = value.hasMore ? .idle : .exhausted
                 pendingReason = initialPage ? .historyLoaded : .olderHistoryLoaded
                 refresh()

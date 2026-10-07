@@ -93,6 +93,7 @@ extension Attachment {
     /// - Throws: 任一本地文件转换抛出的错误。
     nonisolated func mappingDraftFiles(_ transform: (URL) throws -> URL) rethrows -> Self {
         switch self {
+        case .remote: return self
         case .audio(let audio): return .audio(try audio.mappingDraftFiles(transform))
         case .mediaGroup(let group): return .mediaGroup(try group.mappingDraftFiles(transform))
         case .file(let file):

@@ -148,7 +148,7 @@ public actor EncryptedMediaStore {
         try save(Manifest(input: input, parts: [:], complete: false), id: id)
     }
     /// 从系统提供的临时资源流式导入；不创建整文件 Data 副本。
-    public func importFile(_ source: URL, filename: String, mime: String, role: String = "original") throws
+    public func importFile(_ source: URL, filename: String, mime: String, role: String = "original", id: UUID = UUID()) throws
         -> LocalMediaResource
     {
         let handle = try FileHandle(forReadingFrom: source)
@@ -165,21 +165,16 @@ public actor EncryptedMediaStore {
         let input = MediaResourceDescriptor(
             role: role, filename: safe, mime: mime, bytes: total,
             sha256: hasher.finalize().map { String(format: "%02x", $0) }.joined())
-        let id = UUID()
         try prepare(id: id, input: input)
         try handle.seek(toOffset: 0)
         var index = 0
-        do {
-            while let data = try handle.read(upToCount: Self.chunkBytes), !data.isEmpty {
-                try write(data, id: id, index: index)
-                index += 1
-            }
-            try verify(id)
-            return LocalMediaResource(id: id, input: input)
-        } catch {
-            try? FileManager.default.removeItem(at: folder(id))
-            throw error
+        while let data = try handle.read(upToCount: Self.chunkBytes), !data.isEmpty {
+            try write(data, id: id, index: index)
+            index += 1
         }
+        try verify(id)
+        // 导入补偿由账号业务事务检查全部引用后执行，不能在这里删除同身份资源。
+        return LocalMediaResource(id: id, input: input)
     }
     /// 返回清单已登记的从 0 开始的分块序号集合；不在此处重新读取或验证分块文件。
     public func completed(_ id: UUID) throws -> Set<Int> { Set(try manifest(id).parts.keys) }
@@ -280,10 +275,13 @@ public actor EncryptedMediaStore {
         }
     }
     /// 取消全部到期任务，删除并重建临时明文目录；调用前应结束系统组件对文件的使用。
+    ///
+    /// 目录已被清理时可重复调用；账号根目录已移除时不重新创建它。
     public func clearLeases() throws {
         for task in leaseExpirations.values { task.cancel() }
         leaseExpirations.removeAll()
-        try FileManager.default.removeItem(at: temporary)
+        guard FileManager.default.fileExists(atPath: root.path) else { return }
+        if FileManager.default.fileExists(atPath: temporary.path) { try FileManager.default.removeItem(at: temporary) }
         try Self.directory(temporary)
     }
     /// 只清理账号所有业务均未引用的资源；引用检查和文件删除与数据库写入互斥。

@@ -18,9 +18,12 @@ final class LiveMediaCoordinator: NSObject, PHPickerViewControllerDelegate, UIDo
     private var recorder: AVAudioRecorder?
     private var player: AVAudioPlayer?
     private var recordingURL: URL?
+    private var recordingMedia: ChatMediaStore?
     private var recordingStarted: Date?
     private var timer: Task<Void, Never>?
     private var lease: URL?
+    private var leaseMedia: ChatMediaStore?
+    private var taskID: UUID?
     private var task: Task<Void, Never>?
     init(controller: LiveConversationViewController) { self.controller = controller }
     func choose() {
@@ -65,11 +68,17 @@ final class LiveMediaCoordinator: NSObject, PHPickerViewControllerDelegate, UIDo
     }
     func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
         picker.dismiss(animated: true)
-        guard let controller, let media = controller.runtime.media else { return }
+        guard let controller, let media = controller.runtime.media, let engine = controller.runtime.engine else { return }
+        let id = beginOperation()
         task = Task { [weak self] in
             guard let self else { return }
+            defer { finishOperation(id) }
+            let batch: UUID
+            do { batch = try await engine.store.beginMediaImport() } catch { controller.showFailure(); return }
+            var temporary: [URL] = []
             do {
                 for result in results {
+                    try Task.checkCancellation()
                     let provider = result.itemProvider
                     if provider.canLoadObject(ofClass: PHLivePhoto.self) {
                         let live: PHLivePhoto = try await withCheckedThrowingContinuation { continuation in
@@ -85,6 +94,7 @@ final class LiveMediaCoordinator: NSObject, PHPickerViewControllerDelegate, UIDo
                         var imported: [ChatLocalMedia] = []
                         for resource in resources where resource.type == .photo || resource.type == .pairedVideo {
                             let url = try await media.temporaryFile(filename: resource.originalFilename)
+                            temporary.append(url)
                             let options = PHAssetResourceRequestOptions()
                             options.isNetworkAccessAllowed = true
                             try await withCheckedThrowingContinuation {
@@ -95,11 +105,11 @@ final class LiveMediaCoordinator: NSObject, PHPickerViewControllerDelegate, UIDo
                                 }
                             }
                             do {
-                                let value = try await media.importFile(
+                                let value = try await engine.store.importMedia(
                                     url, filename: resource.originalFilename,
                                     mime: UTType(resource.uniformTypeIdentifier)?.preferredMIMEType
                                         ?? "application/octet-stream",
-                                    role: resource.type == .pairedVideo ? "paired_video" : "original")
+                                    role: resource.type == .pairedVideo ? "paired_video" : "original", using: media, batch: batch)
                                 imported.append(value)
                                 try await media.release(url)
                             } catch {
@@ -108,12 +118,13 @@ final class LiveMediaCoordinator: NSObject, PHPickerViewControllerDelegate, UIDo
                             }
                         }
                         guard imported.count == 2 else { throw ChatMediaStoreError.invalidResource }
-                        controller.attachments.append(ChatUploadItem(kind: "live_photo", resources: imported))
+                        try await controller.acceptImported(.init(kind: "live_photo", resources: imported), batch: batch, engine: engine)
                     } else {
                         let family = provider.hasItemConformingToTypeIdentifier(UTType.movie.identifier) ? UTType.movie : UTType.image
                         let type = provider.registeredTypeIdentifiers.compactMap(UTType.init).first { $0.conforms(to: family) && $0.preferredFilenameExtension != nil } ?? family
                         let destination = try await media.temporaryFile(
                             filename: (provider.suggestedName ?? "media") + "." + (type.preferredFilenameExtension ?? (type.conforms(to: .movie) ? "mov" : "jpg")))
+                        temporary.append(destination)
                         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
                             provider.loadFileRepresentation(forTypeIdentifier: type.identifier) { url, error in
                                 do {
@@ -123,30 +134,43 @@ final class LiveMediaCoordinator: NSObject, PHPickerViewControllerDelegate, UIDo
                                 } catch { continuation.resume(throwing: error) }
                             }
                         }
-                        let value = try await media.importFile(
+                        let value = try await engine.store.importMedia(
                             destination, filename: destination.lastPathComponent,
                             mime: UTType(filenameExtension: destination.pathExtension)?.preferredMIMEType
-                                ?? (type.conforms(to: .movie) ? "video/quicktime" : "image/jpeg"))
+                                ?? (type.conforms(to: .movie) ? "video/quicktime" : "image/jpeg"), using: media, batch: batch)
                         try await media.release(destination)
-                        controller.attachments.append(
-                            ChatUploadItem(kind: type.conforms(to: .movie) ? "video" : "image", resources: [value]))
+                        try await controller.acceptImported(.init(kind: type.conforms(to: .movie) ? "video" : "image", resources: [value]), batch: batch, engine: engine)
                     }
                 }
-                review()
-            } catch { controller.showFailure() }
+                for url in temporary { try? await media.release(url) }
+                if !Task.isCancelled, controller.runtime.engine === engine { review() }
+            } catch {
+                for url in temporary { try? await media.release(url) }
+                try? await engine.store.cancelMediaImport(batch)
+                try? await engine.store.cleanupMedia(using: media)
+                if !(error is CancellationError) { controller.showFailure() }
+            }
         }
     }
     func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
-        guard let owner = self.controller, let media = owner.runtime.media, let url = urls.first else { return }
+        guard let owner = self.controller, let media = owner.runtime.media, let engine = owner.runtime.engine, let url = urls.first else { return }
+        let id = beginOperation()
         task = Task { [weak self] in
+            defer { self?.finishOperation(id) }
             let scoped = url.startAccessingSecurityScopedResource()
             defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+            let batch: UUID
+            do { batch = try await engine.store.beginMediaImport() } catch { owner.showFailure(); return }
             do {
-                let value = try await media.importFile(
-                    url, filename: url.lastPathComponent, mime: "application/octet-stream")
-                owner.attachments.append(ChatUploadItem(kind: "file", resources: [value]))
+                let value = try await engine.store.importMedia(
+                    url, filename: url.lastPathComponent, mime: "application/octet-stream", using: media, batch: batch)
+                try await owner.acceptImported(.init(kind: "file", resources: [value]), batch: batch, engine: engine)
                 self?.review()
-            } catch { owner.showFailure() }
+            } catch {
+                try? await engine.store.cancelMediaImport(batch)
+                try? await engine.store.cleanupMedia(using: media)
+                if !(error is CancellationError) { owner.showFailure() }
+            }
         }
     }
     func review() {
@@ -222,7 +246,8 @@ final class LiveMediaCoordinator: NSObject, PHPickerViewControllerDelegate, UIDo
             try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker])
             try session.setActive(true)
             let url = try await media.temporaryFile(filename: "voice.m4a")
-            recordingURL = url
+            guard controller?.runtime.media === media else { try? await media.release(url); return }
+            recordingURL = url; recordingMedia = media
             let recorder = try AVAudioRecorder(
                 url: url,
                 settings: [
@@ -237,7 +262,11 @@ final class LiveMediaCoordinator: NSObject, PHPickerViewControllerDelegate, UIDo
                 try? await Task.sleep(nanoseconds: 120_000_000_000)
                 if !Task.isCancelled { stopRecording() }
             }
-        } catch { controller?.showFailure() }
+        } catch {
+            if let recordingURL { try? await media.release(recordingURL) }
+            recordingURL = nil; recordingMedia = nil
+            if controller?.runtime.media === media { controller?.showFailure() }
+        }
     }
     private func stopRecording() {
         guard let controller, let recorder, let url = recordingURL else { return }
@@ -289,14 +318,25 @@ final class LiveMediaCoordinator: NSObject, PHPickerViewControllerDelegate, UIDo
         controller.present(alert, animated: true)
     }
     private func importRecording(_ url: URL) {
-        guard let controller, let media = controller.runtime.media else { return }
-        Task {
+        guard let controller, let media = controller.runtime.media, let engine = controller.runtime.engine else { return }
+        let id = beginOperation()
+        task = Task {
+            defer { finishOperation(id) }
+            let batch: UUID
+            do { batch = try await engine.store.beginMediaImport() } catch {
+                try? await media.release(url); controller.showFailure(); return
+            }
             do {
-                let value = try await media.importFile(url, filename: "voice.m4a", mime: "audio/mp4")
+                let value = try await engine.store.importMedia(url, filename: "voice.m4a", mime: "audio/mp4", using: media, batch: batch)
                 try await media.release(url)
-                controller.attachments.append(.init(kind: "audio", resources: [value]))
+                try await controller.acceptImported(.init(kind: "audio", resources: [value]), batch: batch, engine: engine)
                 review()
-            } catch { controller.showFailure() }
+            } catch {
+                try? await engine.store.cancelMediaImport(batch)
+                try? await engine.store.cleanupMedia(using: media)
+                try? await media.release(url)
+                if !(error is CancellationError) { controller.showFailure() }
+            }
         }
     }
     func open(_ message: ChatMessage) {
@@ -321,8 +361,10 @@ final class LiveMediaCoordinator: NSObject, PHPickerViewControllerDelegate, UIDo
     /// 导出期间保留受保护租约，系统分享结束后释放所有临时明文。
     func export(_ message: ChatMessage) {
         guard let controller, let queue = controller.runtime.transfers, let media = controller.runtime.media, task == nil else { return }
+        let id = beginOperation()
         task = Task { [weak self] in
             guard let self else { return }
+            defer { finishOperation(id) }
             var urls: [URL] = []
             do {
                 for resource in message.assets.flatMap(\.resources).filter({ $0.role == "original" }) {
@@ -330,6 +372,8 @@ final class LiveMediaCoordinator: NSObject, PHPickerViewControllerDelegate, UIDo
                     try Task.checkCancellation()
                     urls.append(try await media.lease(id))
                 }
+                try Task.checkCancellation()
+                guard taskID == id, controller.runtime.transfers === queue else { throw CancellationError() }
                 guard !urls.isEmpty else { throw ChatMediaStoreError.unavailable }
                 let sheet = UIActivityViewController(activityItems: urls, applicationActivities: nil)
                 let leases = urls
@@ -343,25 +387,31 @@ final class LiveMediaCoordinator: NSObject, PHPickerViewControllerDelegate, UIDo
                 for url in urls { try? await media.release(url) }
                 if !(error is CancellationError) { controller.showFailure() }
             }
-            task = nil
         }
     }
     private func download(_ resource: ChatResource, message: String) {
         guard let controller, let queue = controller.runtime.transfers, let media = controller.runtime.media else {
             return
         }
+        let id = beginOperation()
         task = Task { [weak self] in
             guard let self else { return }
+            defer { finishOperation(id) }
             do {
-                let id = try await queue.download(resource, message: message)
-                let url = try await media.lease(id)
-                lease = url
+                let resourceID = try await queue.download(resource, message: message)
+                try Task.checkCancellation()
+                let url = try await media.lease(resourceID)
+                guard !Task.isCancelled, taskID == id, controller.runtime.transfers === queue else {
+                    try? await media.release(url); return
+                }
+                lease = url; leaseMedia = media
                 let preview = QLPreviewController()
                 preview.dataSource = self
                 preview.delegate = self
                 controller.present(preview, animated: true)
-            } catch { controller.showFailure() }
-            task = nil
+            } catch {
+                if !Task.isCancelled, taskID == id { controller.showFailure() }
+            }
         }
     }
     func numberOfPreviewItems(in controller: QLPreviewController) -> Int { lease == nil ? 0 : 1 }
@@ -370,13 +420,29 @@ final class LiveMediaCoordinator: NSObject, PHPickerViewControllerDelegate, UIDo
     }
     func previewControllerDidDismiss(_ controller: QLPreviewController) {
         if let lease {
-            let media = self.controller?.runtime.media
+            let media = leaseMedia
             Task { try? await media?.release(lease) }
         }
-        lease = nil
+        lease = nil; leaseMedia = nil
     }
-    deinit {
+    private func beginOperation() -> UUID {
         task?.cancel()
-        timer?.cancel()
+        let id = UUID(); taskID = id
+        return id
     }
+    private func finishOperation(_ id: UUID) {
+        guard taskID == id else { return }
+        task = nil; taskID = nil
+    }
+    /// 页面或账号结束时停止操作并释放当前预览租约；迟到结果不能再呈现。
+    func stop() {
+        task?.cancel(); task = nil; taskID = nil
+        timer?.cancel(); timer = nil
+        recorder?.stop(); player?.stop()
+        if let recordingURL, let media = recordingMedia { Task { try? await media.release(recordingURL) } }
+        recordingURL = nil; recordingMedia = nil
+        if let lease, let media = leaseMedia { Task { try? await media.release(lease) } }
+        lease = nil; leaseMedia = nil
+    }
+    isolated deinit { stop() }
 }

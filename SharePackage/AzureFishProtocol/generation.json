@@ -2,6 +2,6 @@
   "schema_sha256": "a9386e93d48e8517ec615e3d70c27638eec1b1f41cbf6421b89a3f7c13ae6c14",
   "swift_protobuf_version": "1.38.1",
   "swift_protobuf_revision": "55d7a1cc5666b85c13464aea1c4b4a90feccb4c8",
-  "server_revision": null,
+  "server_revision": "4db0a41d48634cec21b82030661788b93d1e4f8b",
   "generation": "SwiftProtobufPlugin"
 }

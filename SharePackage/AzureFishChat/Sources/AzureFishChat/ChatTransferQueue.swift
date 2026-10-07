@@ -1,4 +1,5 @@
 import AzureFishAPI
+import AzureFishNetwork
 import Foundation
 
 public struct ChatUploadItem: Codable, Sendable {
@@ -102,11 +103,13 @@ public actor ChatTransferQueue {
     private var worker: Task<Void, Never>?
     /// 上传工作者代次，避免旧任务结束时清除新任务。
     private var generation = UUID()
+    private var pausing: Task<Void, Never>?
+    private var resumeRequested = false
     /// 绑定聊天存储、媒体存储、会话和引擎；不自动读取队列或启动传输。
-    public init(store: ChatStore, media: ChatMediaStore, session: APISessionManager, engine: ChatEngine) {
+    public init(store: ChatStore, media: ChatMediaStore, session: APISessionManager, engine: ChatEngine, transport: (any HTTPTransport)? = nil) {
         self.store = store
         self.media = media
-        api = MediaAPI(session: session)
+        api = MediaAPI(session: session, transport: transport)
         self.engine = engine
     }
     /// 读取服务端能力并校验条目数及总字节数，保存上传批次后尝试启动工作者。
@@ -122,13 +125,14 @@ public actor ChatTransferQueue {
     }
     /// 未永久停止且没有工作者时启动一轮持久队列处理；不保证此刻已有待传数据。
     public func resume() {
-        guard worker == nil, !stopped else { return }
+        guard !stopped else { return }
+        if pausing != nil { resumeRequested = true; return }
+        guard worker == nil else { return }
         let id = UUID()
         generation = id
         worker = Task { await self.run(id) }
     }
-    /// 当前未完成的独立下载任务，按本次调用身份登记。
-    private var downloads: [UUID: Task<UUID, Error>] = [:]
+    private let downloadOwner = UUID()
     /// 是否已永久停止此队列；为 true 时禁止 resume 和新的 download。
     private var stopped = false
     /// 永久禁止本实例恢复上传或接收新下载，并取消、等待当前传输任务结束。
@@ -138,15 +142,22 @@ public actor ChatTransferQueue {
     }
     /// 暂停传输而保留用户已经提交的队列；认证确认后可再次 resume。
     public func pause() async {
-        let activeDownloads = Array(downloads.values)
-        activeDownloads.forEach { $0.cancel() }
-        generation = UUID()
+        if let pausing { await pausing.value; return }
+        resumeRequested = false
         let previous = worker
         previous?.cancel()
+        let owner = downloadOwner
+        let drain = Task {
+            await ChatDownloadCoordinator.shared.cancelAndDrain(owner: owner)
+            await previous?.value
+        }
+        pausing = drain
+        await drain.value
         worker = nil
-        await previous?.value
-        for task in activeDownloads { _ = try? await task.value }
+        pausing = nil
+        if resumeRequested { resumeRequested = false; resume() }
     }
+
     /// 为已有批次持久化取消意图并唤醒队列；服务端取消由工作者稍后执行，不存在时直接返回。
     public func cancel(_ id: UUID) async throws {
         guard var batch = try await store.transfers().first(where: { $0.id == id }) else {
@@ -211,7 +222,7 @@ public actor ChatTransferQueue {
                                     try await api.upload(upload.uploadID, index: part, bytes: bytes)
                                     batch.completedBytes += Int64(bytes.count)
                                     try await store.saveTransfer(batch)
-                                    await engine.changed()
+                                    await engine.changed(conversation: batch.conversation, scope: [.transfers])
                                 }
                             }
                             if batch.cancelRequested {
@@ -222,7 +233,7 @@ public actor ChatTransferQueue {
                         }
                         batch.state = "processing"
                         try await store.saveTransfer(batch)
-                        await engine.changed()
+                        await engine.changed(conversation: batch.conversation, scope: [.transfers])
                         while ["queued", "processing"].contains(status.state) {
                             try await Task.sleep(nanoseconds: 2_000_000_000)
                             try Task.checkCancellation()
@@ -252,7 +263,7 @@ public actor ChatTransferQueue {
                             assets: assets, id: batch.messageID, clientID: batch.clientID,
                             operationID: batch.operationID)
                         try await store.submitTransfer(outgoing, transfer: batch.id)
-                        await engine.changed()
+                        await engine.changed(conversation: batch.conversation, scope: [.messages, .transfers, .conversations])
                         await engine.flush()
                     }
                 } catch {
@@ -270,10 +281,10 @@ public actor ChatTransferQueue {
                     }
                     if error is ChatMediaStoreError { batch.state = "failed" }
                     try await store.saveTransfer(batch)
-                    await engine.changed()
+                    await engine.changed(conversation: batch.conversation, scope: [.transfers])
                 }
             }
-        } catch { await engine.changed() }
+        } catch { if !(error is CancellationError), !Task.isCancelled { await engine.changed(scope: [.transfers]) } }
     }
     /// 依次取消已创建的服务端资产，移除批次并尝试清理不再引用的本地资源。
     private func cancelResources(_ batch: ChatUploadBatch) async throws {
@@ -282,21 +293,29 @@ public actor ChatTransferQueue {
         }
         try await store.removeTransfer(batch.id)
         try? await store.cleanupMedia(using: media)
-        await engine.changed()
+        await engine.changed(conversation: batch.conversation, scope: [.transfers])
     }
     /// 逐段授权下载，重启后复用已认证分块；最终摘要通过后才允许明文租约。
     public func download(_ resource: ChatResource, message: String) async throws -> UUID {
-        guard !stopped else { throw CancellationError() }
-        let requestID = UUID()
-        let task = Task { try await self.performDownload(resource, message: message) }
-        downloads[requestID] = task
-        defer { downloads[requestID] = nil }
-        return try await withTaskCancellationHandler {
-            let value = try await task.value
-            try Task.checkCancellation()
-            guard !stopped else { throw CancellationError() }
-            return value
-        } onCancel: { task.cancel() }
+        guard !stopped, pausing == nil else { throw CancellationError() }
+        try Task.checkCancellation()
+        // 每个消息引用独立授权，合并传输不共享访问权限。
+        _ = try await api.authorize(resource.id, message: message)
+        try Task.checkCancellation()
+        guard let resourceID = UUID(uuidString: resource.id) else { throw APIClientError.invalidResponse }
+        let input = ChatMediaInput(role: resource.role, filename: resource.filename, mime: resource.mime,
+                                   bytes: resource.bytes, sha256: resource.sha256)
+        try await media.prepare(id: resourceID, input: input)
+        let key = store.environment + ":" + store.userID.uuidString + ":" + resourceID.uuidString + ":" + resource.sha256
+        guard !stopped, pausing == nil else { throw CancellationError() }
+        let result = try await ChatDownloadCoordinator.shared.download(key: key, owner: downloadOwner, request: UUID()) {
+            try await self.performDownload(resource, message: message)
+        }
+        try Task.checkCancellation()
+        guard !stopped, pausing == nil else { throw CancellationError() }
+        _ = try await api.authorize(resource.id, message: message)
+        try Task.checkCancellation()
+        return result
     }
     /// 复用已登记分块，逐块重新授权下载；即使缓存完整也重新授权并校验整文件摘要。
     private func performDownload(_ resource: ChatResource, message: String) async throws -> UUID {
@@ -323,5 +342,9 @@ public actor ChatTransferQueue {
         return id
     }
     /// 请求取消上传工作者；显式 stop 负责协调等待当前上传与下载结束。
-    deinit { worker?.cancel() }
+    deinit {
+        worker?.cancel()
+        let owner = downloadOwner
+        Task { await ChatDownloadCoordinator.shared.cancelAndDrain(owner: owner) }
+    }
 }

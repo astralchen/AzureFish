@@ -21,6 +21,9 @@ extension LiveChatSession {
             }
             let credentials = try await manager.localIdentity()
             guard runtime.engine === engine, credentials.userID == engine.store.userID else { throw ChatStoreError.scopeMismatch }
+            let importBatch = try await engine.store.beginMediaImport()
+            do {
+            var saved: [String: StoredChatDraft] = [:]
             var items: [ChatCompositionItem] = []
             var presentations: [String: MessageContent] = [:]
             for content in values {
@@ -40,11 +43,13 @@ extension LiveChatSession {
                     outgoing = .init(conversationID: conversationID, deviceID: credentials.deviceID, kind: "link",
                         text: link.url.absoluteString, linkURL: link.url.absoluteString)
                 case .attachment(let attachment):
-                    let uploaded = try await uploadItems(attachment, media: media)
+                    let uploaded = try await uploadItems(attachment, media: media, batch: importBatch, store: engine.store)
                     let kind: String = switch attachment { case .audio: "audio"; case .file: "file"; default: "media_group" }
                     let batch = ChatUploadBatch(conversation: conversationID, kind: kind, items: uploaded, deviceID: credentials.deviceID)
                     let key = batch.messageID.uuidString.lowercased()
-                    try await cache(attachment, key: key, drafts: drafts)
+                    var snapshot = ChatDraftSnapshot(conversationID: conversationID)
+                    snapshot.documents = [attachment]
+                    saved[key] = try await drafts.encrypt(snapshot, batch: importBatch).storageValue()
                     items.append(.upload(batch)); presentations[key] = content
                     continue
                 }
@@ -52,11 +57,20 @@ extension LiveChatSession {
                 items.append(.message(outgoing))
                 let key = outgoing.id.uuidString.lowercased()
                 presentations[key] = content
-                if case .attachment(let attachment) = content { try await cache(attachment, key: key, drafts: drafts) }
+                if case .attachment(let attachment) = content {
+                    var snapshot = ChatDraftSnapshot(conversationID: conversationID)
+                    snapshot.documents = [attachment]
+                    saved[key] = try await drafts.encrypt(snapshot, batch: importBatch).storageValue()
+                }
             }
             guard runtime.engine === engine, runtime.canSend(conversation) else { throw ChatStoreError.unavailable }
-            try await engine.store.enqueueComposition(items, conversation: conversationID)
+            try await engine.store.enqueueComposition(items, conversation: conversationID, presentations: saved, completingImport: importBatch)
             return presentations
+            } catch {
+                try? await engine.store.cancelMediaImport(importBatch)
+                try? await engine.store.cleanupMedia(using: media)
+                throw error
+            }
         }
         Task { [weak self] in
             defer { release?() }
@@ -78,13 +92,20 @@ extension LiveChatSession {
     func cache(_ attachment: Attachment, key: String, drafts: AccountChatDraftStore) async throws {
         var snapshot = ChatDraftSnapshot(conversationID: conversation.id)
         snapshot.documents = [attachment]
-        let encrypted = try await drafts.encrypt(snapshot, reuseResources: false)
-        try await drafts.store.savePresentation(encrypted.storageValue(), message: key)
+        let batch = try await drafts.store.beginMediaImport()
+        do {
+            let encrypted = try await drafts.encrypt(snapshot, batch: batch)
+            try await drafts.store.savePresentation(encrypted.storageValue(), message: key, completingImport: batch)
+        } catch {
+            try? await drafts.store.cancelMediaImport(batch)
+            try? await drafts.store.cleanupMedia(using: drafts.media)
+            throw error
+        }
     }
-    func uploadItems(_ attachment: Attachment, media: ChatMediaStore) async throws -> [ChatUploadItem] {
+    func uploadItems(_ attachment: Attachment, media: ChatMediaStore, batch: UUID, store: ChatStore) async throws -> [ChatUploadItem] {
         func resource(_ url: URL, name: String? = nil, role: String = "original") async throws -> ChatLocalMedia {
-            try await media.importFile(url, filename: name ?? url.lastPathComponent,
-                mime: UTType(filenameExtension: url.pathExtension)?.preferredMIMEType ?? "application/octet-stream", role: role)
+            try await store.importMedia(url, filename: name ?? url.lastPathComponent,
+                mime: UTType(filenameExtension: url.pathExtension)?.preferredMIMEType ?? "application/octet-stream", role: role, using: media, batch: batch)
         }
         switch attachment {
         case .file(let file): return [.init(kind: "file", resources: [try await resource(file.fileURL, name: file.displayName)])]
@@ -98,6 +119,7 @@ extension LiveChatSession {
                 items.append(.init(kind: item.isLivePhoto ? "live_photo" : item.kind.isVideo ? "video" : "image", resources: resources))
             }
             return items
+        case .remote: throw APIClientError.invalidRequest
         case .link: throw APIClientError.invalidRequest
         }
     }

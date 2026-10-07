@@ -78,6 +78,7 @@ extension IMService {
                 row.payload = try self.encrypt(IMMessageState(envelope: result.serializedData(), audience: audience, fingerprint: fingerprint), context: "message:" + uuid.uuidString)
                 try await row.update(on: db)
             }
+            self.adjustUnread(result, state: &state, delta: 1)
             try await self.save(conversation, state, db: db)
             try await self.emit(conversation.requireID(), users: audience + [session.userID], kind: "message", message: uuid, db: db)
             return try self.renderedMessage(row, state)
@@ -96,6 +97,7 @@ extension IMService {
             guard message.senderUserID == session.userID.uuidString.lowercased() else { throw APIError(.forbidden, "REVOKE_FORBIDDEN") }
             if !message.revoked {
                 guard self.accounts.now <= message.serverCreatedAtMs + 120_000 else { throw APIError(.conflict, "REVOKE_WINDOW_EXPIRED") }
+                self.adjustUnread(message, state: &state, delta: -1)
                 message.revoked = true; message.text = ""; message.textRuns = []; message.linkURL = ""; message.assets = []; message.serverRevision += 1
                 try await self.media?.detach(message: uuid, db: db)
                 stored.envelope = try message.serializedData()
@@ -121,8 +123,15 @@ extension IMService {
             var state = original
             let index = state.members.firstIndex(where: { $0.user == session.userID })!
             guard input.throughSeq >= 0, input.throughSeq <= state.members[index].upperBound(state.latest) else { throw APIError(.badRequest, "VALIDATION_FAILED", field: "through_seq") }
+            // 水位回复继续验证原有未读正文的认证状态，篡改不能因投影命中而被掩盖。
+            // 计数与列表读取使用投影，完整性检查保留在水位写入事务中。
+            _ = try await self.readDelta(row, member: state.members[index], through: state.members[index].upperBound(state.latest), latest: state.latest, db: db)
             let oldRead = state.members[index].read, oldDelivered = state.members[index].delivered
-            if reading { state.members[index].read = max(oldRead, input.throughSeq) }
+            if reading, input.throughSeq > oldRead {
+                let count = try await self.readDelta(row, member: state.members[index], through: input.throughSeq, latest: state.latest, db: db)
+                state.members[index].unread!.count = max(0, state.members[index].unread!.count - count)
+                state.members[index].read = input.throughSeq
+            }
             state.members[index].delivered = max(oldDelivered, input.throughSeq)
             if oldRead != state.members[index].read || oldDelivered != state.members[index].delivered {
                 state.summaryRevision += 1
