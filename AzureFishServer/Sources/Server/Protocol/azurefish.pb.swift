@@ -1310,6 +1310,12 @@ public nonisolated struct MediaCapabilities: @unchecked Sendable {
     set {_uniqueStorage()._derivedReservationBytes = newValue}
   }
 
+  /// 朋友圈视频最长 60 秒；聊天限制不变。
+  public var momentsVideoMaxDurationMs: Int64 {
+    get {_storage._momentsVideoMaxDurationMs}
+    set {_uniqueStorage()._momentsVideoMaxDurationMs = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -1370,6 +1376,9 @@ public nonisolated struct MediaCreateRequest: Sendable {
   public var kind: String = String()
 
   public var resources: [MediaResourceInput] = []
+
+  /// 空值／chat 保持聊天语义；moments_post、moments_cover 不携带 conversation_id。
+  public var purpose: String = String()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -1537,11 +1546,14 @@ public nonisolated struct MediaAuthorizeRequest: Sendable {
 
   public var resourceID: String = String()
 
-  /// draft_preview 或 message_view。
+  /// draft_preview、message_view、moments_post 或 moments_cover；朋友圈用途须携带 moments_target_id。
   public var purpose: String = String()
 
-  /// message_view 必填；draft_preview 必须为空。
+  /// message_view 必填；其他用途必须为空。
   public var messageUuid: String = String()
+
+  /// moments_post 为动态 ID；moments_cover 为相册所有者 ID。
+  public var momentsTargetID: String = String()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -1809,6 +1821,373 @@ public nonisolated struct AvatarResponse: Sendable {
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
+}
+
+/// 朋友圈权威快照。互动已按查看者过滤，不能用其数量推断隐藏互动。
+public nonisolated struct MomentPost: @unchecked Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var postID: String {
+    get {_storage._postID}
+    set {_uniqueStorage()._postID = newValue}
+  }
+
+  public var author: IMPublicUser {
+    get {_storage._author ?? IMPublicUser()}
+    set {_uniqueStorage()._author = newValue}
+  }
+  /// Returns true if `author` has been explicitly set.
+  public var hasAuthor: Bool {_storage._author != nil}
+  /// Clears the value of `author`. Subsequent reads from it will return its default value.
+  public mutating func clearAuthor() {_uniqueStorage()._author = nil}
+
+  public var text: String {
+    get {_storage._text}
+    set {_uniqueStorage()._text = newValue}
+  }
+
+  /// 发布顺序，最多九张。
+  public var images: [MediaAsset] {
+    get {_storage._images}
+    set {_uniqueStorage()._images = newValue}
+  }
+
+  public var createdAtMs: Int64 {
+    get {_storage._createdAtMs}
+    set {_uniqueStorage()._createdAtMs = newValue}
+  }
+
+  public var sequence: Int64 {
+    get {_storage._sequence}
+    set {_uniqueStorage()._sequence = newValue}
+  }
+
+  public var revision: Int64 {
+    get {_storage._revision}
+    set {_uniqueStorage()._revision = newValue}
+  }
+
+  /// 墓碑不携带正文、图片或互动。
+  public var deleted: Bool {
+    get {_storage._deleted}
+    set {_uniqueStorage()._deleted = newValue}
+  }
+
+  public var likes: [IMPublicUser] {
+    get {_storage._likes}
+    set {_uniqueStorage()._likes = newValue}
+  }
+
+  /// 时间升序的平铺回复。
+  public var comments: [MomentComment] {
+    get {_storage._comments}
+    set {_uniqueStorage()._comments = newValue}
+  }
+
+  /// 最多一段视频，与 images 互斥；删除后缺失。
+  public var video: MediaAsset {
+    get {_storage._video ?? MediaAsset()}
+    set {_uniqueStorage()._video = newValue}
+  }
+  /// Returns true if `video` has been explicitly set.
+  public var hasVideo: Bool {_storage._video != nil}
+  /// Clears the value of `video`. Subsequent reads from it will return its default value.
+  public mutating func clearVideo() {_uniqueStorage()._video = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _storage = _StorageClass.defaultInstance
+}
+
+public nonisolated struct MomentComment: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var commentID: String = String()
+
+  public var author: IMPublicUser {
+    get {_author ?? IMPublicUser()}
+    set {_author = newValue}
+  }
+  /// Returns true if `author` has been explicitly set.
+  public var hasAuthor: Bool {self._author != nil}
+  /// Clears the value of `author`. Subsequent reads from it will return its default value.
+  public mutating func clearAuthor() {self._author = nil}
+
+  public var text: String = String()
+
+  /// 无回复对象时缺失。
+  public var replyTo: IMPublicUser {
+    get {_replyTo ?? IMPublicUser()}
+    set {_replyTo = newValue}
+  }
+  /// Returns true if `replyTo` has been explicitly set.
+  public var hasReplyTo: Bool {self._replyTo != nil}
+  /// Clears the value of `replyTo`. Subsequent reads from it will return its default value.
+  public mutating func clearReplyTo() {self._replyTo = nil}
+
+  public var createdAtMs: Int64 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _author: IMPublicUser? = nil
+  fileprivate var _replyTo: IMPublicUser? = nil
+}
+
+public nonisolated struct MomentAlbum: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var owner: IMPublicUser {
+    get {_owner ?? IMPublicUser()}
+    set {_owner = newValue}
+  }
+  /// Returns true if `owner` has been explicitly set.
+  public var hasOwner: Bool {self._owner != nil}
+  /// Clears the value of `owner`. Subsequent reads from it will return its default value.
+  public mutating func clearOwner() {self._owner = nil}
+
+  /// 缺失表示默认封面。
+  public var cover: MediaAsset {
+    get {_cover ?? MediaAsset()}
+    set {_cover = newValue}
+  }
+  /// Returns true if `cover` has been explicitly set.
+  public var hasCover: Bool {self._cover != nil}
+  /// Clears the value of `cover`. Subsequent reads from it will return its default value.
+  public mutating func clearCover() {self._cover = nil}
+
+  public var revision: Int64 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _owner: IMPublicUser? = nil
+  fileprivate var _cover: MediaAsset? = nil
+}
+
+public nonisolated struct MomentsListRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// 空值为好友动态流，否则为指定相册。
+  public var authorID: String = String()
+
+  /// 服务端签名，绑定查看者、相册及固定上界。
+  public var cursor: String = String()
+
+  /// 默认 20，最多 50。
+  public var limit: Int32 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct MomentsListResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var posts: [MomentPost] = []
+
+  public var nextCursor: String = String()
+
+  public var hasMore_p: Bool = false
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct MomentsGetRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var postIds: [String] = []
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct MomentsGetResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var posts: [MomentPost] = []
+
+  /// 已删除／不存在／不可见，不区分原因。
+  public var unavailableIds: [String] = []
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct MomentPublishRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var operationID: String = String()
+
+  /// 客户端持久化身份；响应丢失后复用。
+  public var postID: String = String()
+
+  /// 最多 2000 Character／64 KiB，文字、图片或视频至少一项。
+  public var text: String = String()
+
+  /// 有序且不重复，仅本人 moments_post 图片。
+  public var assetIds: [String] = []
+
+  /// 本人 moments_post 视频，与 asset_ids 互斥。
+  public var videoAssetID: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct MomentIdentityRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var postID: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct MomentMutationRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var operationID: String = String()
+
+  public var postID: String = String()
+
+  /// 点赞设值，不做 toggle。
+  public var liked: Bool = false
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct MomentCommentRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var operationID: String = String()
+
+  public var postID: String = String()
+
+  /// 稳定客户端身份。
+  public var commentID: String = String()
+
+  /// 最多 500 Character／16 KiB。
+  public var text: String = String()
+
+  /// 必须是当前可见互动中的参与者或动态作者。
+  public var replyToUserID: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct MomentDeleteCommentRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var operationID: String = String()
+
+  public var postID: String = String()
+
+  public var commentID: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct MomentAlbumRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var ownerID: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct MomentCoverRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var operationID: String = String()
+
+  /// 空值恢复默认；仅本人 moments_cover 图片。
+  public var assetID: String = String()
+
+  public var expectedRevision: Int64 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// 写操作仅持久化实体身份，重放时重新进行权限检查与当前快照投影。
+public nonisolated struct MomentMutationResult: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var post: MomentPost {
+    get {_post ?? MomentPost()}
+    set {_post = newValue}
+  }
+  /// Returns true if `post` has been explicitly set.
+  public var hasPost: Bool {self._post != nil}
+  /// Clears the value of `post`. Subsequent reads from it will return its default value.
+  public mutating func clearPost() {self._post = nil}
+
+  public var album: MomentAlbum {
+    get {_album ?? MomentAlbum()}
+    set {_album = newValue}
+  }
+  /// Returns true if `album` has been explicitly set.
+  public var hasAlbum: Bool {self._album != nil}
+  /// Clears the value of `album`. Subsequent reads from it will return its default value.
+  public mutating func clearAlbum() {self._album = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _post: MomentPost? = nil
+  fileprivate var _album: MomentAlbum? = nil
 }
 
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
@@ -3852,7 +4231,7 @@ nonisolated extension IMSyncHint: SwiftProtobuf.Message, SwiftProtobuf._MessageI
 
 nonisolated extension MediaCapabilities: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".MediaCapabilities"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}asset_kinds\0\u{3}chunk_bytes\0\u{3}image_max_bytes\0\u{3}video_max_bytes\0\u{3}audio_max_bytes\0\u{3}file_max_bytes\0\u{3}group_max_items\0\u{3}group_max_bytes\0\u{3}account_quota_bytes\0\u{3}instance_quota_bytes\0\u{3}account_concurrency\0\u{3}instance_concurrency\0\u{3}upload_lifetime_ms\0\u{3}grant_lifetime_ms\0\u{3}audio_min_duration_ms\0\u{3}audio_max_duration_ms\0\u{3}image_max_pixels\0\u{3}preview_max_dimension\0\u{3}waveform_samples\0\u{3}processing_timeout_ms\0\u{3}processor_available\0\u{3}image_max_frames\0\u{3}video_max_dimension\0\u{3}audio_max_channels\0\u{3}audio_max_sample_rate\0\u{3}filename_max_bytes\0\u{3}ready_lifetime_ms\0\u{3}dereferenced_lifetime_ms\0\u{3}collection_interval_ms\0\u{1}formats\0\u{3}derived_reservation_bytes\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}asset_kinds\0\u{3}chunk_bytes\0\u{3}image_max_bytes\0\u{3}video_max_bytes\0\u{3}audio_max_bytes\0\u{3}file_max_bytes\0\u{3}group_max_items\0\u{3}group_max_bytes\0\u{3}account_quota_bytes\0\u{3}instance_quota_bytes\0\u{3}account_concurrency\0\u{3}instance_concurrency\0\u{3}upload_lifetime_ms\0\u{3}grant_lifetime_ms\0\u{3}audio_min_duration_ms\0\u{3}audio_max_duration_ms\0\u{3}image_max_pixels\0\u{3}preview_max_dimension\0\u{3}waveform_samples\0\u{3}processing_timeout_ms\0\u{3}processor_available\0\u{3}image_max_frames\0\u{3}video_max_dimension\0\u{3}audio_max_channels\0\u{3}audio_max_sample_rate\0\u{3}filename_max_bytes\0\u{3}ready_lifetime_ms\0\u{3}dereferenced_lifetime_ms\0\u{3}collection_interval_ms\0\u{1}formats\0\u{3}derived_reservation_bytes\0\u{3}moments_video_max_duration_ms\0")
 
   fileprivate class _StorageClass {
     var _assetKinds: [String] = []
@@ -3886,6 +4265,7 @@ nonisolated extension MediaCapabilities: SwiftProtobuf.Message, SwiftProtobuf._M
     var _collectionIntervalMs: Int64 = 0
     var _formats: [MediaFormat] = []
     var _derivedReservationBytes: Int64 = 0
+    var _momentsVideoMaxDurationMs: Int64 = 0
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -3927,6 +4307,7 @@ nonisolated extension MediaCapabilities: SwiftProtobuf.Message, SwiftProtobuf._M
       _collectionIntervalMs = source._collectionIntervalMs
       _formats = source._formats
       _derivedReservationBytes = source._derivedReservationBytes
+      _momentsVideoMaxDurationMs = source._momentsVideoMaxDurationMs
     }
   }
 
@@ -3976,6 +4357,7 @@ nonisolated extension MediaCapabilities: SwiftProtobuf.Message, SwiftProtobuf._M
         case 29: try { try decoder.decodeSingularInt64Field(value: &_storage._collectionIntervalMs) }()
         case 30: try { try decoder.decodeRepeatedMessageField(value: &_storage._formats) }()
         case 31: try { try decoder.decodeSingularInt64Field(value: &_storage._derivedReservationBytes) }()
+        case 32: try { try decoder.decodeSingularInt64Field(value: &_storage._momentsVideoMaxDurationMs) }()
         default: break
         }
       }
@@ -4077,6 +4459,9 @@ nonisolated extension MediaCapabilities: SwiftProtobuf.Message, SwiftProtobuf._M
       if _storage._derivedReservationBytes != 0 {
         try visitor.visitSingularInt64Field(value: _storage._derivedReservationBytes, fieldNumber: 31)
       }
+      if _storage._momentsVideoMaxDurationMs != 0 {
+        try visitor.visitSingularInt64Field(value: _storage._momentsVideoMaxDurationMs, fieldNumber: 32)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -4117,6 +4502,7 @@ nonisolated extension MediaCapabilities: SwiftProtobuf.Message, SwiftProtobuf._M
         if _storage._collectionIntervalMs != rhs_storage._collectionIntervalMs {return false}
         if _storage._formats != rhs_storage._formats {return false}
         if _storage._derivedReservationBytes != rhs_storage._derivedReservationBytes {return false}
+        if _storage._momentsVideoMaxDurationMs != rhs_storage._momentsVideoMaxDurationMs {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -4213,7 +4599,7 @@ nonisolated extension MediaResourceInput: SwiftProtobuf.Message, SwiftProtobuf._
 
 nonisolated extension MediaCreateRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".MediaCreateRequest"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}operation_id\0\u{3}conversation_id\0\u{1}kind\0\u{1}resources\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}operation_id\0\u{3}conversation_id\0\u{1}kind\0\u{1}resources\0\u{1}purpose\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -4225,6 +4611,7 @@ nonisolated extension MediaCreateRequest: SwiftProtobuf.Message, SwiftProtobuf._
       case 2: try { try decoder.decodeSingularStringField(value: &self.conversationID) }()
       case 3: try { try decoder.decodeSingularStringField(value: &self.kind) }()
       case 4: try { try decoder.decodeRepeatedMessageField(value: &self.resources) }()
+      case 5: try { try decoder.decodeSingularStringField(value: &self.purpose) }()
       default: break
       }
     }
@@ -4243,6 +4630,9 @@ nonisolated extension MediaCreateRequest: SwiftProtobuf.Message, SwiftProtobuf._
     if !self.resources.isEmpty {
       try visitor.visitRepeatedMessageField(value: self.resources, fieldNumber: 4)
     }
+    if !self.purpose.isEmpty {
+      try visitor.visitSingularStringField(value: self.purpose, fieldNumber: 5)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -4251,6 +4641,7 @@ nonisolated extension MediaCreateRequest: SwiftProtobuf.Message, SwiftProtobuf._
     if lhs.conversationID != rhs.conversationID {return false}
     if lhs.kind != rhs.kind {return false}
     if lhs.resources != rhs.resources {return false}
+    if lhs.purpose != rhs.purpose {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -4597,7 +4988,7 @@ nonisolated extension MediaPartResponse: SwiftProtobuf.Message, SwiftProtobuf._M
 
 nonisolated extension MediaAuthorizeRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".MediaAuthorizeRequest"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}resource_id\0\u{1}purpose\0\u{3}message_uuid\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}resource_id\0\u{1}purpose\0\u{3}message_uuid\0\u{3}moments_target_id\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -4608,6 +4999,7 @@ nonisolated extension MediaAuthorizeRequest: SwiftProtobuf.Message, SwiftProtobu
       case 1: try { try decoder.decodeSingularStringField(value: &self.resourceID) }()
       case 2: try { try decoder.decodeSingularStringField(value: &self.purpose) }()
       case 3: try { try decoder.decodeSingularStringField(value: &self.messageUuid) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self.momentsTargetID) }()
       default: break
       }
     }
@@ -4623,6 +5015,9 @@ nonisolated extension MediaAuthorizeRequest: SwiftProtobuf.Message, SwiftProtobu
     if !self.messageUuid.isEmpty {
       try visitor.visitSingularStringField(value: self.messageUuid, fieldNumber: 3)
     }
+    if !self.momentsTargetID.isEmpty {
+      try visitor.visitSingularStringField(value: self.momentsTargetID, fieldNumber: 4)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -4630,6 +5025,7 @@ nonisolated extension MediaAuthorizeRequest: SwiftProtobuf.Message, SwiftProtobu
     if lhs.resourceID != rhs.resourceID {return false}
     if lhs.purpose != rhs.purpose {return false}
     if lhs.messageUuid != rhs.messageUuid {return false}
+    if lhs.momentsTargetID != rhs.momentsTargetID {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -5168,6 +5564,708 @@ nonisolated extension AvatarResponse: SwiftProtobuf.Message, SwiftProtobuf._Mess
   public static func ==(lhs: AvatarResponse, rhs: AvatarResponse) -> Bool {
     if lhs.avatarID != rhs.avatarID {return false}
     if lhs.jpeg != rhs.jpeg {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension MomentPost: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".MomentPost"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}post_id\0\u{1}author\0\u{1}text\0\u{1}images\0\u{3}created_at_ms\0\u{1}sequence\0\u{1}revision\0\u{1}deleted\0\u{1}likes\0\u{1}comments\0\u{1}video\0")
+
+  fileprivate class _StorageClass {
+    var _postID: String = String()
+    var _author: IMPublicUser? = nil
+    var _text: String = String()
+    var _images: [MediaAsset] = []
+    var _createdAtMs: Int64 = 0
+    var _sequence: Int64 = 0
+    var _revision: Int64 = 0
+    var _deleted: Bool = false
+    var _likes: [IMPublicUser] = []
+    var _comments: [MomentComment] = []
+    var _video: MediaAsset? = nil
+
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _postID = source._postID
+      _author = source._author
+      _text = source._text
+      _images = source._images
+      _createdAtMs = source._createdAtMs
+      _sequence = source._sequence
+      _revision = source._revision
+      _deleted = source._deleted
+      _likes = source._likes
+      _comments = source._comments
+      _video = source._video
+    }
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
+    }
+    return _storage
+  }
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        // The use of inline closures is to circumvent an issue where the compiler
+        // allocates stack space for every case branch when no optimizations are
+        // enabled. https://github.com/apple/swift-protobuf/issues/1034
+        switch fieldNumber {
+        case 1: try { try decoder.decodeSingularStringField(value: &_storage._postID) }()
+        case 2: try { try decoder.decodeSingularMessageField(value: &_storage._author) }()
+        case 3: try { try decoder.decodeSingularStringField(value: &_storage._text) }()
+        case 4: try { try decoder.decodeRepeatedMessageField(value: &_storage._images) }()
+        case 5: try { try decoder.decodeSingularInt64Field(value: &_storage._createdAtMs) }()
+        case 6: try { try decoder.decodeSingularInt64Field(value: &_storage._sequence) }()
+        case 7: try { try decoder.decodeSingularInt64Field(value: &_storage._revision) }()
+        case 8: try { try decoder.decodeSingularBoolField(value: &_storage._deleted) }()
+        case 9: try { try decoder.decodeRepeatedMessageField(value: &_storage._likes) }()
+        case 10: try { try decoder.decodeRepeatedMessageField(value: &_storage._comments) }()
+        case 11: try { try decoder.decodeSingularMessageField(value: &_storage._video) }()
+        default: break
+        }
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every if/case branch local when no optimizations
+      // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+      // https://github.com/apple/swift-protobuf/issues/1182
+      if !_storage._postID.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._postID, fieldNumber: 1)
+      }
+      try { if let v = _storage._author {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
+      } }()
+      if !_storage._text.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._text, fieldNumber: 3)
+      }
+      if !_storage._images.isEmpty {
+        try visitor.visitRepeatedMessageField(value: _storage._images, fieldNumber: 4)
+      }
+      if _storage._createdAtMs != 0 {
+        try visitor.visitSingularInt64Field(value: _storage._createdAtMs, fieldNumber: 5)
+      }
+      if _storage._sequence != 0 {
+        try visitor.visitSingularInt64Field(value: _storage._sequence, fieldNumber: 6)
+      }
+      if _storage._revision != 0 {
+        try visitor.visitSingularInt64Field(value: _storage._revision, fieldNumber: 7)
+      }
+      if _storage._deleted != false {
+        try visitor.visitSingularBoolField(value: _storage._deleted, fieldNumber: 8)
+      }
+      if !_storage._likes.isEmpty {
+        try visitor.visitRepeatedMessageField(value: _storage._likes, fieldNumber: 9)
+      }
+      if !_storage._comments.isEmpty {
+        try visitor.visitRepeatedMessageField(value: _storage._comments, fieldNumber: 10)
+      }
+      try { if let v = _storage._video {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 11)
+      } }()
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: MomentPost, rhs: MomentPost) -> Bool {
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._postID != rhs_storage._postID {return false}
+        if _storage._author != rhs_storage._author {return false}
+        if _storage._text != rhs_storage._text {return false}
+        if _storage._images != rhs_storage._images {return false}
+        if _storage._createdAtMs != rhs_storage._createdAtMs {return false}
+        if _storage._sequence != rhs_storage._sequence {return false}
+        if _storage._revision != rhs_storage._revision {return false}
+        if _storage._deleted != rhs_storage._deleted {return false}
+        if _storage._likes != rhs_storage._likes {return false}
+        if _storage._comments != rhs_storage._comments {return false}
+        if _storage._video != rhs_storage._video {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
+    }
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension MomentComment: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".MomentComment"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}comment_id\0\u{1}author\0\u{1}text\0\u{3}reply_to\0\u{3}created_at_ms\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.commentID) }()
+      case 2: try { try decoder.decodeSingularMessageField(value: &self._author) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.text) }()
+      case 4: try { try decoder.decodeSingularMessageField(value: &self._replyTo) }()
+      case 5: try { try decoder.decodeSingularInt64Field(value: &self.createdAtMs) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    if !self.commentID.isEmpty {
+      try visitor.visitSingularStringField(value: self.commentID, fieldNumber: 1)
+    }
+    try { if let v = self._author {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
+    } }()
+    if !self.text.isEmpty {
+      try visitor.visitSingularStringField(value: self.text, fieldNumber: 3)
+    }
+    try { if let v = self._replyTo {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 4)
+    } }()
+    if self.createdAtMs != 0 {
+      try visitor.visitSingularInt64Field(value: self.createdAtMs, fieldNumber: 5)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: MomentComment, rhs: MomentComment) -> Bool {
+    if lhs.commentID != rhs.commentID {return false}
+    if lhs._author != rhs._author {return false}
+    if lhs.text != rhs.text {return false}
+    if lhs._replyTo != rhs._replyTo {return false}
+    if lhs.createdAtMs != rhs.createdAtMs {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension MomentAlbum: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".MomentAlbum"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}owner\0\u{1}cover\0\u{1}revision\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularMessageField(value: &self._owner) }()
+      case 2: try { try decoder.decodeSingularMessageField(value: &self._cover) }()
+      case 3: try { try decoder.decodeSingularInt64Field(value: &self.revision) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    try { if let v = self._owner {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+    } }()
+    try { if let v = self._cover {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
+    } }()
+    if self.revision != 0 {
+      try visitor.visitSingularInt64Field(value: self.revision, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: MomentAlbum, rhs: MomentAlbum) -> Bool {
+    if lhs._owner != rhs._owner {return false}
+    if lhs._cover != rhs._cover {return false}
+    if lhs.revision != rhs.revision {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension MomentsListRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".MomentsListRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}author_id\0\u{1}cursor\0\u{1}limit\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.authorID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.cursor) }()
+      case 3: try { try decoder.decodeSingularInt32Field(value: &self.limit) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.authorID.isEmpty {
+      try visitor.visitSingularStringField(value: self.authorID, fieldNumber: 1)
+    }
+    if !self.cursor.isEmpty {
+      try visitor.visitSingularStringField(value: self.cursor, fieldNumber: 2)
+    }
+    if self.limit != 0 {
+      try visitor.visitSingularInt32Field(value: self.limit, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: MomentsListRequest, rhs: MomentsListRequest) -> Bool {
+    if lhs.authorID != rhs.authorID {return false}
+    if lhs.cursor != rhs.cursor {return false}
+    if lhs.limit != rhs.limit {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension MomentsListResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".MomentsListResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}posts\0\u{3}next_cursor\0\u{3}has_more\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeRepeatedMessageField(value: &self.posts) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.nextCursor) }()
+      case 3: try { try decoder.decodeSingularBoolField(value: &self.hasMore_p) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.posts.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.posts, fieldNumber: 1)
+    }
+    if !self.nextCursor.isEmpty {
+      try visitor.visitSingularStringField(value: self.nextCursor, fieldNumber: 2)
+    }
+    if self.hasMore_p != false {
+      try visitor.visitSingularBoolField(value: self.hasMore_p, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: MomentsListResponse, rhs: MomentsListResponse) -> Bool {
+    if lhs.posts != rhs.posts {return false}
+    if lhs.nextCursor != rhs.nextCursor {return false}
+    if lhs.hasMore_p != rhs.hasMore_p {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension MomentsGetRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".MomentsGetRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}post_ids\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeRepeatedStringField(value: &self.postIds) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.postIds.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.postIds, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: MomentsGetRequest, rhs: MomentsGetRequest) -> Bool {
+    if lhs.postIds != rhs.postIds {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension MomentsGetResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".MomentsGetResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}posts\0\u{3}unavailable_ids\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeRepeatedMessageField(value: &self.posts) }()
+      case 2: try { try decoder.decodeRepeatedStringField(value: &self.unavailableIds) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.posts.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.posts, fieldNumber: 1)
+    }
+    if !self.unavailableIds.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.unavailableIds, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: MomentsGetResponse, rhs: MomentsGetResponse) -> Bool {
+    if lhs.posts != rhs.posts {return false}
+    if lhs.unavailableIds != rhs.unavailableIds {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension MomentPublishRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".MomentPublishRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}operation_id\0\u{3}post_id\0\u{1}text\0\u{3}asset_ids\0\u{3}video_asset_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.operationID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.postID) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.text) }()
+      case 4: try { try decoder.decodeRepeatedStringField(value: &self.assetIds) }()
+      case 5: try { try decoder.decodeSingularStringField(value: &self.videoAssetID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.operationID.isEmpty {
+      try visitor.visitSingularStringField(value: self.operationID, fieldNumber: 1)
+    }
+    if !self.postID.isEmpty {
+      try visitor.visitSingularStringField(value: self.postID, fieldNumber: 2)
+    }
+    if !self.text.isEmpty {
+      try visitor.visitSingularStringField(value: self.text, fieldNumber: 3)
+    }
+    if !self.assetIds.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.assetIds, fieldNumber: 4)
+    }
+    if !self.videoAssetID.isEmpty {
+      try visitor.visitSingularStringField(value: self.videoAssetID, fieldNumber: 5)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: MomentPublishRequest, rhs: MomentPublishRequest) -> Bool {
+    if lhs.operationID != rhs.operationID {return false}
+    if lhs.postID != rhs.postID {return false}
+    if lhs.text != rhs.text {return false}
+    if lhs.assetIds != rhs.assetIds {return false}
+    if lhs.videoAssetID != rhs.videoAssetID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension MomentIdentityRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".MomentIdentityRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}post_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.postID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.postID.isEmpty {
+      try visitor.visitSingularStringField(value: self.postID, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: MomentIdentityRequest, rhs: MomentIdentityRequest) -> Bool {
+    if lhs.postID != rhs.postID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension MomentMutationRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".MomentMutationRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}operation_id\0\u{3}post_id\0\u{1}liked\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.operationID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.postID) }()
+      case 3: try { try decoder.decodeSingularBoolField(value: &self.liked) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.operationID.isEmpty {
+      try visitor.visitSingularStringField(value: self.operationID, fieldNumber: 1)
+    }
+    if !self.postID.isEmpty {
+      try visitor.visitSingularStringField(value: self.postID, fieldNumber: 2)
+    }
+    if self.liked != false {
+      try visitor.visitSingularBoolField(value: self.liked, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: MomentMutationRequest, rhs: MomentMutationRequest) -> Bool {
+    if lhs.operationID != rhs.operationID {return false}
+    if lhs.postID != rhs.postID {return false}
+    if lhs.liked != rhs.liked {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension MomentCommentRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".MomentCommentRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}operation_id\0\u{3}post_id\0\u{3}comment_id\0\u{1}text\0\u{3}reply_to_user_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.operationID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.postID) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.commentID) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self.text) }()
+      case 5: try { try decoder.decodeSingularStringField(value: &self.replyToUserID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.operationID.isEmpty {
+      try visitor.visitSingularStringField(value: self.operationID, fieldNumber: 1)
+    }
+    if !self.postID.isEmpty {
+      try visitor.visitSingularStringField(value: self.postID, fieldNumber: 2)
+    }
+    if !self.commentID.isEmpty {
+      try visitor.visitSingularStringField(value: self.commentID, fieldNumber: 3)
+    }
+    if !self.text.isEmpty {
+      try visitor.visitSingularStringField(value: self.text, fieldNumber: 4)
+    }
+    if !self.replyToUserID.isEmpty {
+      try visitor.visitSingularStringField(value: self.replyToUserID, fieldNumber: 5)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: MomentCommentRequest, rhs: MomentCommentRequest) -> Bool {
+    if lhs.operationID != rhs.operationID {return false}
+    if lhs.postID != rhs.postID {return false}
+    if lhs.commentID != rhs.commentID {return false}
+    if lhs.text != rhs.text {return false}
+    if lhs.replyToUserID != rhs.replyToUserID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension MomentDeleteCommentRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".MomentDeleteCommentRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}operation_id\0\u{3}post_id\0\u{3}comment_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.operationID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.postID) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.commentID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.operationID.isEmpty {
+      try visitor.visitSingularStringField(value: self.operationID, fieldNumber: 1)
+    }
+    if !self.postID.isEmpty {
+      try visitor.visitSingularStringField(value: self.postID, fieldNumber: 2)
+    }
+    if !self.commentID.isEmpty {
+      try visitor.visitSingularStringField(value: self.commentID, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: MomentDeleteCommentRequest, rhs: MomentDeleteCommentRequest) -> Bool {
+    if lhs.operationID != rhs.operationID {return false}
+    if lhs.postID != rhs.postID {return false}
+    if lhs.commentID != rhs.commentID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension MomentAlbumRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".MomentAlbumRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}owner_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.ownerID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.ownerID.isEmpty {
+      try visitor.visitSingularStringField(value: self.ownerID, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: MomentAlbumRequest, rhs: MomentAlbumRequest) -> Bool {
+    if lhs.ownerID != rhs.ownerID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension MomentCoverRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".MomentCoverRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}operation_id\0\u{3}asset_id\0\u{3}expected_revision\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.operationID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.assetID) }()
+      case 3: try { try decoder.decodeSingularInt64Field(value: &self.expectedRevision) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.operationID.isEmpty {
+      try visitor.visitSingularStringField(value: self.operationID, fieldNumber: 1)
+    }
+    if !self.assetID.isEmpty {
+      try visitor.visitSingularStringField(value: self.assetID, fieldNumber: 2)
+    }
+    if self.expectedRevision != 0 {
+      try visitor.visitSingularInt64Field(value: self.expectedRevision, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: MomentCoverRequest, rhs: MomentCoverRequest) -> Bool {
+    if lhs.operationID != rhs.operationID {return false}
+    if lhs.assetID != rhs.assetID {return false}
+    if lhs.expectedRevision != rhs.expectedRevision {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension MomentMutationResult: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".MomentMutationResult"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}post\0\u{1}album\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularMessageField(value: &self._post) }()
+      case 2: try { try decoder.decodeSingularMessageField(value: &self._album) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    try { if let v = self._post {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+    } }()
+    try { if let v = self._album {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: MomentMutationResult, rhs: MomentMutationResult) -> Bool {
+    if lhs._post != rhs._post {return false}
+    if lhs._album != rhs._album {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

@@ -9,6 +9,7 @@ extension MediaService {
         try await im.read(req) { _, _ in
             var value = MediaCapabilities(); value.assetKinds = ["image", "video", "audio", "file", "live_photo"]
             value.chunkBytes = Int64(MediaLimits.chunk); value.imageMaxBytes = 25 * 1024 * 1024
+            value.momentsVideoMaxDurationMs = 60_000
             value.videoMaxBytes = 512 * 1024 * 1024; value.fileMaxBytes = value.videoMaxBytes; value.audioMaxBytes = 20 * 1024 * 1024
             value.groupMaxItems = 20; value.groupMaxBytes = 1024 * 1024 * 1024
             value.accountQuotaBytes = self.limits.accountBytes; value.instanceQuotaBytes = self.limits.instanceBytes
@@ -32,6 +33,10 @@ extension MediaService {
     func create(_ req: Request) async throws -> Response {
         let (input, bytes) = try requestMessage(MediaCreateRequest.self, from: req)
         guard ["image", "video", "audio", "file", "live_photo"].contains(input.kind) else { throw APIError(.badRequest, "UNSUPPORTED_MEDIA_KIND", field: "kind") }
+        // 旧客户端未发送 purpose 时维持聊天契约；朋友圈资产必须脱离聊天会话。
+        let purpose = input.purpose.isEmpty ? "chat" : input.purpose
+        guard ["chat", "moments_post", "moments_cover"].contains(purpose),
+              purpose == "chat" || (input.conversationID.isEmpty && (input.kind == "image" || (purpose == "moments_post" && input.kind == "video"))) else { throw APIError(.badRequest, "VALIDATION_FAILED", field: "purpose") }
         let expected = input.kind == "live_photo" ? Set(["original", "paired_video"]) : Set(["original"])
         guard Set(input.resources.map(\.role)) == expected, input.resources.count == expected.count else { throw APIError(.badRequest, "VALIDATION_FAILED", field: "resources") }
         var reserved: Int64 = input.kind == "file" ? 0 : MediaLimits.previewBudget
@@ -47,14 +52,18 @@ extension MediaService {
         let reservation = reserved
         let free = try await blobs.availableBytes()
         return try await mutate(req, operation: input.operationID, bytes: bytes, name: "create") { session, db in
-            let (conversation, state) = try await self.im.load(input.conversationID, user: session.userID, db: db, active: true)
-            try await self.im.requireSending(user: session.userID, state: state, db: db)
+            var conversationID: UUID?
+            if purpose == "chat" {
+                let (conversation, state) = try await self.im.load(input.conversationID, user: session.userID, db: db, active: true)
+                try await self.im.requireSending(user: session.userID, state: state, db: db)
+                conversationID = try conversation.requireID()
+            }
             let all = try await MediaAssetRecord.query(on: db).filter(\.$reservedBytes > 0).all()
             let total = all.reduce(Int64(0)) { $0 + $1.reservedBytes }
             let owned = all.filter { $0.ownerID == session.userID }.reduce(Int64(0)) { $0 + $1.reservedBytes }
             guard total + reservation <= self.limits.instanceBytes, owned + reservation <= self.limits.accountBytes else { throw APIError(.conflict, "MEDIA_QUOTA_EXCEEDED") }
             guard free > total + reservation * 2 + 64 * 1024 * 1024 else { throw APIError(.insufficientStorage, "MEDIA_STORAGE_UNAVAILABLE") }
-            let asset = MediaAssetRecord(); asset.id = UUID(); asset.ownerID = session.userID; asset.conversationID = try conversation.requireID()
+            let asset = MediaAssetRecord(); asset.id = UUID(); asset.ownerID = session.userID; asset.conversationID = conversationID; asset.purpose = purpose
             asset.state = "uploading"; asset.expiresAt = self.accounts.now + MediaLimits.lifetime; asset.reservedBytes = reservation; asset.generation = 1
             try await self.save(asset, MediaAssetState(kind: input.kind), db: db)
             for source in input.resources {
@@ -76,7 +85,7 @@ extension MediaService {
         let id = try Validation.uuid(input.assetID, field: "asset_id")
         return try await mutate(req, operation: input.operationID, bytes: bytes, name: "complete") { session, db in
             let asset = try await self.owned(id, user: session.userID, db: db)
-            _ = try await self.im.load(asset.conversationID.uuidString, user: session.userID, db: db, active: true)
+            try await self.requireUploadAccess(asset, user: session.userID, db: db)
             guard ["uploading", "queued", "processing", "ready"].contains(self.effectiveState(asset)) else { throw APIError(.conflict, "MEDIA_NOT_AVAILABLE") }
             if asset.state == "uploading" {
                 let resources = try await MediaResourceRecord.query(on: db).filter(\.$assetID == id).all()
@@ -95,7 +104,7 @@ extension MediaService {
         let id = try Validation.uuid(input.assetID, field: "asset_id")
         return try await mutate(req, operation: input.operationID, bytes: bytes, name: "cancel") { session, db in
             let asset = try await self.owned(id, user: session.userID, db: db)
-            guard try await MediaReferenceRecord.query(on: db).filter(\.$assetID == id).count() == 0 else { throw APIError(.conflict, "MEDIA_IN_USE") }
+            guard try await !Self.hasReferences(id, db: db) else { throw APIError(.conflict, "MEDIA_IN_USE") }
             if !["cancelled", "deleted", "expired"].contains(asset.state) {
                 asset.state = "cancelled"; asset.generation += 1; asset.expiresAt = self.accounts.now
                 try await asset.update(on: db); try await self.enqueue(asset, kind: "gc", due: self.accounts.now, db: db)
@@ -111,7 +120,7 @@ extension MediaService {
             let session = try await self.accounts.authenticate(req, db: req.db)
             guard let resource = try await MediaResourceRecord.query(on: req.db).filter(\.$uploadID == uploadID).first() else { throw APIError(.notFound, "MEDIA_NOT_FOUND") }
             let asset = try await self.owned(resource.assetID, user: session.userID, db: req.db)
-            _ = try await self.im.load(asset.conversationID.uuidString, user: session.userID, db: req.db, active: true)
+            try await self.requireUploadAccess(asset, user: session.userID, db: req.db)
             guard ["uploading", "queued", "processing", "ready"].contains(self.effectiveState(asset)) else { throw APIError(.conflict, "MEDIA_NOT_AVAILABLE") }
             let ticket = try self.ticket(resource, asset: asset)
             guard Int64(index) * Int64(MediaLimits.chunk) < ticket.state.bytes else { throw APIError(.badRequest, "VALIDATION_FAILED", field: "index") }
@@ -140,7 +149,7 @@ extension MediaService {
                 try await req.db.transaction { db in
                     let session = try await self.accounts.authenticate(req, db: db)
                     let asset = try await self.owned(ticket.asset, user: session.userID, db: db)
-                    _ = try await self.im.load(asset.conversationID.uuidString, user: session.userID, db: db, active: true)
+                    try await self.requireUploadAccess(asset, user: session.userID, db: db)
                     guard asset.generation == ticket.generation, ["uploading", "queued", "processing", "ready"].contains(self.effectiveState(asset)), prior != nil || asset.state == "uploading" else { throw APIError(.conflict, "MEDIA_NOT_AVAILABLE") }
                     if prior == nil {
                         let part = MediaPartRecord(); part.id = UUID(); part.resourceID = ticket.id; part.index = index

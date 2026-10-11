@@ -67,6 +67,16 @@ public enum APIErrorCode: String, Sendable {
     case reauthRequired = "REAUTH_REQUIRED"
     case ownerTransferRequired = "OWNER_TRANSFER_REQUIRED"
     case membershipLimit = "MEMBERSHIP_LIMIT"
+    /// 动态或相册不存在、已删除或当前账号无权查看。
+    case momentUnavailable = "MOMENT_UNAVAILABLE"
+    /// 相册封面版本已变化，原预期版本不能继续提交。
+    case momentVersionConflict = "MOMENT_VERSION_CONFLICT"
+    /// 同一动态或评论身份已被不同内容或所有者使用。
+    case momentIdConflict = "MOMENT_ID_CONFLICT"
+    /// 当前账号不是允许执行删除操作的内容作者。
+    case momentOwnerRequired = "MOMENT_OWNER_REQUIRED"
+    /// 互动数量或序列化响应大小达到服务端上限。
+    case momentInteractionLimit = "MOMENT_INTERACTION_LIMIT"
     case unknown
 }
 

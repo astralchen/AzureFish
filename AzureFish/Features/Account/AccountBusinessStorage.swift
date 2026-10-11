@@ -1,3 +1,4 @@
+import AzureFishMoments
 import AzureFishChat
 import AzureFishStorage
 import Foundation
@@ -52,10 +53,13 @@ final class AccountBusinessStorage {
             else {
                 let task = Task.detached {
                     let database = try ChatStore.openDatabase(url: root.appendingPathComponent("main.sqlite"),
-                        key: databaseKey, environment: environment, userID: userID)
+                        key: databaseKey, environment: environment, userID: userID, migrations: [MomentsStore.migration])
                     do {
                         let media = try EncryptedMediaStore(root: root.appendingPathComponent("media"), key: mediaKey,
                             environment: environment, userID: userID)
+                        // 两个业务域共用账号数据库；先注册朋友圈引用并恢复导入，再运行聊天媒体恢复。
+                        let moments = try MomentsStore(database: database)
+                        try await moments.recoverImports(media: media)
                         let chat = try ChatStore(database: database)
                         try await chat.recoverMediaImports(using: ChatMediaStore(storage: media))
                         try await chat.close()

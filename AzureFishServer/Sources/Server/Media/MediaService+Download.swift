@@ -7,11 +7,14 @@ extension MediaService {
     func authorize(_ req: Request) async throws -> Response {
         let (input, _) = try requestMessage(MediaAuthorizeRequest.self, from: req)
         let resource = try Validation.uuid(input.resourceID, field: "resource_id")
-        guard ["draft_preview", "message_view"].contains(input.purpose), input.purpose != "draft_preview" || input.messageUuid.isEmpty else { throw APIError(.badRequest, "VALIDATION_FAILED", field: "purpose") }
+        guard ["draft_preview", "message_view", "moments_post", "moments_cover"].contains(input.purpose), input.purpose == "message_view" || input.messageUuid.isEmpty else { throw APIError(.badRequest, "VALIDATION_FAILED", field: "purpose") }
+        let isMoments = input.purpose.hasPrefix("moments_")
+        guard isMoments || input.momentsTargetID.isEmpty else { throw APIError(.badRequest, "VALIDATION_FAILED", field: "moments_target_id") }
+        let target = isMoments ? try Validation.uuid(input.momentsTargetID, field: "moments_target_id") : nil
         let message = input.purpose == "message_view" ? try Validation.uuid(input.messageUuid, field: "message_uuid") : nil
         return try await im.read(req) { session, db in
             guard let row = try await MediaResourceRecord.find(resource, on: db), let asset = try await MediaAssetRecord.find(row.assetID, on: db) else { throw APIError(.notFound, "MEDIA_NOT_FOUND") }
-            let grant = try MediaGrant(user: session.userID, session: session.requireID(), resource: resource, asset: asset.requireID(), purpose: input.purpose, message: message, generation: asset.generation, expires: self.accounts.now + 300_000)
+            let grant = try MediaGrant(user: session.userID, session: session.requireID(), resource: resource, asset: asset.requireID(), purpose: input.purpose, message: message, momentsTarget: target, generation: asset.generation, expires: self.accounts.now + 300_000)
             let ticket = try await self.validate(grant, session: session, db: db)
             var response = MediaDownloadGrant(); response.token = try self.im.encrypt(grant, context: "media-grant-v1")
             response.expiresAtMs = grant.expires; response.resourceID = input.resourceID.lowercased()
@@ -24,9 +27,12 @@ extension MediaService {
               let asset = try await MediaAssetRecord.find(grant.asset, on: db), effectiveState(asset) == "ready", asset.generation == grant.generation else { throw APIError(.notFound, "MEDIA_NOT_FOUND") }
         if grant.purpose == "draft_preview" {
             guard asset.ownerID == session.userID, try !assetState(asset).wasPublished else { throw APIError(.notFound, "MEDIA_NOT_FOUND") }
-        } else if grant.purpose == "message_view", let messageID = grant.message {
-            let (_, state) = try await im.load(asset.conversationID.uuidString, user: session.userID, db: db)
-            let message = try await im.visibleMessage(messageID, conversation: asset.conversationID, state: state, user: session.userID, db: db)
+        } else if grant.purpose.hasPrefix("moments_") {
+            // 授权令牌只携带访问上下文，下载仍须重新核对目标引用和当前好友关系。
+            try await validateMoments(grant, asset: asset, db: db)
+        } else if grant.purpose == "message_view", asset.purpose == "chat", let conversation = asset.conversationID, let messageID = grant.message {
+            let (_, state) = try await im.load(conversation.uuidString, user: session.userID, db: db)
+            let message = try await im.visibleMessage(messageID, conversation: conversation, state: state, user: session.userID, db: db)
             guard try !im.storedMessage(message).revoked,
                   try await MediaReferenceRecord.query(on: db).filter(\.$assetID == grant.asset).filter(\.$messageID == messageID).first() != nil else { throw APIError(.notFound, "MEDIA_NOT_FOUND") }
         } else { throw APIError(.forbidden, "MEDIA_GRANT_INVALID") }

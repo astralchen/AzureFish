@@ -6,12 +6,41 @@ import os
 import QuickLayout
 import QuickLayoutKit
 
+/// 放大照片到达边缘后，让向外的横向手势交给分页容器。
+private final class AttachmentImageScrollView: UIScrollView {
+    var shouldBeginPan: ((CGPoint) -> Bool)?
+    override func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+        if gestureRecognizer === panGestureRecognizer,
+           shouldBeginPan?(panGestureRecognizer.velocity(in: self)) == false { return false }
+        return super.gestureRecognizerShouldBegin(gestureRecognizer)
+    }
+}
+
 /// 一个可复用预览页，负责只读内容、缩放和可取消的原图加载。
 final class AttachmentPreviewPage: QuickLayoutCollectionViewCell, UIScrollViewDelegate {
     /// 分页固定为物理 LTR；文字方向由预览控制器设置，不从分页列表覆盖。
     override func synchronizeLayoutDirectionFromCollectionViewIfNeeded() -> Bool { false }
 
-    let imageScrollView = UIScrollView()
+    let imageScrollView: UIScrollView = AttachmentImageScrollView()
+    /// 按附件顺序查询相邻页，-1 为上一页、1 为下一页；nil 或返回 false 时保留图片回弹。
+    var canTurnPage: ((Int) -> Bool)?
+    /// 缩放是否超过初始比例；使用容差忽略回弹中的微小浮点偏差。
+    var isImageZoomed: Bool { imageScrollView.zoomScale > 1.01 }
+    /// 是否正在捏合缩放或缩放回弹，此时外层分页不应抢占手势。
+    var isInteractingWithZoom: Bool { imageScrollView.isZooming || imageScrollView.isZoomBouncing }
+
+    /// 只有从图片边界向外开始的横滑才交给分页，图片内部及纵向拖动仍移动照片。
+    func shouldYieldImagePan(_ velocity: CGPoint) -> Bool {
+        guard representedItem?.kind == .image, isImageZoomed, !isInteractingWithZoom,
+              abs(velocity.x) > abs(velocity.y) else { return false }
+        let step = velocity.x < 0 ? 1 : -1
+        guard canTurnPage?(step) == true else { return false }
+        // 居中 inset 会改变实际可滚动边界，1 点容差覆盖缩放布局后的舍入误差。
+        let minimum = -imageScrollView.adjustedContentInset.left
+        let maximum = max(minimum, imageScrollView.contentSize.width - imageScrollView.bounds.width
+            + imageScrollView.adjustedContentInset.right)
+        return step > 0 ? imageScrollView.contentOffset.x >= maximum - 1 : imageScrollView.contentOffset.x <= minimum + 1
+    }
     let imageView = UIImageView()
     let playerLayer = AVPlayerLayer()
     private(set) var livePhotoPlayer: AttachmentLivePhotoPlayer?
@@ -66,6 +95,7 @@ final class AttachmentPreviewPage: QuickLayoutCollectionViewCell, UIScrollViewDe
     private(set) var isOriginalActive = false
     /// 图像是否已经达到原始分辨率。
     private(set) var hasOriginalImage = false
+    private var originalIsAnimatedGIF = false
     private var pdfObserver: NSObjectProtocol?
     private(set) var itemID: UUID?
     /// 视频转场只复制静态封面，不能对已绑定播放器的整页创建系统快照。
@@ -89,6 +119,9 @@ final class AttachmentPreviewPage: QuickLayoutCollectionViewCell, UIScrollViewDe
         imageScrollView.minimumZoomScale = 1
         imageScrollView.maximumZoomScale = 4
         imageScrollView.delegate = self
+        (imageScrollView as? AttachmentImageScrollView)?.shouldBeginPan = { [weak self] velocity in
+            self?.shouldYieldImagePan(velocity) != true
+        }
         imageScrollView.contentInsetAdjustmentBehavior = .never
         imageScrollView.showsVerticalScrollIndicator = false
         imageScrollView.showsHorizontalScrollIndicator = false
@@ -270,7 +303,9 @@ final class AttachmentPreviewPage: QuickLayoutCollectionViewCell, UIScrollViewDe
         imageScrollView.contentOffset = offset
     }
 
-    /// 只有稳定当前页可以读取完整原图；取消不提前归还同步解码槽位。
+    /// 控制稳定当前页的原图加载；停用时取消请求并保留已显示图片，像素由 suspendImages 释放。
+    ///
+    /// 取消请求不会提前归还同步解码槽位；再次激活时复用已完成的原图。
     func setOriginalActive(_ active: Bool) {
         let active = active && imagesAreVisible && representedItem?.kind == .image
         guard active != isOriginalActive else { return }
@@ -279,9 +314,12 @@ final class AttachmentPreviewPage: QuickLayoutCollectionViewCell, UIScrollViewDe
         originalGeneration = UUID()
         originalTask?.cancel()
         originalTask = nil
-        hasOriginalImage = false
-        if let previewThumbnail { apply(previewThumbnail) } else { imageView.image = nil }
         guard active, let item = representedItem, let mediaLoader else { loading.stopAnimating(); return }
+        // 翻页拖动和回弹保留已解码像素及几何；重新激活仅恢复 GIF，无需再降级后解码。
+        if hasOriginalImage {
+            if originalIsAnimatedGIF, !item.isLivePhoto { playGIF(url: item.url, generation: originalGeneration) }
+            return
+        }
         loading.startAnimating()
         messageLabel.isHidden = true
         let token = originalGeneration
@@ -293,6 +331,7 @@ final class AttachmentPreviewPage: QuickLayoutCollectionViewCell, UIScrollViewDe
                 guard !Task.isCancelled, let self, originalGeneration == token, isOriginalActive else { return }
                 let image = original.image
                 hasOriginalImage = true
+                originalIsAnimatedGIF = original.isAnimatedGIF
                 loading.stopAnimating()
                 apply(image)
                 if original.isAnimatedGIF, !item.isLivePhoto { playGIF(url: item.url, generation: token) }
@@ -395,6 +434,8 @@ final class AttachmentPreviewPage: QuickLayoutCollectionViewCell, UIScrollViewDe
     func suspendImages() {
         imagesAreVisible = false
         setOriginalActive(false)
+        hasOriginalImage = false
+        originalIsAnimatedGIF = false
         configurationGeneration = UUID()
         mediaLoader?.cancel(thumbnailRequest)
         thumbnailRequest = nil
@@ -449,7 +490,7 @@ final class AttachmentPreviewPage: QuickLayoutCollectionViewCell, UIScrollViewDe
         messageLabel.text = nil
         loading.stopAnimating()
     }
-    override func prepareForReuse() { super.prepareForReuse(); reset(); toggleControls = nil; pageDidChange = nil; photoGeometryDidChange = nil }
+    override func prepareForReuse() { super.prepareForReuse(); reset(); toggleControls = nil; pageDidChange = nil; photoGeometryDidChange = nil; canTurnPage = nil }
     isolated deinit { originalTask?.cancel(); mediaLoader?.cancel(thumbnailRequest); imageTask?.cancel(); if let pdfObserver { NotificationCenter.default.removeObserver(pdfObserver) } }
 }
 

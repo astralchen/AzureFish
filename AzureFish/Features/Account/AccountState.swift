@@ -33,7 +33,8 @@ enum AccountValidation {
         !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && value.count <= 64 && text(value)
     }
     static func bio(_ value: String) -> Bool { value.count <= 500 && text(value) }
-    private static func text(_ value: String) -> Bool {
+    /// 检查自由文本是否含换行以外的控制字符；长度和非空约束由具体业务单独检查。
+    static func text(_ value: String) -> Bool {
         !value.unicodeScalars.contains { CharacterSet.controlCharacters.contains($0) && $0 != "\n" }
     }
 }

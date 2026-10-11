@@ -412,6 +412,7 @@ message MediaCapabilities {
     int64 collection_interval_ms = 29;
     repeated MediaFormat formats = 30;
     int64 derived_reservation_bytes = 31;
+    int64 moments_video_max_duration_ms = 32; // 朋友圈视频最长 60 秒；聊天限制不变。
 }
 message MediaFormat {
     string kind = 1;
@@ -430,6 +431,7 @@ message MediaCreateRequest {
     string conversation_id = 2; // 已取得的权威会话，创建者必须为活跃成员。
     string kind = 3; // image、video、audio、file、live_photo。
     repeated MediaResourceInput resources = 4;
+    string purpose = 5; // 空值／chat 保持聊天语义；moments_post、moments_cover 不携带 conversation_id。
 }
 message MediaAssetRequest {
     string asset_id = 1;
@@ -481,8 +483,9 @@ message MediaPartResponse {
 }
 message MediaAuthorizeRequest {
     string resource_id = 1;
-    string purpose = 2; // draft_preview 或 message_view。
-    string message_uuid = 3; // message_view 必填；draft_preview 必须为空。
+    string purpose = 2; // draft_preview、message_view、moments_post 或 moments_cover；朋友圈用途须携带 moments_target_id。
+    string message_uuid = 3; // message_view 必填；其他用途必须为空。
+    string moments_target_id = 4; // moments_post 为动态 ID；moments_cover 为相册所有者 ID。
 }
 message MediaDownloadGrant {
     string token = 1; // 放入 X-Media-Grant 请求头，同时提供 Bearer；不写日志或消息。
@@ -555,4 +558,82 @@ message UpdateAvatarRequest {
 message AvatarResponse {
     string avatar_id = 1;
     bytes jpeg = 2;
+}
+
+// 朋友圈权威快照。互动已按查看者过滤，不能用其数量推断隐藏互动。
+message MomentPost {
+    string post_id = 1;
+    IMPublicUser author = 2;
+    string text = 3;
+    repeated MediaAsset images = 4; // 发布顺序，最多九张。
+    int64 created_at_ms = 5;
+    int64 sequence = 6;
+    int64 revision = 7;
+    bool deleted = 8; // 墓碑不携带正文、图片或互动。
+    repeated IMPublicUser likes = 9;
+    repeated MomentComment comments = 10; // 时间升序的平铺回复。
+    MediaAsset video = 11; // 最多一段视频，与 images 互斥；删除后缺失。
+}
+message MomentComment {
+    string comment_id = 1;
+    IMPublicUser author = 2;
+    string text = 3;
+    IMPublicUser reply_to = 4; // 无回复对象时缺失。
+    int64 created_at_ms = 5;
+}
+message MomentAlbum {
+    IMPublicUser owner = 1;
+    MediaAsset cover = 2; // 缺失表示默认封面。
+    int64 revision = 3;
+}
+message MomentsListRequest {
+    string author_id = 1; // 空值为好友动态流，否则为指定相册。
+    string cursor = 2; // 服务端签名，绑定查看者、相册及固定上界。
+    int32 limit = 3; // 默认 20，最多 50。
+}
+message MomentsListResponse {
+    repeated MomentPost posts = 1;
+    string next_cursor = 2;
+    bool has_more = 3;
+}
+message MomentsGetRequest { repeated string post_ids = 1; } // 最多 100 个。
+message MomentsGetResponse {
+    repeated MomentPost posts = 1;
+    repeated string unavailable_ids = 2; // 已删除／不存在／不可见，不区分原因。
+}
+message MomentPublishRequest {
+    string operation_id = 1;
+    string post_id = 2; // 客户端持久化身份；响应丢失后复用。
+    string text = 3; // 最多 2000 Character／64 KiB，文字、图片或视频至少一项。
+    repeated string asset_ids = 4; // 有序且不重复，仅本人 moments_post 图片。
+    string video_asset_id = 5; // 本人 moments_post 视频，与 asset_ids 互斥。
+}
+message MomentIdentityRequest { string post_id = 1; }
+message MomentMutationRequest {
+    string operation_id = 1;
+    string post_id = 2;
+    bool liked = 3; // 点赞设值，不做 toggle。
+}
+message MomentCommentRequest {
+    string operation_id = 1;
+    string post_id = 2;
+    string comment_id = 3; // 稳定客户端身份。
+    string text = 4; // 最多 500 Character／16 KiB。
+    string reply_to_user_id = 5; // 必须是当前可见互动中的参与者或动态作者。
+}
+message MomentDeleteCommentRequest {
+    string operation_id = 1;
+    string post_id = 2;
+    string comment_id = 3;
+}
+message MomentAlbumRequest { string owner_id = 1; }
+message MomentCoverRequest {
+    string operation_id = 1;
+    string asset_id = 2; // 空值恢复默认；仅本人 moments_cover 图片。
+    int64 expected_revision = 3;
+}
+// 写操作仅持久化实体身份，重放时重新进行权限检查与当前快照投影。
+message MomentMutationResult {
+    MomentPost post = 1;
+    MomentAlbum album = 2;
 }

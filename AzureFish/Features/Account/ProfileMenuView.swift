@@ -44,7 +44,7 @@ final class ProfileMenuView: QuickLayoutView {
         collectionView.semanticContentAttribute = Localization.currentUIKitDirection == .rightToLeft ? .forceRightToLeft : .forceLeftToRight
         adapter.apply(transaction: .disabled) {
             ListSection("navigation") {
-                ListKit.ForEach(["account.design.editProfile", "account.design.security", "account.design.settings"], id: \.self) { key in
+                ListKit.ForEach(["account.design.editProfile", "moments.album", "account.design.security", "account.design.settings"], id: \.self) { key in
                     Row(key, model: key, cell: UICollectionViewListCell.self) { cell, key, _ in
                         Self.configure(cell, key: key, disclosure: true)
                     }.onSelect { [weak self] key, _ in self?.select(key) }

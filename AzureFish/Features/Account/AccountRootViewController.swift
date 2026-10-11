@@ -59,7 +59,9 @@ final class AccountRootViewController: LocalizedViewController {
             let chat = ChatSplitViewController(runtime: runtime)
             let contacts = ContactsSplitViewController(runtime: runtime)
             let me = ProfileSplitViewController(session: session, runtime: runtime)
-            tabs.viewControllers = [chat, contacts, me]
+            let discover = DiscoverTabViewController(runtime: runtime.moments)
+            chat.tabBarItem.tag = 0; contacts.tabBarItem.tag = 1; discover.tabBarItem.tag = 2; me.tabBarItem.tag = 3
+            tabs.viewControllers = [chat, contacts, discover, me]
             runtime.openConversation = { [weak tabs, weak chat] conversation in
                 tabs?.selectedIndex = 0; chat?.open(conversation)
             }
@@ -86,22 +88,28 @@ final class AccountRootViewController: LocalizedViewController {
     }
     override func reloadLocalizedContent() {
         super.reloadLocalizedContent()
-        tabs?.viewControllers?.first?.tabBarItem = UITabBarItem(title: Localization.text("account.design.chat"), image: UIImage(systemName: "bubble.left.and.bubble.right"), tag: 0)
-        if let controllers = tabs?.viewControllers, controllers.count == 3 { controllers[1].tabBarItem = UITabBarItem(title: Localization.text("chat.live.contacts"), image: UIImage(systemName: "person.2"), tag: 1) }
-        tabs?.viewControllers?.last?.tabBarItem = UITabBarItem(title: Localization.text("account.design.me"), image: UIImage(systemName: "person.crop.circle"), tag: 2)
+        // 使用稳定 tag 更新原标签项目，语言变化时保留系统标签顺序与导航状态。
+        let titles = ["account.design.chat", "chat.live.contacts", "moments.discover", "account.design.me"]
+        let symbols = ["bubble.left.and.bubble.right", "person.2", "safari", "person.crop.circle"]
+        for controller in tabs?.viewControllers ?? [] {
+            let tag = controller.tabBarItem.tag
+            guard titles.indices.contains(tag) else { continue }
+            controller.tabBarItem.title = Localization.text(titles[tag]); controller.tabBarItem.image = UIImage(systemName: symbols[tag])
+            controller.tabBarItem.accessibilityIdentifier = "app.tab.\(tag)"
+        }
         updateUnreadBadges()
         bannerCoordinator?.reloadLocalizedContent()
     }
     private func updateUnreadBadges() {
-        guard let runtime = chatRuntime, let controllers = tabs?.viewControllers, controllers.count == 3 else { return }
+        guard let runtime = chatRuntime, let controllers = tabs?.viewControllers, controllers.count == 4 else { return }
         // 数量来自全部会话的权威未读水位，不受当前搜索或所选 Tab 影响。
         let unread = runtime.conversations.reduce(Int64(0)) { total, conversation in
             min(100, total + min(100, max(0, conversation.readState.unread)))
         }
         let pending = runtime.contacts.filter { $0.requestState == "pending" && $0.requesterID != runtime.userID && !$0.isBlocked }.count
         for (index, count) in [(0, unread), (1, Int64(pending))] {
-            controllers[index].tabBarItem.badgeValue = count == 0 ? nil : count > 99 ? "99+" : String(count)
-            controllers[index].tabBarItem.badgeColor = .systemRed
+            controllers.first { $0.tabBarItem.tag == index }?.tabBarItem.badgeValue = count == 0 ? nil : count > 99 ? "99+" : String(count)
+            controllers.first { $0.tabBarItem.tag == index }?.tabBarItem.badgeColor = .systemRed
         }
     }
 }

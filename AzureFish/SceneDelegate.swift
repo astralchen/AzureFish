@@ -11,7 +11,29 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         Localization.start()
         let root: UIViewController
         #if DEBUG
-        if ProcessInfo.processInfo.arguments.contains("-chat-details-ui-test"), #available(iOS 26.0, *) {
+        if ProcessInfo.processInfo.arguments.contains("-moments-video-demo") {
+            root = AppNavigationController(rootViewController: MomentsVideoDemoController())
+        } else if ProcessInfo.processInfo.arguments.contains("-moments-layout-demo") {
+            root = AppNavigationController(rootViewController: MomentsViewController(runtime: MomentsPreviewData.layoutComparisonRuntime()))
+        } else if ProcessInfo.processInfo.arguments.contains("-moments-ui-test") {
+            // UI 回归使用确定性本地样例和真实标签容器，页面浏览不依赖账号登录。
+            let arguments = ProcessInfo.processInfo.arguments
+            let countIndex = arguments.firstIndex(of: "-moments-photo-count").map { $0 + 1 }
+            let imageCount = countIndex.flatMap { arguments.indices.contains($0) ? Int(arguments[$0]) : nil } ?? 9
+            let runtime = MomentsPreviewData.runtime(imageCount: imageCount)
+            if let index = arguments.firstIndex(of: "-moments-pagination-state"), arguments.indices.contains(index + 1) {
+                runtime.previewPagination = MomentsPaginationState(rawValue: arguments[index + 1])
+            }
+            let tabs = UITabBarController()
+            let chat = UIViewController(), contacts = UIViewController(), me = UIViewController()
+            let discover = DiscoverTabViewController(runtime: runtime)
+            tabs.viewControllers = [chat, contacts, discover, me]
+            for (index, key) in ["account.design.chat", "chat.live.contacts", "moments.discover", "account.design.me"].enumerated() {
+                tabs.viewControllers?[index].tabBarItem = UITabBarItem(title: Localization.text(key), image: UIImage(systemName: ["bubble.left.and.bubble.right", "person.2", "safari", "person.crop.circle"][index]), tag: index)
+                tabs.viewControllers?[index].tabBarItem.accessibilityIdentifier = "app.tab.\(index)"
+            }
+            tabs.selectedIndex = 2; root = tabs
+        } else if ProcessInfo.processInfo.arguments.contains("-chat-details-ui-test"), #available(iOS 26.0, *) {
             root = AppNavigationController(rootViewController: ChatDetailsRegressionController())
         } else if let scenario = AccountDebugScenario.controller(arguments: ProcessInfo.processInfo.arguments) {
             root = scenario

@@ -7,7 +7,7 @@
 打开 `AzureFish.xcworkspace`，选择共享 scheme `AzureFish`。首次构建需要下载远程 Swift Package 依赖。
 
 - 最低部署版本保持 **iOS 15.0**，支持 iPhone 和 iPad。
-- 正常启动进入会话恢复或欢迎页；登录后使用“聊天／通讯录／我”三标签。
+- 正常启动进入会话恢复或欢迎页；登录后使用“聊天／通讯录／发现／我”四标签。
 - iOS 26+ 复用完整聊天组件；iOS 15～25 使用真实 IM 兼容页面及系统非玻璃外观。
 - 客户端与独立服务端支持本机虚构账号、好友、私聊／群聊和媒体；原演示入口保持独立。
 - 头像及账号安全实现、适配边界和本次验证见 [全 App 闭环记录](Documentation/Authentication/Implementation/2026-09-28-app-closure.md)。当前不开放生产或真实账号环境。
@@ -24,6 +24,10 @@
 - `AzureFishTests/Chat/`、`AzureFishUITests/Chat/`：迁移的单元、组件和 UI 测试；测试模块已改为 `AzureFish`。
 
 `Features/Chat/README.md` 随原模块完整保留，其中历史验证记录描述的是来源工程，不能作为 AzureFish 的测试结论。新工程验证记录见 `CHAT_MIGRATION.md`。
+
+## 图文朋友圈
+
+新增好友图文动态、九图发布、点赞评论／回复、个人相册和封面，接入账号加密存储与独立服务端。功能边界及本次验证见[朋友圈首版](Documentation/Design/Moments/README.md)。
 
 ## 本次修复
 

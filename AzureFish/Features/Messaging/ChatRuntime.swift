@@ -12,6 +12,8 @@ final class ChatRuntime {
     }
     private static var instances: [WeakRuntime] = []
     private var accountStorage: AccountBusinessStorage?
+    /// 当前窗口的朋友圈运行时，借用账号存储并纳入统一停止屏障。
+    lazy var moments = MomentsRuntime(chat: self)
     private func registerInstance() {
         Self.instances.removeAll { $0.value == nil }
         Self.instances.append(WeakRuntime(self))
@@ -275,6 +277,7 @@ final class ChatRuntime {
             mediaKey: mediaKey, environment: manager.environment.identifier, userID: user)
         guard self.generation == generation else { try await account.release(); throw CancellationError() }
         self.accountStorage = account
+        try moments.attach(database: account.resources.database, media: account.resources.media)
         let store = try ChatStore(database: account.resources.database)
         let media = ChatMediaStore(storage: account.resources.media)
         let engine = ChatEngine(store: store, session: manager)
@@ -329,6 +332,7 @@ final class ChatRuntime {
         draftPreviews = [:]
         pinnedConversationsCollapsed = false
         listRefresh = UUID()
+        let momentsStopping = moments.stop()
         let starting = task
         task?.cancel()
         task = nil
@@ -356,6 +360,8 @@ final class ChatRuntime {
         publish()
         stopping = Task {
             await starting?.value
+            // 朋友圈任务可能仍在访问共享媒体和数据库，必须先等其退出再归还账号资源。
+            await momentsStopping.value
             for check in checks { _ = try? await check.value }
             await drafts?.stopAndWait()
             await transfers?.stop()

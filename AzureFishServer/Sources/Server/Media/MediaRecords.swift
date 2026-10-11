@@ -5,13 +5,16 @@ final class MediaAssetRecord: Model, @unchecked Sendable {
     static let schema = "media_assets"
     @ID(key: .id) var id: UUID?
     @Field(key: "owner_id") var ownerID: UUID
-    @Field(key: "conversation_id") var conversationID: UUID
+    /// 聊天资产所属会话；朋友圈动态和相册封面资产为 nil。
+    @OptionalField(key: "conversation_id") var conversationID: UUID?
+    /// 资产用途：chat、moments_post 或 moments_cover，绑定和授权时必须匹配。
+    @Field(key: "purpose") var purpose: String
     @Field(key: "state") var state: String
     @Field(key: "expires_at") var expiresAt: Int64
     @Field(key: "reserved_bytes") var reservedBytes: Int64
     @Field(key: "generation") var generation: Int64
     @Field(key: "payload") var payload: String
-    init() {}
+    init() { purpose = "chat" }
 }
 final class MediaResourceRecord: Model, @unchecked Sendable {
     static let schema = "media_resources"
@@ -121,6 +124,8 @@ struct MediaGrant: Codable, Sendable {
     var asset: UUID
     var purpose: String
     var message: UUID?
+    /// 朋友圈授权目标：动态 ID 或相册所有者 ID；其他用途及旧授权为 nil。
+    var momentsTarget: UUID? = nil
     var generation: Int64
     var expires: Int64
 }

@@ -70,6 +70,7 @@ public func configure(_ app: Application, configuration: ServerConfiguration) as
     app.migrations.add(CreateContactsSchema())
     app.migrations.add(CreateMediaSchema())
     app.migrations.add(UpgradeContactSides(crypto: crypto))
+    app.migrations.add(CreateMomentsSchema())
     if existing {
         // 在迁移或业务写入前验证原库的环境和密钥，错误时保留原文件。
         guard let marker = try await MetadataRecord.find("key-check-v1", on: app.db),
@@ -133,4 +134,5 @@ public func configure(_ app: Application, configuration: ServerConfiguration) as
     app.lifecycle.use(MediaLifecycle(service: media))
     IMService(accounts: service, epoch: epoch, media: media, live: baseIM.live).register(on: v1)
     media.register(on: v1)
+    MomentsService(im: baseIM, media: media).register(on: v1)
 }

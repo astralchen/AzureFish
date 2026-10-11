@@ -274,6 +274,36 @@ struct ChatAttachmentPreviewTests {
         page.reset()
     }
 
+    /// 放大后只有边缘向外横滑可翻页，首尾、纵向及图片内部仍交给缩放视图。
+    @Test func zoomedImageYieldsOnlyOutwardPanAtAvailablePageBoundary() {
+        guard #available(iOS 26.0, *) else { return }
+        let page = AttachmentPreviewPage(frame: CGRect(x: 0, y: 0, width: 402, height: 874))
+        page.configure(ConversationPreviewData.attachmentPreviewItems[0])
+        page.layoutIfNeeded()
+        page.canTurnPage = { [-1, 1].contains($0) }
+        #expect(!page.shouldYieldImagePan(CGPoint(x: -500, y: 0)))
+        let scroll = page.imageScrollView
+        scroll.zoomScale = 2
+        scroll.contentSize = CGSize(width: 804, height: 1748)
+        scroll.contentOffset = CGPoint(x: 201, y: 200)
+        #expect(!page.shouldYieldImagePan(CGPoint(x: -500, y: 0)))
+        #expect(!page.shouldYieldImagePan(CGPoint(x: 500, y: 0)))
+        scroll.contentOffset.x = 402
+        #expect(page.shouldYieldImagePan(CGPoint(x: -500, y: 20)))
+        #expect(!page.shouldYieldImagePan(CGPoint(x: 500, y: 20)))
+        #expect(!page.shouldYieldImagePan(CGPoint(x: -20, y: 500)))
+        page.canTurnPage = { $0 == -1 }
+        #expect(!page.shouldYieldImagePan(CGPoint(x: -500, y: 0)))
+        scroll.contentOffset.x = 0
+        #expect(page.shouldYieldImagePan(CGPoint(x: 500, y: 0)))
+        #expect(!page.permitsDismissal)
+        page.canTurnPage = { _ in false }
+        #expect(!page.shouldYieldImagePan(CGPoint(x: 500, y: 0)))
+        page.prepareForReuse()
+        #expect(page.canTurnPage == nil)
+        #expect(!page.isImageZoomed)
+    }
+
     @Test func resettingPageRejectsLateImageLoad() async {
         guard #available(iOS 26.0, *) else { return }
         let page = AttachmentPreviewPage(frame: CGRect(x: 0, y: 0, width: 402, height: 874))

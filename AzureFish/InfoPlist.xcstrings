@@ -61,30 +61,29 @@
       }
     },
     "NSMicrophoneUsageDescription" : {
-      "comment" : "Explains why the Demo requests microphone access.",
       "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "يستخدم العرض التوضيحي الميكروفون لتسجيل الرسائل الصوتية وتحويل الكلام إلى نص."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "The demo uses the microphone to record audio messages and convert speech to text."
-          }
-        },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "演示需要使用麦克风录制音频消息并将语音转换为文字。"
+            "value" : "录制语音消息、语音转文字和拍摄视频。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "示範功能需要使用麥克風錄製語音訊息，並將語音轉換為文字。"
+            "value" : "錄製語音訊息、語音轉文字及拍攝影片。"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Record audio messages, transcribe speech, and record video sound."
+          }
+        },
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تسجيل الرسائل الصوتية وتحويل الكلام إلى نص وتسجيل صوت الفيديو."
           }
         }
       }
@@ -172,6 +171,34 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "示範功能需要使用語音辨識，將你說的話轉換為訊息草稿，並為傳送和接收的語音訊息產生文字。"
+          }
+        }
+      }
+    },
+    "NSCameraUsageDescription" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "拍摄朋友圈视频。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "拍攝朋友圈影片。"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Record videos for Moments."
+          }
+        },
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تسجيل فيديوهات للحظات."
           }
         }
       }

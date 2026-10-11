@@ -34,6 +34,7 @@ final class ProfileViewController: AccountScreen {
             guard let self else { return }
             switch key {
             case "account.design.editProfile": self.edit()
+            case "moments.album": if let runtime = self.runtime { self.open(MomentsViewController(runtime: runtime.moments, author: runtime.userID)) }
             case "account.design.security": self.openSecurity()
             case "account.design.settings": self.open(AccountSettingsViewController(runtime: self.runtime))
             case "account.design.reload": self.reloadProfile()

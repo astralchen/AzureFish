@@ -163,6 +163,12 @@ final class FriendViewController: ContactFormController {
             if !contact.requestMessage.isEmpty { fields.append(text(contact.requestMessage)) }
         }
         controls = []
+        if contact.canSend {
+            controls.append(action("moments.album") { [weak self] in
+                guard let self else { return }
+                navigationController?.pushViewController(MomentsViewController(runtime: runtime.moments, author: contact.peer.id), animated: true)
+            })
+        }
         if contact.allows(.remark) {
             controls.append(action("contacts.remark") { [weak self] in self?.edit(.remark) })
         }

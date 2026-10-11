@@ -149,6 +149,8 @@ extension AccountService {
 
     /// 清除账号私有投影，保留其他参与者仍有权访问的消息和媒体引用。
     func finishDeletion(_ user: UUID, im: IMService, db: any Database) async throws {
+        // 先解除朋友圈内容和引用，后续资产过期判断才能覆盖账号的全部业务域。
+        try await MomentsService(im: im).eraseAccount(user, db: db)
         let deleted = try await UserRecord.find(user, on: db)
         for membership in try await IMMemberRecord.query(on: db).filter(\.$userID == user).all() {
             guard let row = try await IMConversationRecord.find(membership.conversationID, on: db) else { continue }
@@ -188,7 +190,7 @@ extension AccountService {
             try await row.update(on: db)
         }
         for asset in try await MediaAssetRecord.query(on: db).filter(\.$ownerID == user).all() {
-            if try await MediaReferenceRecord.query(on: db).filter(\.$assetID == asset.requireID()).count() == 0 {
+            if try await !MediaService.hasReferences(asset.requireID(), db: db) {
                 asset.expiresAt = now; try await asset.update(on: db)
             }
         }

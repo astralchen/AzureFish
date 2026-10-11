@@ -601,6 +601,33 @@ final class ChatAttachmentPreviewUITests: XCTestCase {
         capture(app, "修复后-预览返回媒体行")
     }
 
+    /// 真实嵌套手势：放大后先移动照片，再从边缘向外滑到相邻页。
+    @MainActor func testZoomedImagePagesFromEdge() {
+        let app = chat(fixture: "stack20")
+        openMedia(app)
+        let first = app.cells["imessage.preview.thumbnail.0"]
+        XCTAssertTrue(first.isSelected)
+        let center = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.45))
+        center.doubleTap()
+        let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.8, dy: 0.45))
+        let end = app.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.45))
+        start.press(forDuration: 0.05, thenDragTo: end, withVelocity: .slow, thenHoldForDuration: 0.3)
+        XCTAssertTrue(first.isSelected, "第一次横滑应移动放大的图片")
+        let second = app.cells["imessage.preview.thumbnail.1"]
+        for _ in 0..<3 where !second.isSelected {
+            start.press(forDuration: 0.05, thenDragTo: end, withVelocity: .fast, thenHoldForDuration: 0.1)
+        }
+        XCTAssertTrue(second.isSelected, "图片到达右边缘后应能翻到下一页")
+        capture(app, "放大图片-边缘横滑翻页")
+        center.doubleTap()
+        for _ in 0..<3 where !first.isSelected {
+            end.press(forDuration: 0.05, thenDragTo: start, withVelocity: .fast, thenHoldForDuration: 0.1)
+        }
+        XCTAssertTrue(first.isSelected, "图片到达左边缘后应能返回上一页")
+        app.buttons["imessage.media.preview.close"].tap()
+        XCTAssertTrue(app.buttons["imessage.media.preview.close"].waitForNonExistence(timeout: 5))
+    }
+
     @MainActor func testSingleImageZoomAndControls() {
         let app = chat(fixture: "photo")
         openMedia(app)

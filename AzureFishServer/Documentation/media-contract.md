@@ -68,3 +68,9 @@ HEAD 使用相同授权返回原件／预览的响应头和完整长度，不发
 | MEDIA_GRANT_EXPIRED／MEDIA_GRANT_INVALID | 凭有效 Bearer 重新授权；禁止持久化到消息 |
 
 病毒扫描、内容审核、链接抓取、头像、跨会话转发、对象存储、Linux 和生产 HTTPS/WSS 不在本实现范围。系统 Live Photo 验证使用 [PHLivePhoto 请求接口](https://developer.apple.com/documentation/photos/phlivephoto/request%28withresourcefileurls%3Aplaceholderimage%3Atargetsize%3Acontentmode%3Aresulthandler%3A%29)，忽略 degraded 回调，只接受最终完整结果。
+
+## 2026-10-11 朋友圈扩展
+
+朋友圈新增 `moments_post`／`moments_cover` 资源用途、独立引用及动态受众校验；聊天用途的原请求保持兼容。媒体表迁移、授权字段与回收规则见[朋友圈契约](moments-contract.md)。
+
+朋友圈 `moments_post` 现支持单个 video（MP4／QuickTime、≤512 MiB、实际时长≤60秒），生成 cover；`moments_cover` 仍只接受 image。能力通过 `moments_video_max_duration_ms` 返回，处理阶段和发布事务均校验，详见[朋友圈视频契约](moments-contract.md#视频扩展)。

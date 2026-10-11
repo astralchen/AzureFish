@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		AF0000000000000000000308 /* AzureFishStorage in Frameworks */ = {isa = PBXBuildFile; productRef = AF0000000000000000000208 /* AzureFishStorage */; };
 		AF0000000000000000000301 /* QuickLayoutKit in Frameworks */ = {isa = PBXBuildFile; productRef = AF0000000000000000000201 /* QuickLayoutKit */; };
 		AF0000000000000000000302 /* ListKit in Frameworks */ = {isa = PBXBuildFile; productRef = AF0000000000000000000202 /* ListKit */; };
 		AF0000000000000000000303 /* AppLocalization in Frameworks */ = {isa = PBXBuildFile; productRef = AF0000000000000000000203 /* AppLocalization */; };
@@ -15,6 +14,7 @@
 		AF0000000000000000000305 /* AzureFishNetwork in Frameworks */ = {isa = PBXBuildFile; productRef = AF0000000000000000000205 /* AzureFishNetwork */; };
 		AF0000000000000000000306 /* AzureFishAPI in Frameworks */ = {isa = PBXBuildFile; productRef = AF0000000000000000000206 /* AzureFishAPI */; };
 		AF0000000000000000000307 /* AzureFishChat in Frameworks */ = {isa = PBXBuildFile; productRef = AF0000000000000000000207 /* AzureFishChat */; };
+		AF0000000000000000000308 /* AzureFishMoments in Frameworks */ = {isa = PBXBuildFile; productRef = AF0000000000000000000208 /* AzureFishMoments */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -44,6 +44,7 @@
 		7735C8C930627166005AF164 /* Exceptions for "AzureFish" folder in "AzureFish" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				Features/Moments/README.md,
 				Info.plist,
 			);
 			target = 7735C8A030627164005AF164 /* AzureFish */;
@@ -81,7 +82,8 @@
 				AF0000000000000000000303 /* AppLocalization in Frameworks */,
 				AF0000000000000000000306 /* AzureFishAPI in Frameworks */,
 				AF0000000000000000000307 /* AzureFishChat in Frameworks */,
-				AF0000000000000000000308 /* AzureFishStorage in Frameworks */,
+				AF0000000000000000000308 /* AzureFishMoments in Frameworks */,
+				AF0000000000000000000308 /* AzureFishMoments in Frameworks */,
 				AF0000000000000000000305 /* AzureFishNetwork in Frameworks */,
 				AF0000000000000000000304 /* AzureFishProtocol in Frameworks */,
 			);
@@ -149,7 +151,8 @@
 				AF0000000000000000000203 /* AppLocalization */,
 				AF0000000000000000000206 /* AzureFishAPI */,
 				AF0000000000000000000207 /* AzureFishChat */,
-				AF0000000000000000000208 /* AzureFishStorage */,
+				AF0000000000000000000208 /* AzureFishMoments */,
+				AF0000000000000000000208 /* AzureFishMoments */,
 				AF0000000000000000000205 /* AzureFishNetwork */,
 				AF0000000000000000000204 /* AzureFishProtocol */,
 			);
@@ -244,7 +247,8 @@
 				AF0000000000000000000103 /* XCRemoteSwiftPackageReference "AppLocalization" */,
 				AF0000000000000000000106 /* XCLocalSwiftPackageReference "SharePackage/AzureFishAPI" */,
 				AF0000000000000000000107 /* XCLocalSwiftPackageReference "SharePackage/AzureFishChat" */,
-				AF0000000000000000000108 /* XCLocalSwiftPackageReference "SharePackage/AzureFishStorage" */,
+				AF0000000000000000000108 /* XCLocalSwiftPackageReference "SharePackage/AzureFishMoments" */,
+				AF0000000000000000000108 /* XCLocalSwiftPackageReference "SharePackage/AzureFishMoments" */,
 				AF0000000000000000000105 /* XCLocalSwiftPackageReference "SharePackage/AzureFishNetwork" */,
 				AF0000000000000000000104 /* XCLocalSwiftPackageReference "SharePackage/AzureFishProtocol" */,
 			);
@@ -331,7 +335,8 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = AzureFish/Info.plist;
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Record audio messages and convert speech to text.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Record audio messages, transcribe speech, and record video sound.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Record videos for Moments.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Save received photos and videos to your photo library.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Read selected Live Photo originals to preserve motion and sound.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Convert speech into message drafts and transcribe audio messages.";
@@ -361,14 +366,15 @@
 		7735C8CC30627166005AF164 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				EXCLUDED_SOURCE_FILE_NAMES = "AttachmentPreviewResources.bundle";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				EXCLUDED_SOURCE_FILE_NAMES = AttachmentPreviewResources.bundle;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = AzureFish/Info.plist;
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Record audio messages and convert speech to text.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Record audio messages, transcribe speech, and record video sound.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Record videos for Moments.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Save received photos and videos to your photo library.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Read selected Live Photo originals to preserve motion and sound.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Convert speech into message drafts and transcribe audio messages.";
@@ -603,14 +609,14 @@
 		AFB0000000000000000000001 /* MediaBenchmark */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) MEDIA_BENCHMARK DEBUG";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = AzureFish/Info.plist;
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Record audio messages and convert speech to text.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Record audio messages, transcribe speech, and record video sound.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Record videos for Moments.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Save received photos and videos to your photo library.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Read selected Live Photo originals to preserve motion and sound.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Convert speech into message drafts and transcribe audio messages.";
@@ -628,6 +634,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = org.astralchen.AzureFish;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) MEDIA_BENCHMARK DEBUG";
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = nonisolated;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -699,7 +706,6 @@
 		AFB0000000000000000000003 /* MediaBenchmark */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) MEDIA_BENCHMARK DEBUG";
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -709,6 +715,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = org.astralchen.AzureFishTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) MEDIA_BENCHMARK DEBUG";
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
@@ -721,7 +728,6 @@
 		AFB0000000000000000000004 /* MediaBenchmark */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) MEDIA_BENCHMARK DEBUG";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -730,6 +736,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = org.astralchen.AzureFishUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) MEDIA_BENCHMARK DEBUG";
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
@@ -801,9 +808,9 @@
 			isa = XCLocalSwiftPackageReference;
 			relativePath = SharePackage/AzureFishChat;
 		};
-		AF0000000000000000000108 /* XCLocalSwiftPackageReference "SharePackage/AzureFishStorage" */ = {
+		AF0000000000000000000108 /* XCLocalSwiftPackageReference "SharePackage/AzureFishMoments" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = SharePackage/AzureFishStorage;
+			relativePath = SharePackage/AzureFishMoments;
 		};
 /* End XCLocalSwiftPackageReference section */
 
@@ -870,10 +877,10 @@
 			package = AF0000000000000000000107 /* XCLocalSwiftPackageReference "SharePackage/AzureFishChat" */;
 			productName = AzureFishChat;
 		};
-		AF0000000000000000000208 /* AzureFishStorage */ = {
+		AF0000000000000000000208 /* AzureFishMoments */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = AF0000000000000000000108;
-			productName = AzureFishStorage;
+			package = AF0000000000000000000108 /* XCLocalSwiftPackageReference "SharePackage/AzureFishMoments" */;
+			productName = AzureFishMoments;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

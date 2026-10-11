@@ -245,6 +245,15 @@ struct ChatMediaPipelineTests {
         try await until { page.hasOriginalImage }
         #expect(page.imageView.image?.cgImage?.width == 4096)
         #expect(page.imageScrollView.zoomScale == 2)
+        // 拖动和回弹不降级为缩略图；恢复当前页应同步复用同一原图。
+        let displayed = page.imageView.image
+        let offset = page.imageScrollView.contentOffset
+        page.setOriginalActive(false)
+        #expect(page.hasOriginalImage && page.imageView.image === displayed)
+        page.setOriginalActive(true)
+        #expect(page.hasOriginalImage && page.imageView.image === displayed)
+        #expect(page.imageScrollView.zoomScale == 2)
+        #expect(page.imageScrollView.contentOffset == offset)
         page.suspendImages()
         #expect(!page.hasOriginalImage && page.imageView.image == nil)
         #expect(loader.cachedCost < 4096 * 1024 * 4)

@@ -9,6 +9,7 @@ private struct ProcessingInput: Sendable {
     let asset: UUID
     let generation: Int64
     let kind: String
+    let purpose: String
     let resources: [(MediaResourceTicket, [MediaChunk])]
 }
 extension MediaService {
@@ -41,7 +42,7 @@ extension MediaService {
                 }
                 asset.state = "processing"; job.state = "running"
                 try await asset.update(on: db); try await job.update(on: db)
-                return ProcessingInput(asset: job.assetID, generation: job.generation, kind: kind, resources: resources)
+                return ProcessingInput(asset: job.assetID, generation: job.generation, kind: kind, purpose: asset.purpose, resources: resources)
             }
         }
         guard let input, let owner = input.resources.first?.0.owner else { return }
@@ -61,7 +62,7 @@ extension MediaService {
                 try await blobs.io { try LocalMediaBlobStore.directory(directory) }
                 var paths: [String: String] = [:]
                 for (source, chunks) in originals {
-                    let ext = URL(fileURLWithPath: source.state.filename).pathExtension.filter { $0.isASCII && $0.isLetter }.prefix(10)
+                    let ext = URL(fileURLWithPath: source.state.filename).pathExtension.filter { $0.isASCII && ($0.isLetter || $0.isNumber) }.prefix(10)
                     let url = directory.appendingPathComponent(source.state.role + "." + ext)
                     try await blobs.io { try LocalMediaBlobStore.atomicWrite(Data(), to: url) }
                     for chunk in chunks {
@@ -96,6 +97,12 @@ extension MediaService {
                 guard result.failure.isEmpty else { throw APIError(.unprocessableEntity, "INVALID_MEDIA") }
                 guard result.width >= 0, result.height >= 0, result.durationMS >= 0,
                       result.waveform.count <= 60, result.waveform.allSatisfy({ $0.isFinite && $0 >= 0 && $0 <= 1 }) else { throw APIError(.unprocessableEntity, "INVALID_MEDIA") }
+            }
+            // 以处理器实际探测的时长、尺寸和封面校验朋友圈限制，不信任客户端声明。
+            if input.purpose == "moments_post", input.kind == "video" {
+                guard result.durationMS > 0, result.durationMS <= 60_000, result.width > 0, result.height > 0, result.preview != nil else {
+                    throw APIError(.unprocessableEntity, "INVALID_MEDIA")
+                }
             }
             for index in originals.indices {
                 let mime = originals[index].0.state.role == "paired_video" ? result.pairedMime : result.mime

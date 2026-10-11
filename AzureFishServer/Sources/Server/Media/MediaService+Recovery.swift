@@ -39,7 +39,8 @@ extension MediaService {
         try await accounts.gate.run {
             try await db.transaction { db in
                 for asset in try await MediaAssetRecord.query(on: db).filter(\.$expiresAt > 0).filter(\.$expiresAt <= self.accounts.now).filter(\.$reservedBytes > 0).all() {
-                    guard try await MediaReferenceRecord.query(on: db).filter(\.$assetID == asset.requireID()).count() == 0 else { continue }
+                    // 聊天和朋友圈共用资产生命周期，任一业务仍引用时都不能按临时资产回收。
+                    guard try await !Self.hasReferences(asset.requireID(), db: db) else { continue }
                     if !["expired", "cancelled", "deleted"].contains(asset.state) {
                         asset.state = "expired"; asset.generation += 1; try await asset.update(on: db)
                     }
@@ -54,7 +55,7 @@ extension MediaService {
             for job in try await MediaJobRecord.query(on: db).filter(\.$kind == "gc").filter(\.$state == "queued").filter(\.$dueAt <= self.accounts.now).all() {
                 guard let asset = try await MediaAssetRecord.find(job.assetID, on: db), !["deleted"].contains(asset.state),
                       asset.expiresAt > 0, asset.expiresAt <= self.accounts.now,
-                      try await MediaReferenceRecord.query(on: db).filter(\.$assetID == job.assetID).count() == 0 else { continue }
+                      try await !Self.hasReferences(job.assetID, db: db) else { continue }
                 // 先封闭新访问，再等待已有访问在下个分块边界结束。
                 if !["expired", "cancelled"].contains(asset.state) { asset.state = "expired"; asset.generation += 1; try await asset.update(on: db) }
                 guard await !self.leases.active(job.assetID) else { continue }

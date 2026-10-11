@@ -31,6 +31,8 @@ public struct ChatMediaCapabilities: Sendable {
     public let imageBytes: Int64
     /// 单段视频允许的最大字节数。
     public let videoBytes: Int64
+    /// 朋友圈视频最长时长，单位为毫秒；零表示服务端未开放视频。
+    public let momentsVideoMaxDuration: Int64
     /// 单个文件允许的最大字节数。
     public let fileBytes: Int64
     /// 单段音频允许的最大字节数。
@@ -48,6 +50,7 @@ public struct ChatMediaCapabilities: Sendable {
         chunkBytes = v.chunkBytes
         imageBytes = v.imageMaxBytes
         videoBytes = v.videoMaxBytes
+        momentsVideoMaxDuration = v.momentsVideoMaxDurationMs
         fileBytes = v.fileMaxBytes
         audioBytes = v.audioMaxBytes
         groupItems = v.groupMaxItems
@@ -105,15 +108,19 @@ public struct MediaAPI: Sendable {
         }
         return try await session.execute(operation)
     }
-    /// 登记指定会话的媒体资源清单并获取上传状态；同一次创建重试须复用 operationID。
+    /// 登记指定用途的媒体资源清单并获取上传状态；同一次创建重试须复用 operationID。
     ///
-    /// - Parameter operationID: 默认生成新 UUID；上传队列需保存 ID，并在重试或恢复时显式传入原 ID 和原始输入。
-    public func create(conversation: String, kind: String, resources: [ChatMediaInput], operationID: UUID = UUID()) async throws
+    /// - Parameters:
+    ///   - conversation: 聊天用途的会话 ID；朋友圈用途传空字符串。
+    ///   - operationID: 默认生成新 UUID；上传队列需保存 ID，重试时传入原 ID 和原始输入。
+    ///   - purpose: 默认为 chat；朋友圈动态和相册封面分别使用 moments_post、moments_cover。
+    public func create(conversation: String, kind: String, resources: [ChatMediaInput], operationID: UUID = UUID(), purpose: String = "chat") async throws
         -> ChatAssetStatus
     {
         var input = MediaCreateRequest()
         input.operationID = operationID.uuidString.lowercased()
         input.conversationID = conversation
+        input.purpose = purpose == "chat" ? "" : purpose
         input.kind = kind
         input.resources = resources.map { value in
             var source = MediaResourceInput()
@@ -167,6 +174,12 @@ public struct MediaAPI: Sendable {
         guard part.sha256 == hash, part.byteCount == bytes.count, part.index == index else {
             throw APIClientError.invalidResponse
         }
+    }
+    /// 申请朋友圈资源授权；target 为动态 ID，cover 为 true 时是相册所有者 ID。
+    public func authorizeMoments(_ resource: String, target: String, cover: Bool = false) async throws -> ChatDownloadGrant {
+        var input = MediaAuthorizeRequest(); input.resourceID = resource
+        input.purpose = cover ? "moments_cover" : "moments_post"; input.momentsTargetID = target
+        return try await im.call("v1/media/resources/authorize", input, as: MediaDownloadGrant.self, map: ChatDownloadGrant.init)
     }
     /// 为资源请求短期下载授权；message 为 nil 时申请草稿预览权限，否则申请消息查看权限。
     public func authorize(_ resource: String, message: String?) async throws -> ChatDownloadGrant {

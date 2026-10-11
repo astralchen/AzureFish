@@ -4,6 +4,16 @@ import QuickLayout
 import QuickLayoutKit
 import ListKit
 
+/// 与图片内层滚动视图按方向和边界决定横滑归属，不等待被禁用的内层手势。
+private final class AttachmentPagingCollectionView: UICollectionView {
+    var canBeginPaging: ((CGPoint) -> Bool)?
+    override func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+        if gestureRecognizer === panGestureRecognizer,
+           canBeginPaging?(panGestureRecognizer.velocity(in: self)) == false { return false }
+        return super.gestureRecognizerShouldBegin(gestureRecognizer)
+    }
+}
+
 /// 照片、视频和常用文件共享的全屏玻璃预览容器。
 @available(iOS 26.0, *)
 final class AttachmentPreviewController: QuickLayoutHostingController, UICollectionViewDelegate, UIGestureRecognizerDelegate, MediaImageLoadingOwner {
@@ -101,7 +111,7 @@ final class AttachmentPreviewController: QuickLayoutHostingController, UICollect
         playback = AttachmentPreviewPlayer(coordinator: playbackCoordinator)
         let layout = AttachmentPagingLayout()
         pagingLayout = layout
-        collectionView = UICollectionView(frame: .zero, collectionViewLayout: layout)
+        collectionView = AttachmentPagingCollectionView(frame: .zero, collectionViewLayout: layout)
         super.init(nibName: nil, bundle: nil)
         modalPresentationStyle = .custom
         modalPresentationCapturesStatusBarAppearance = true
@@ -123,6 +133,11 @@ final class AttachmentPreviewController: QuickLayoutHostingController, UICollect
         backdrop.backgroundColor = .black
         collectionView.backgroundColor = .clear
         collectionView.isPagingEnabled = false
+        collectionView.panGestureRecognizer.maximumNumberOfTouches = 1
+        (collectionView as? AttachmentPagingCollectionView)?.canBeginPaging = { [weak self] velocity in
+            guard let page = self?.currentPage else { return true }
+            return !page.isInteractingWithZoom && (!page.isImageZoomed || page.shouldYieldImagePan(velocity))
+        }
         collectionView.decelerationRate = .fast
         collectionView.alwaysBounceHorizontal = items.count > 1
         collectionView.showsHorizontalScrollIndicator = false
@@ -206,6 +221,11 @@ final class AttachmentPreviewController: QuickLayoutHostingController, UICollect
         page.semanticContentAttribute = view.semanticContentAttribute
         page.contentView.semanticContentAttribute = view.semanticContentAttribute
         page.configure(item, imageLoader: mediaImageLoader, isVisible: false, playbackCoordinator: playbackCoordinator)
+        // Cell 可能已被复用，先核对附件身份，再按物理附件顺序判断相邻页。
+        page.canTurnPage = { [weak self, weak page] step in
+            guard let self, page?.itemID == item.id else { return false }
+            return self.items.indices.contains(index + step)
+        }
         page.setLivePhotoMode(livePhotoModes[item.id] ?? .live)
         page.photoGeometryDidChange = { [weak self, weak page] in
             guard let self, let page, self.currentItem?.id == page.itemID else { return }
@@ -331,7 +351,7 @@ final class AttachmentPreviewController: QuickLayoutHostingController, UICollect
             finishPaging(at: index, autoplayVideo: index != currentIndex)
         }
     }
-    /// 翻页和缩略图拖动期间只保留封面，不解码经过的原件。
+    /// 翻页和缩略图拖动期间保留已显示原图，但不启动经过页面的原件解码。
     private func suspendOriginals() {
         for case let page as AttachmentPreviewPage in collectionView.visibleCells { page.setOriginalActive(false) }
     }
