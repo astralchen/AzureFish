@@ -106,7 +106,9 @@ public struct MediaAPI: Sendable {
         return try await session.execute(operation)
     }
     /// 登记指定会话的媒体资源清单并获取上传状态；同一次创建重试须复用 operationID。
-    public func create(conversation: String, kind: String, resources: [ChatMediaInput], operationID: UUID) async throws
+    ///
+    /// - Parameter operationID: 默认生成新 UUID；上传队列需保存 ID，并在重试或恢复时显式传入原 ID 和原始输入。
+    public func create(conversation: String, kind: String, resources: [ChatMediaInput], operationID: UUID = UUID()) async throws
         -> ChatAssetStatus
     {
         var input = MediaCreateRequest()
@@ -132,7 +134,9 @@ public struct MediaAPI: Sendable {
         return try await im.call("v1/media/assets/status", input, as: MediaAssetStatus.self, map: ChatAssetStatus.init)
     }
     /// 按 cancel 选择提交完成或取消资产；重复执行同一动作须复用 operationID。
-    public func finish(_ asset: String, cancel: Bool = false, operationID: UUID) async throws -> ChatAssetStatus {
+    ///
+    /// - Parameter operationID: 默认生成新 UUID；上传队列需保存完成或取消动作各自的 ID，重试或恢复时显式传入。
+    public func finish(_ asset: String, cancel: Bool = false, operationID: UUID = UUID()) async throws -> ChatAssetStatus {
         var input = MediaAssetMutation()
         input.assetID = asset
         input.operationID = operationID.uuidString.lowercased()

@@ -43,6 +43,8 @@ xcodebuild -workspace AzureFish.xcworkspace -scheme AzureFish \
 
 以上命令依次打开 Xcode、编译应用及测试、运行单元与组件测试。将 `<SIMULATOR_UUID>` 替换为已安装模拟器的 UUID。本地运行选择 `AzureFish` scheme；专项 UI 回归使用 `ChatRegression`，性能测试使用 `MediaBenchmark`。首次构建需要联网解析并下载 Swift Package 依赖。
 
+也可使用 XcodeBuildMCP 完成构建与模拟器测试。首次调用构建／测试前使用 `session_show_defaults` 核对配置，再按需通过 `session_set_defaults` 设置 `AzureFish.xcworkspace`、`AzureFish` scheme、模拟器与 DerivedData 路径；使用 `build_sim(buildForTesting: true)` 生成测试产物，随后通过 `test_sim` 运行指定测试，也可传入已生成的 `xctestrunPath`。复用已有构建目录，不同时对同一 DerivedData 启动多个构建。工具调用超时后先检查后台进程及产物，以实际构建／测试结果报告状态，不把超时等同于编译失败或测试通过。
+
 ## 代码风格与命名约定
 
 使用四空格缩进，类型采用 `UpperCamelCase`，成员采用 `lowerCamelCase`。文件名与主要类型一致；扩展按 `Type+Responsibility.swift` 拆分。保留 Actor 隔离和 API 可用性检查，文档注释遵循下文规范。

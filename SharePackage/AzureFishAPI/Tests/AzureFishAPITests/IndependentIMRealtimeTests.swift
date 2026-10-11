@@ -13,7 +13,7 @@ struct IndependentIMRealtimeTests {
         #expect(port != 8080)
         guard port != 8080 else { return }
         let api = AccountAPI(environment: try .localTesting(port: port))
-        let registration = try api.prepareRegistration(operationID: UUID(), deviceID: UUID(),
+        let registration = try api.prepareRegistration(deviceID: UUID(),
             accountName: "realtime_" + UUID().uuidString.prefix(8).lowercased(), password: "Fictional-Password-123", nickname: "实时虚构测试")
         let session = try await api.execute(registration)
         let manager = APISessionManager(api: api, store: MemorySessionStore())
@@ -27,7 +27,7 @@ struct IndependentIMRealtimeTests {
         try await poll { await seen.values.contains { $0.hint != nil && $0.session.refreshGeneration == 1 } }
         #expect(await client.currentState == .connected)
         _ = try await manager.authorized { credentials in
-            let operation = try api.prepareProfileUpdate(operationID: UUID(), changes: .init(expectedVersion: session.profile.version, nickname: "更新后的实时昵称"), using: credentials)
+            let operation = try api.prepareProfileUpdate(changes: .init(expectedVersion: session.profile.version, nickname: "更新后的实时昵称"), using: credentials)
             return try await api.execute(operation, using: credentials)
         }
         try await poll { await seen.values.contains { ($0.hint?.ownProfileVersion ?? 0) > session.profile.version } }

@@ -12,39 +12,39 @@ struct LiveAccountAPITests {
         #expect(try await api.health().status == "ok")
         let name = "spm_" + UUID().uuidString.replacingOccurrences(of: "-", with: "").prefix(16)
         let device = UUID()
-        let registration = try api.prepareRegistration(operationID: UUID(), deviceID: device, accountName: name,
+        let registration = try api.prepareRegistration(deviceID: device, accountName: name,
             password: "Fictional-SPM-Password-123", nickname: "本地包联调")
         let registered = try await api.execute(registration)
         #expect(try await api.execute(registration) == registered)
-        let login = try api.prepareLogin(operationID: UUID(), deviceID: device, accountName: name, password: "Fictional-SPM-Password-123")
+        let login = try api.prepareLogin(deviceID: device, accountName: name, password: "Fictional-SPM-Password-123")
         let loggedIn = try await api.execute(login)
         #expect(loggedIn.profile.userID == registered.profile.userID)
-        let second = try await api.execute(api.prepareLogin(operationID: UUID(), deviceID: UUID(),
+        let second = try await api.execute(api.prepareLogin(deviceID: UUID(),
             accountName: name, password: "Fictional-SPM-Password-123"))
-        let edit = try api.prepareProfileUpdate(operationID: UUID(), changes: .init(expectedVersion: 1, bio: "繁體 العربية English 简体"), using: loggedIn.credentials)
+        let edit = try api.prepareProfileUpdate(changes: .init(expectedVersion: 1, bio: "繁體 العربية English 简体"), using: loggedIn.credentials)
         let edited = try await api.execute(edit, using: loggedIn.credentials)
         #expect(edited.version == 2)
-        let staleEdit = try api.prepareProfileUpdate(operationID: UUID(),
+        let staleEdit = try api.prepareProfileUpdate(
             changes: .init(expectedVersion: second.profile.version, nickname: "第二客户端草稿"), using: second.credentials)
         do { _ = try await api.execute(staleEdit, using: second.credentials); Issue.record("Stale profile update unexpectedly succeeded") }
         catch APIClientError.service(let failure) { #expect(failure.code == .profileVersionConflict) }
         let latest = try await api.profile(using: second.credentials)
         #expect(latest.version == 2 && latest.bio == edited.bio)
-        let confirmedEdit = try api.prepareProfileUpdate(operationID: UUID(),
+        let confirmedEdit = try api.prepareProfileUpdate(
             changes: .init(expectedVersion: latest.version, nickname: "第二客户端草稿"), using: second.credentials)
         #expect(try await api.execute(confirmedEdit, using: second.credentials).version == 3)
-        let refresh = try api.prepareRefresh(operationID: UUID(), using: loggedIn.credentials)
+        let refresh = try api.prepareRefresh(using: loggedIn.credentials)
         let renewed = try await api.execute(refresh)
         #expect(try await api.execute(refresh) == renewed)
         #expect(try await api.execute(edit, using: renewed.credentials) == edited)
         #expect(try await api.profile(using: renewed.credentials).bio == edited.bio)
-        let logout = try api.prepareLogout(operationID: UUID(), using: renewed.credentials)
+        let logout = try api.prepareLogout(using: renewed.credentials)
         _ = try await api.execute(logout, using: renewed.credentials)
         _ = try await api.execute(logout, using: renewed.credentials)
         do { _ = try await api.profile(using: renewed.credentials); Issue.record("Logged-out session remained usable") }
         catch APIClientError.service(let failure) { #expect(failure.isUnauthenticated) }
-        _ = try await api.execute(api.prepareLogout(operationID: UUID(), using: second.credentials), using: second.credentials)
-        _ = try await api.execute(api.prepareLogout(operationID: UUID(), using: registered.credentials), using: registered.credentials)
+        _ = try await api.execute(api.prepareLogout(using: second.credentials), using: second.credentials)
+        _ = try await api.execute(api.prepareLogout(using: registered.credentials), using: registered.credentials)
     }
 }
 #endif

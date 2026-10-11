@@ -1,4 +1,4 @@
-import AzureFishAPI
+@testable import AzureFishAPI
 import AzureFishNetwork
 import AzureFishNetworkTestSupport
 import AzureFishProtocol
@@ -55,6 +55,59 @@ private func serviceResponse(_ code: String, status: Int) throws -> HTTPResponse
 
 @Suite("账号 API 适配")
 struct AccountAPITests {
+    /// 验证默认身份属于一次准备动作，显式恢复身份与原始正文保持一致。
+    @Test(arguments: ["register", "login", "refresh", "logout", "profile", "reauthenticate", "security", "avatar", "logoutRevocation"])
+    func preparesNewIdentityByDefaultAndPreservesExplicitRecoveryID(kind: String) throws {
+        let api = AccountAPI(environment: try environment())
+        let current = try credentials()
+        let proof = AccountReauthentication(token: try SessionToken(rawValue: String(repeating: "p", count: 43)),
+            expiresAt: Date(timeIntervalSince1970: 1_800_000_300))
+        func snapshot<V>(_ operation: AccountOperation<V>) throws -> (UUID, Data) {
+            (try #require(operation.operationID), try #require(operation.body))
+        }
+        func prepare(id: UUID? = nil) throws -> (UUID, Data) {
+            // 两条调用路径分别验证省略参数和显式恢复，不在测试中替 API 生成默认 ID。
+            switch kind {
+            case "register":
+                return try snapshot(id.map { try api.prepareRegistration(operationID: $0, deviceID: testDeviceID,
+                    accountName: "fictional_user", password: "Fictional-Password-123", nickname: "虚构") }
+                    ?? api.prepareRegistration(deviceID: testDeviceID, accountName: "fictional_user",
+                        password: "Fictional-Password-123", nickname: "虚构"))
+            case "login":
+                return try snapshot(id.map { try api.prepareLogin(operationID: $0, deviceID: testDeviceID,
+                    accountName: "fictional_user", password: "Fictional-Password-123") }
+                    ?? api.prepareLogin(deviceID: testDeviceID, accountName: "fictional_user", password: "Fictional-Password-123"))
+            case "refresh":
+                return try snapshot(id.map { try api.prepareRefresh(operationID: $0, using: current) }
+                    ?? api.prepareRefresh(using: current))
+            case "logout":
+                return try snapshot(id.map { try api.prepareLogout(operationID: $0, using: current) }
+                    ?? api.prepareLogout(using: current))
+            case "profile":
+                let changes = ProfileChanges(expectedVersion: 1, bio: "")
+                return try snapshot(id.map { try api.prepareProfileUpdate(operationID: $0, changes: changes, using: current) }
+                    ?? api.prepareProfileUpdate(changes: changes, using: current))
+            case "reauthenticate":
+                return try snapshot(id.map { try api.prepareReauthentication(operationID: $0,
+                    password: "Fictional-Password-123", action: .deleteAccount, using: current) }
+                    ?? api.prepareReauthentication(password: "Fictional-Password-123", action: .deleteAccount, using: current))
+            case "security":
+                return try snapshot(id.map { try api.prepareSecurityAction(operationID: $0, action: .deleteAccount, proof: proof, using: current) }
+                    ?? api.prepareSecurityAction(action: .deleteAccount, proof: proof, using: current))
+            case "avatar":
+                return try snapshot(id.map { try api.prepareAvatar(operationID: $0, expectedVersion: 1, jpeg: Data(), using: current) }
+                    ?? api.prepareAvatar(expectedVersion: 1, jpeg: Data(), using: current))
+            default:
+                let ticket = try id.map { try api.prepareLogoutRevocation(operationID: $0, using: current) }
+                    ?? api.prepareLogoutRevocation(using: current)
+                return (ticket.operationID, ticket.body)
+            }
+        }
+        let first = try prepare(), second = try prepare()
+        #expect(first.0 != second.0)
+        let recovered = try prepare(id: first.0)
+        #expect(recovered.0 == first.0 && recovered.1 == first.1)
+    }
     /// 验证删除恢复复用原请求字节，拒绝过期及跨环境材料。
     @Test func deletionRecoveryPreservesBytesAndRejectsExpiredOrForeignTickets() async throws {
         let proofToken = String(repeating: "p", count: 43)
@@ -67,8 +120,8 @@ struct AccountAPITests {
         }
         let api = AccountAPI(environment: try environment(), transport: transport)
         let current = try credentials(), now = Date(timeIntervalSince1970: 1_800_000_000)
-        let proof = try await api.execute(api.prepareReauthentication(operationID: UUID(), password: "Fictional-Password-123", action: .deleteAccount, using: current), using: current)
-        let operation = try api.prepareSecurityAction(operationID: UUID(), action: .deleteAccount, proof: proof, using: current)
+        let proof = try await api.execute(api.prepareReauthentication(password: "Fictional-Password-123", action: .deleteAccount, using: current), using: current)
+        let operation = try api.prepareSecurityAction(action: .deleteAccount, proof: proof, using: current)
         let ticket = try api.deletionRecovery(for: operation, using: current, now: now)
         let encoded = try JSONEncoder().encode(ticket)
         #expect(!String(decoding: encoded, as: UTF8.self).contains(current.refreshToken.rawValue))
@@ -85,8 +138,9 @@ struct AccountAPITests {
         await #expect(throws: APIClientError.operationEnvironmentMismatch) { try await other.recoverDeletion(restored, now: now) }
         #expect(await transport.requests.count == 3)
     }
-    /// 验证注册请求只编码一次且认证响应映射为业务值。
-    @Test func registrationSerializesOnceAndMapsDomainValues() async throws {
+    /// 验证默认及显式注册身份在自动和手动重试时均保持原始正文。
+    @Test(arguments: [false, true])
+    func registrationSerializesOnceAndMapsDomainValues(explicitID: Bool) async throws {
         let bytes = try authMessage().serializedData()
         let transport = MockHTTPTransport { _, attempt in
             if attempt == 1 { throw URLError(.networkConnectionLost) }
@@ -94,19 +148,25 @@ struct AccountAPITests {
         }
         let api = AccountAPI(environment: try environment(), transport: transport)
         let id = UUID()
-        let operation = try api.prepareRegistration(operationID: id, deviceID: testDeviceID,
-            accountName: "fictional_user", password: "Fictional-Password-123", nickname: "虚构测试")
+        let operation = try explicitID
+            ? api.prepareRegistration(operationID: id, deviceID: testDeviceID,
+                accountName: "fictional_user", password: "Fictional-Password-123", nickname: "虚构测试")
+            : api.prepareRegistration(deviceID: testDeviceID,
+                accountName: "fictional_user", password: "Fictional-Password-123", nickname: "虚构测试")
         let result = try await api.execute(operation)
+        #expect(try await api.execute(operation) == result)
         #expect(result.credentials.environmentID == "test" && result.profile.userID == testUserID)
         #expect(result.profile.nickname == "虚构测试")
         let history = await transport.requests
-        #expect(history.count == 2)
+        #expect(history.count == 3)
         #expect(history[0].body == history[1].body)
+        #expect(history[1].body == history[2].body)
         #expect(history[0].headers["X-Request-ID"] != history[1].headers["X-Request-ID"])
         #expect(history[0].url.path == "/v1/auth/register")
         #expect(history[0].headers["Authorization"] == nil)
         let decoded = try RegisterRequest(serializedBytes: #require(history[0].body))
-        #expect(decoded.operationID == id.uuidString.lowercased())
+        #expect(decoded.operationID == operation.operationID?.uuidString.lowercased())
+        if explicitID { #expect(operation.operationID == id) }
         #expect(decoded.password == "Fictional-Password-123")
         #expect(!String(reflecting: operation).contains("Fictional-Password"))
         #expect(!String(reflecting: result).contains("虚构测试"))
@@ -119,7 +179,7 @@ struct AccountAPITests {
         let transport = MockHTTPTransport { _, _ in HTTPResponse(statusCode: 200, headers: ["Content-Type": "application/protobuf"], body: response) }
         let api = AccountAPI(environment: try environment(), transport: transport)
         let original = try credentials(), renewed = try credentials(generation: 2)
-        let operation = try api.prepareProfileUpdate(operationID: UUID(), changes: .init(expectedVersion: 1, bio: ""), using: original)
+        let operation = try api.prepareProfileUpdate(changes: .init(expectedVersion: 1, bio: ""), using: original)
         _ = try await api.execute(operation, using: original)
         _ = try await api.execute(operation, using: renewed)
         let history = await transport.requests
@@ -135,7 +195,7 @@ struct AccountAPITests {
         let transport = MockHTTPTransport { _, _ in Issue.record("Unexpected network request"); return HTTPResponse(statusCode: 500) }
         let api = AccountAPI(environment: try environment(), transport: transport)
         let current = try credentials(generation: 2)
-        let operation = try api.prepareLogout(operationID: UUID(), using: current)
+        let operation = try api.prepareLogout(using: current)
         await #expect(throws: APIClientError.missingCredentials) { try await api.execute(operation) }
         await #expect(throws: APIClientError.credentialsMismatch) { try await api.execute(operation, using: credentials(userID: UUID())) }
         await #expect(throws: APIClientError.credentialsMismatch) { try await api.execute(operation, using: credentials(sessionID: UUID())) }
@@ -151,7 +211,7 @@ struct AccountAPITests {
         let response = try serviceResponse(code, status: 401)
         let transport = MockHTTPTransport { _, _ in response }
         let api = AccountAPI(environment: try environment(), transport: transport)
-        let operation = try api.prepareLogin(operationID: UUID(), deviceID: testDeviceID, accountName: "fictional_user", password: "Wrong-Fictional-Password")
+        let operation = try api.prepareLogin(deviceID: testDeviceID, accountName: "fictional_user", password: "Wrong-Fictional-Password")
         do { _ = try await api.execute(operation); Issue.record("Expected business error") }
         catch APIClientError.service(let failure) {
             #expect(failure.statusCode == 401)
@@ -194,9 +254,9 @@ struct AccountAPITests {
         let replies = try [wrongEnvironment, wrongUser, wrongDevice, authMessage(), wrongExpiry].map { try $0.serializedData() }
         let transport = MockHTTPTransport { _, count in HTTPResponse(statusCode: 200, headers: ["Content-Type": "application/protobuf"], body: replies[count - 1]) }
         let api = AccountAPI(environment: try environment(), transport: transport)
-        let login = try api.prepareLogin(operationID: UUID(), deviceID: testDeviceID, accountName: "fictional_user", password: "Fictional-Password-123")
+        let login = try api.prepareLogin(deviceID: testDeviceID, accountName: "fictional_user", password: "Fictional-Password-123")
         for _ in 0..<3 { await #expect(throws: APIClientError.invalidResponse) { try await api.execute(login) } }
-        let refresh = try api.prepareRefresh(operationID: UUID(), using: credentials())
+        let refresh = try api.prepareRefresh(using: credentials())
         await #expect(throws: APIClientError.invalidResponse) { try await api.execute(refresh) }
         await #expect(throws: APIClientError.invalidResponse) { try await api.execute(refresh) }
     }
@@ -210,10 +270,10 @@ struct AccountAPITests {
             HTTPResponse(statusCode: 200, headers: ["Content-Type": "application/protobuf"], body: count == 1 ? auth : Data())
         }
         let api = AccountAPI(environment: try environment(), transport: transport)
-        let refresh = try api.prepareRefresh(operationID: UUID(), using: credentials())
+        let refresh = try api.prepareRefresh(using: credentials())
         let renewed = try await api.execute(refresh)
         #expect(renewed.credentials.refreshGeneration == 2)
-        let logout = try api.prepareLogout(operationID: UUID(), using: renewed.credentials)
+        let logout = try api.prepareLogout(using: renewed.credentials)
         _ = try await api.execute(logout, using: renewed.credentials)
         let history = await transport.requests
         #expect(history[0].headers["Authorization"] == nil)
@@ -227,10 +287,10 @@ struct AccountAPITests {
         }
         let api = AccountAPI(environment: try environment())
         #expect(throws: APIClientError.requestTooLarge) {
-            try api.prepareRegistration(operationID: UUID(), deviceID: testDeviceID, accountName: "test", password: String(repeating: "x", count: 17_000), nickname: "test")
+            try api.prepareRegistration(deviceID: testDeviceID, accountName: "test", password: String(repeating: "x", count: 17_000), nickname: "test")
         }
         #expect(throws: APIClientError.invalidRequest) {
-            try api.prepareProfileUpdate(operationID: UUID(), changes: .init(expectedVersion: 1), using: credentials())
+            try api.prepareProfileUpdate(changes: .init(expectedVersion: 1), using: credentials())
         }
     }
 
@@ -249,7 +309,7 @@ extension AccountAPITests {
         let transport = MockHTTPTransport { _, _ in HTTPResponse(statusCode: 200, headers: ["Content-Type": "application/protobuf"], body: Data()) }
         let api = AccountAPI(environment: try environment(), transport: transport)
         let creds = try credentials()
-        let ticket = try api.prepareLogoutRevocation(operationID: UUID(), using: creds)
+        let ticket = try api.prepareLogoutRevocation(using: creds)
         let bytes = try JSONEncoder().encode(ticket)
         let text = String(decoding: bytes, as: UTF8.self)
         #expect(!text.contains(creds.refreshToken.rawValue))

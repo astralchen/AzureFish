@@ -171,3 +171,36 @@ xcodebuild -workspace AzureFishNetworking.xcworkspace -scheme AzureFishNetworkin
 ```
 
 本机日志：`/private/tmp/azurefish-network-logging-debug.log`、`azurefish-network-logging-release.log`、`azurefish-network-logging-api.log`。临时系统日志检查源码、输出及进程映射位于 `/private/tmp/azurefish-network-log-smoke/`，不作为构建输入；检查结束后日志订阅及虚构请求进程均已退出。
+
+## 操作身份默认生成（2026-10-11）
+
+AccountAPI 的 prepare 方法及 IMAPI／MediaAPI 写方法默认生成新的 `operationID`。普通新操作省略参数；AccountOperation 的重试保留原 ID 和请求字节，直接发送方法的手动重试须显式传回原 ID 和原始输入。刷新、退出补偿、删除恢复、联系人原始字节、消息 outbox 和媒体队列沿用已有的身份保存与恢复流程。ChatStore.prepareRevoke 优先复用已有撤回记录，ChatEngine 的 fallback ID 在无法使用本地记录时仍由调用方保留。未修改服务端契约、去重作用域或恢复窗口。
+
+| 验证 | 状态 | 本次证据与边界 |
+| --- | --- | --- |
+| API 编译及单元／组件测试 | 通过 | Swift Testing 汇总 39 项、7 个 suite；两项真实服务联调按默认开关跳过。覆盖 9 类账号准备方法的默认／显式身份、注册自动与手动重试、刷新 Bearer 后的资料重试、10 类 IM／媒体写请求的自动重试及显式恢复、联系人保存字节 |
+| 聊天包编译及单元／组件测试 | 通过 | Swift Testing 汇总 44 项、12 个 suite；一项真实服务联调按默认开关跳过。新增撤回默认身份的重试及加密库重开恢复测试，既有消息、联系人、传输和生命周期测试通过 |
+| iOS 应用及测试编译 | 通过 | XcodeBuildMCP 的 build_sim(buildForTesting: true) 复用缓存后成功，耗时 28.4 秒，生成可复用的 xctestproducts 和 XCTest Run；工具结果无编译警告或错误 |
+| iOS 模拟器账号回归 | 通过 | iPhone 17 Pro／iOS 26.5；XcodeBuildMCP 使用准备好的测试产物运行 SessionCoordinatorTests、AccountSecurityTests、ChatContactOperationsTests，21 项、3 个 suite，零失败／跳过。新增登录表单与资料草稿重试保留 ID、输入改变后生成新 ID 的用例均实际执行通过；刷新恢复、退出 ID、联系人响应丢失恢复等既有用例通过 |
+| macOS 账号主机测试入口 | 不适用 | Scripts/account-client-tests 当前链接含 UIKit 的应用源文件与测试，本轮停止该构建，改用 iOS 模拟器入口 |
+| 文档与静态检查 | 通过 | 更新 API／聊天包 README、网络与认证接入说明；本地链接及 git diff --check 通过 |
+| 专项 UI 自动化／人工视觉、真机、真实账号／服务联调 | 未执行 | 本轮包运行使用虚构 transport 和独立临时加密库，不代表界面、真机或真实服务验收 |
+
+工具链为 Swift 6.3.2／Xcode 26.5。SwiftPM 首次沙箱调用被编译缓存写权限阻塞，取得构建权限后重新执行通过。XcodeBuildMCP 已通过 session_show_defaults、list_sims 和 session_set_defaults 核对工作区、scheme、模拟器，并复用 `/tmp/AzureFish-operation-DD`。首次 build_sim 调用达到 300 秒传输超时上限，后台构建继续运行；确认进程结束后复用缓存再次调用，构建与模拟器测试均取得成功结果。已复核依赖来源、版本与提交未变。锁文件保留构建工具对 originHash 和已有 revision 条目 branch 字段的规范化；该元数据在恢复旧格式后会再次被后台工具重写。
+
+包测试复现命令（仓库根目录）：
+
+```sh
+swift test --package-path SharePackage/AzureFishAPI --disable-automatic-resolution -j 4
+swift test --package-path SharePackage/AzureFishChat --disable-automatic-resolution -j 4
+```
+
+本机日志：`/tmp/azurefish-operation-api-tests.log`、`/tmp/azurefish-operation-chat-tests.log`。构建权限、工具超时和依赖工具链重建过程不计为测试运行通过；上述 iOS 结果来自实际测试产物和运行日志。
+
+XcodeBuildMCP 本机证据：
+
+- 构建日志：`/Users/chenchen/Library/Developer/XcodeBuildMCP/workspaces/AzureFish-f786ca84ece4/logs/build_sim_2026-10-11T01-26-13-860Z_pid2215_2a3ad9bc.log`。
+- 测试日志：`/Users/chenchen/Library/Developer/XcodeBuildMCP/workspaces/AzureFish-f786ca84ece4/logs/test_sim_2026-10-11T01-27-03-938Z_pid2215_ac60af47.log`。
+- 结果包：`/Users/chenchen/Library/Developer/XcodeBuildMCP/workspaces/AzureFish-f786ca84ece4/result-bundles/test_sim_2026-10-11T01-27-03-939Z_pid2215_d81fe731.xcresult`。
+
+模拟器复现：先按 AGENTS.md 配置 XcodeBuildMCP，调用 build_sim(buildForTesting: true)；将返回的 testProductsPath 交给 test_sim，并使用 `-only-testing:AzureFishTests/SessionCoordinatorTests`、`-only-testing:AzureFishTests/AccountSecurityTests`、`-only-testing:AzureFishTests/ChatContactOperationsTests` 和 `-parallel-testing-enabled NO`。

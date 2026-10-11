@@ -33,7 +33,9 @@ extension ChatStore {
         for row in try ReeditRecord.filter(ReeditRecord.Columns.conversationID == conversation).fetchAll(db) { try expireRecovery(row.messageID, db: db) }
     }
     /// 校验当前账号发送的可用消息，保存或复用撤回身份；已知文字内容保留三分钟恢复副本。
-    public func prepareRevoke(_ message: ChatMessage, operationID: UUID) throws -> ChatRevokeAttempt {
+    ///
+    /// - Parameter operationID: 默认生成新 UUID；存在撤回记录时优先返回已保存的身份，恢复时可显式传入原 ID。
+    public func prepareRevoke(_ message: ChatMessage, operationID: UUID = UUID()) throws -> ChatRevokeAttempt {
         try check()
         return try db.write { db in
             try Self.expireReedits(now: now(), db: db)

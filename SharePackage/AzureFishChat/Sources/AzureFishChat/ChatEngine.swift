@@ -340,8 +340,9 @@ public actor ChatEngine {
     }
     /// 使用持久化操作身份撤回消息；恢复副本失败不阻断网络撤回。
     ///
+    /// - Parameter fallbackOperationID: 默认生成新 UUID；未能读取或保存撤回记录时使用它，手动重试须显式传入原 ID。
     /// - Returns: 已确认撤回的消息，以及本机是否仍可重新编辑其文本。
-    public func revoke(_ message: ChatMessage, fallbackOperationID: UUID) async throws -> (
+    public func revoke(_ message: ChatMessage, fallbackOperationID: UUID = UUID()) async throws -> (
         message: ChatMessage, canReedit: Bool
     ) {
         let identity = try await api.session.localIdentity()
@@ -437,7 +438,7 @@ public actor ChatEngine {
         let through = min(visibleThrough, covered)
         guard through > conversation.readState.read else { return }
         let result = try await api.watermark(
-            conversation: conversation.id, through: through, read: true, operationID: UUID())
+            conversation: conversation.id, through: through, read: true)
         try await store.save(result)
         notify(true, scope: [.conversations], conversation: conversation.id)
     }

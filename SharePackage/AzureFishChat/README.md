@@ -6,6 +6,8 @@ Storage 目录包含按领域分离的 Record 与 Repository，所有关联读�
 
 消息正文按类型分表，子记录按 position 保存；媒体资产和物理资源可共享，摘要独立于历史。分页按页批量装配内容，不逐条发起关联查询。版本合并、稳定身份、取消和撤回终态由各业务规则维护。
 
+新操作的身份可使用默认值：ChatOutgoing 创建新的发送身份，ChatStore.prepareRevoke 默认生成撤回 ID，已有撤回记录则优先返回保存的 ID。ChatEngine.revoke 默认生成 fallbackOperationID；本地记录无法读取或保存时使用该值，手动重试须保留并显式传回原 fallback ID。消息 outbox、私聊解析、联系人请求及媒体上传队列继续保存原身份和请求内容，恢复时复用，不能通过默认值创建重试副本。API 层默认值与重试规则见 [AzureFishAPI](../AzureFishAPI/README.md#使用方式)。
+
 测试：`swift test --package-path SharePackage/AzureFishChat -j 4`。结构、生命周期和本次验收见[数据库文档](../../Documentation/Database/README.md)。
 
 2026-10-06：ChatTimelineWindow 保留最早已加载序号，每次查询最多 200 条，展示总量不再限于 200 条。ChatEngineUpdate 区分目录、会话、消息和传输范围；空范围只发布同步／连接状态。ChatDownloadCoordinator 按环境、账号及资源合并不同窗口的下载，各调用方独立取消。

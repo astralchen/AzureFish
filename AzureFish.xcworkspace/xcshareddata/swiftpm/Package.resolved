@@ -1,12 +1,11 @@
 {
-  "originHash" : "3085f0b5364f19b083c90043dab19338c48f2f4423d49617323c6581c4729f08",
+  "originHash" : "912efdb98ec951fc084f6d9eba57284fd44441ac9c73739acb5e0fd9f1b9157a",
   "pins" : [
     {
       "identity" : "applocalization",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/astralchen/AppLocalization",
       "state" : {
-        "branch" : "main",
         "revision" : "a15471628569cb10404f599466b11f1036f9c86b"
       }
     },
@@ -23,7 +22,6 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/astralchen/ListKit.git",
       "state" : {
-        "branch" : "main",
         "revision" : "7c453c49660574a0028bb78825af8b09cf459aa3"
       }
     },
@@ -40,7 +38,6 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/astralchen/QuickLayoutKit.git",
       "state" : {
-        "branch" : "main",
         "revision" : "54d74d9032e85f310f122493256f41bc04790a41"
       }
     },

@@ -30,6 +30,8 @@ X-Request-ID 每次网络调用不同，operation_id 保持一个业务动作不
 
 当前 AccountAPI 采用 prepare／execute：prepare 序列化为不可变 AccountOperation，execute 可为受保护操作注入同一 session 的较新 Bearer。包验证操作绑定的环境、账号、session 和最低刷新代次；App 的账号 generation 由 SessionCoordinator 管理，并发刷新与凭据持久化顺序由共享 APISessionManager 管理。
 
+prepare 的 `operationID` 默认生成新 UUID，调用方仍可显式传入已有 ID。登录、资料、头像和敏感操作在创建新操作时使用默认值，同一输入重试复用已准备的 AccountOperation；修改输入后创建新操作。刷新恢复仍由 APISessionManager 保存并显式传入原 ID 和旧凭据，退出补偿保留原 ID，删除恢复保留原操作字节和身份。默认值不替代持久化恢复记录，也不改变服务端去重与结果恢复窗口。
+
 ## 3. 认证包与刷新
 
 Keychain 的认证包包含 environment_id、user_id、device_id、session_id、access_token／截止、refresh_token／当前截止、refresh_generation、pending refresh operation_id。登录包与数据库／媒体密钥项分开，普通退出不删除存储密钥，具体用途见 [安全设计](../Security/README.md)。使用一个 Keychain item 原子替换整个包，访问等级采用 AfterFirstUnlockThisDeviceOnly，不同步到其他设备。安装 ID 使用另一个 ThisDeviceOnly 项，重装或清理后的行为按实际 Keychain 环境验证，不将其当设备硬件身份。

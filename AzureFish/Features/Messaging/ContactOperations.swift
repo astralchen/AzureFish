@@ -36,7 +36,7 @@ final class ContactOperations {
             }
             guard fresh.allows(action) else { throw ContactOperationError.unavailable }
             pending = PendingContactOperation(bytes: try IMAPI.contactMutation(peer: peer, action: action,
-                revision: fresh.revision, operationID: UUID(), remark: remark, message: message,
+                revision: fresh.revision, remark: remark, message: message,
                 requestID: [.accept, .reject, .cancel].contains(action) ? fresh.requestID : ""),
                 action: action, remark: remark, message: message)
             try await engine.store.saveContactOperation(pending, peer: peer)

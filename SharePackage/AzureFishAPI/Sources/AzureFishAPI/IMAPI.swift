@@ -2,7 +2,10 @@ import AzureFishProtocol
 import Foundation
 import SwiftProtobuf
 
-/// 在同一会话管理器中执行 IM 与好友操作，保留调用方提供的写入身份。
+/// 在同一会话管理器中执行 IM 与好友操作，保留每次写入的操作身份。
+///
+/// 写方法省略 operationID 时为本次调用生成 UUID，调用内的网络和认证重试保留原 ID 及正文。
+/// 再次调用会创建新身份；手动重试或恢复须显式传入原 ID 并保持原始输入。
 public struct IMAPI: Sendable {
     /// 所有 IM 操作共享的账号会话管理器。
     public let session: APISessionManager
@@ -39,7 +42,9 @@ public struct IMAPI: Sendable {
         return try await call("v1/im/contacts/get", input, as: ContactRelationship.self, map: ChatContact.init)
     }
     /// 编码联系人操作；调用方可将返回字节保存在账号加密库中以恢复同一次操作。
-    public static func contactMutation(peer: String, action: ContactAction, revision: Int64, operationID: UUID,
+    ///
+    /// - Parameter operationID: 默认生成新 UUID；恢复时复用已保存字节，或显式传入原 ID 和原始输入。
+    public static func contactMutation(peer: String, action: ContactAction, revision: Int64, operationID: UUID = UUID(),
                                        remark: String = "", message: String = "", requestID: String = "") throws -> Data {
         var input = ContactMutationRequest()
         input.peerUserID = peer; input.action = action.rawValue; input.expectedRevision = revision
@@ -62,21 +67,27 @@ public struct IMAPI: Sendable {
         return try await session.execute(operation)
     }
     /// 提交联系人修改并返回权威关系；同一动作重试必须复用操作身份及请求内容。
-    public func mutateContact(peer: String, action: ContactAction, revision: Int64, operationID: UUID,
+    ///
+    /// - Parameter operationID: 默认生成新 UUID；手动重试或恢复时显式传入原 ID。
+    public func mutateContact(peer: String, action: ContactAction, revision: Int64, operationID: UUID = UUID(),
                               remark: String = "", message: String = "", requestID: String = "") async throws -> ChatContact {
         try await mutateContact(bytes: Self.contactMutation(peer: peer, action: action, revision: revision,
             operationID: operationID, remark: remark, message: message, requestID: requestID))
     }
-    /// 以指定操作身份解析或创建与对方的私聊会话，返回服务端会话快照。
-    public func resolve(peer: String, operationID: UUID) async throws -> ChatConversation {
+    /// 解析或创建与对方的私聊会话，返回服务端会话快照。
+    ///
+    /// - Parameter operationID: 默认生成新 UUID；手动重试或恢复时显式传入原 ID。
+    public func resolve(peer: String, operationID: UUID = UUID()) async throws -> ChatConversation {
         var input = IMResolveRequest()
         input.peerUserID = peer
         input.operationID = operationID.uuidString.lowercased()
         return try await call(
             "v1/im/conversations/resolve", input, as: IMConversation.self, id: operationID, map: ChatConversation.init)
     }
-    /// 以指定标题、成员和操作身份创建群会话；权限及成员合法性由服务端校验。
-    public func createGroup(title: String, members: [String], operationID: UUID) async throws -> ChatConversation {
+    /// 以指定标题和成员创建群会话；权限及成员合法性由服务端校验。
+    ///
+    /// - Parameter operationID: 默认生成新 UUID；手动重试或恢复时显式传入原 ID。
+    public func createGroup(title: String, members: [String], operationID: UUID = UUID()) async throws -> ChatConversation {
         var input = IMCreateGroupRequest()
         input.title = title
         input.memberUserIds = members
@@ -85,8 +96,10 @@ public struct IMAPI: Sendable {
             "v1/im/groups/create", input, as: IMConversation.self, id: operationID, map: ChatConversation.init)
     }
     /// 按预期版本提交群操作；重复请求须复用 operationID 和原始字段。
+    ///
+    /// - Parameter operationID: 默认生成新 UUID；手动重试或恢复时显式传入原 ID。
     public func updateGroup(
-        _ id: String, revision: Int64, action: GroupAction, title: String = "", member: String = "", operationID: UUID
+        _ id: String, revision: Int64, action: GroupAction, title: String = "", member: String = "", operationID: UUID = UUID()
     ) async throws -> ChatConversation {
         var input = IMUpdateGroupRequest()
         input.conversationID = id
@@ -155,7 +168,9 @@ public struct IMAPI: Sendable {
             "v1/im/messages/send", input, as: IMMessage.self, id: draft.operationID, map: ChatMessage.init)
     }
     /// 提交指定消息的撤回动作并返回权威撤回快照；不自动清理本地恢复内容。
-    public func revoke(conversation: String, message: String, operationID: UUID) async throws -> ChatMessage {
+    ///
+    /// - Parameter operationID: 默认生成新 UUID；手动重试或恢复时显式传入原 ID。
+    public func revoke(conversation: String, message: String, operationID: UUID = UUID()) async throws -> ChatMessage {
         var input = IMRevokeRequest()
         input.conversationID = conversation
         input.messageUuid = message
@@ -164,7 +179,9 @@ public struct IMAPI: Sendable {
             "v1/im/messages/revoke", input, as: IMMessage.self, id: operationID, map: ChatMessage.init)
     }
     /// 提交指定序列的已读或送达水位并返回会话快照；read 为 true 时提交已读。
-    public func watermark(conversation: String, through: Int64, read: Bool, operationID: UUID) async throws
+    ///
+    /// - Parameter operationID: 默认生成新 UUID；手动重试或恢复时显式传入原 ID。
+    public func watermark(conversation: String, through: Int64, read: Bool, operationID: UUID = UUID()) async throws
         -> ChatConversation
     {
         var input = IMWatermarkRequest()

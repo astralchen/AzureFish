@@ -226,6 +226,8 @@ public actor APISessionManager {
     }
 
     /// 立即停止旧任务与实时订阅，再撤销服务端会话。失败保留存储，调用方可重试相同 operationID。
+    ///
+    /// - Parameter operationID: 默认生成新 UUID；需在失败后重试的调用方应先保存 ID，再显式传入。
     public func logout(operationID: UUID = UUID()) async throws {
         let sourceGeneration = epoch
         let old = record?.credentials

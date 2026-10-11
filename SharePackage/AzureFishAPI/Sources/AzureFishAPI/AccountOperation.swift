@@ -4,6 +4,7 @@ import AzureFishNetwork
 /// 账号接口准备阶段生成的不可变操作，包含一次序列化后的请求与响应转换规则。
 ///
 /// 持有并重复执行同一值可保留 operationID 和请求字节；这不延长服务端的结果恢复窗口。
+/// 省略 prepare 的 operationID 只在准备新操作时生成 UUID，execute 不重新生成身份。
 /// 注册、登录和刷新正文包含凭据，操作仅供短期内存持有，不写入日志或磁盘。
 /// 应用层负责合并并发刷新、隔离账号代次，以及需要时恢复尚未完成的业务动作。
 public struct AccountOperation<Value: Sendable>: Sendable, CustomStringConvertible, CustomDebugStringConvertible {

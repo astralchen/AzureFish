@@ -92,7 +92,9 @@ extension AccountAPI {
         return try await execute(op, using: credentials)
     }
     /// 准备限定当前会话和用途的密码再次认证，尚不发起网络请求。
-    public func prepareReauthentication(operationID: UUID, password: String, action: AccountSecurityAction,
+    ///
+    /// - Parameter operationID: 默认生成新 UUID；重试复用返回的操作，恢复时显式传入原 ID 和原始输入。
+    public func prepareReauthentication(operationID: UUID = UUID(), password: String, action: AccountSecurityAction,
         using credentials: SessionCredentials) throws -> AccountOperation<AccountReauthentication> {
         try checkEnvironment(credentials)
         var input = ReauthenticateRequest(); input.operationID = operationID.uuidString.lowercased()
@@ -103,7 +105,9 @@ extension AccountAPI {
         }
     }
     /// 准备敏感写操作；失败重试须复用返回值，不重新生成 ID 或请求正文。
-    public func prepareSecurityAction(operationID: UUID, action: AccountSecurityAction, proof: AccountReauthentication,
+    ///
+    /// - Parameter operationID: 默认生成新 UUID；恢复时显式传入原 ID 和原始输入。删除恢复包从返回的操作提取身份。
+    public func prepareSecurityAction(operationID: UUID = UUID(), action: AccountSecurityAction, proof: AccountReauthentication,
         newPassword: String = "", using credentials: SessionCredentials) throws -> AccountOperation<Bool> {
         try checkEnvironment(credentials)
         var input = AccountSecurityRequest(); input.operationID = operationID.uuidString.lowercased()
@@ -113,8 +117,10 @@ extension AccountAPI {
                 _ = try EmptyResponse(serializedBytes: data); return true
             }
     }
-    /// 空 JPEG 恢复默认头像；同一失败上传应复用返回的操作。
-    public func prepareAvatar(operationID: UUID, expectedVersion: Int64, jpeg: Data,
+    /// 准备头像更新操作；空 JPEG 恢复默认头像，同一失败上传应复用返回的操作。
+    ///
+    /// - Parameter operationID: 默认生成新 UUID；恢复时显式传入原 ID 和原始输入。
+    public func prepareAvatar(operationID: UUID = UUID(), expectedVersion: Int64, jpeg: Data,
         using credentials: SessionCredentials) throws -> AccountOperation<UserProfile> {
         try checkEnvironment(credentials)
         guard jpeg.count <= 256 * 1024 else { throw APIClientError.requestTooLarge }

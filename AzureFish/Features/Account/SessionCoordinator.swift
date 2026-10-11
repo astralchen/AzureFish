@@ -224,8 +224,8 @@ final class SessionCoordinator {
         if authentication?.0 != input {
             let device = try store.installationID()
             let operation = try input.register
-                ? api.prepareRegistration(operationID: UUID(), deviceID: device, accountName: input.account, password: input.password, nickname: input.nickname)
-                : api.prepareLogin(operationID: UUID(), deviceID: device, accountName: input.account, password: input.password)
+                ? api.prepareRegistration(deviceID: device, accountName: input.account, password: input.password, nickname: input.nickname)
+                : api.prepareLogin(deviceID: device, accountName: input.account, password: input.password)
             authentication = (input, operation)
         }
         let result: AuthenticatedSession
@@ -318,7 +318,7 @@ final class SessionCoordinator {
         if profileOperation?.0 != base || profileOperation?.1 != nickname || profileOperation?.2 != bio {
             let changes = ProfileChanges(expectedVersion: base.version, nickname: nickname == base.nickname ? nil : nickname,
                 bio: bio == base.bio ? nil : bio)
-            profileOperation = (base, nickname, bio, try api.prepareProfileUpdate(operationID: UUID(), changes: changes, using: credentials))
+            profileOperation = (base, nickname, bio, try api.prepareProfileUpdate(changes: changes, using: credentials))
         }
         let operation = profileOperation!.3
         do {
@@ -406,9 +406,9 @@ final class SessionCoordinator {
         let generation = epoch
         if securityOperation?.0 != action || securityOperation?.1 != newPassword {
             let credentials = try await manager.credentials()
-            let proof = try await api.execute(api.prepareReauthentication(operationID: UUID(), password: password, action: action, using: credentials), using: credentials)
+            let proof = try await api.execute(api.prepareReauthentication(password: password, action: action, using: credentials), using: credentials)
             try check(generation)
-            let op = try api.prepareSecurityAction(operationID: UUID(), action: action, proof: proof, newPassword: newPassword, using: credentials)
+            let op = try api.prepareSecurityAction(action: action, proof: proof, newPassword: newPassword, using: credentials)
             securityOperation = (action, newPassword, op, credentials)
         }
         guard let pending = securityOperation else { throw AccountFailure.invalidInput }
@@ -500,7 +500,7 @@ final class SessionCoordinator {
         busy = true; publish(); defer { busy = false; publish() }
         if avatarOperation?.0 != jpeg {
             let credentials = try await manager.credentials()
-            avatarOperation = (jpeg, try api.prepareAvatar(operationID: UUID(), expectedVersion: profile.version, jpeg: jpeg, using: credentials))
+            avatarOperation = (jpeg, try api.prepareAvatar(expectedVersion: profile.version, jpeg: jpeg, using: credentials))
         }
         let operation = avatarOperation!.1
         do {

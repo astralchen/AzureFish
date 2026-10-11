@@ -8,6 +8,9 @@ import SwiftProtobuf
 /// prepare 方法只编码操作，execute 或直接读取方法才发起网络请求。实例持有固定环境
 /// 和 HTTPClient，不维护全局登录态，不自动刷新令牌或写入 Keychain。并发请求不会在此串行化；
 /// 同一会话的刷新合并、旧回包隔离和 UI 状态更新由应用层负责。
+///
+/// prepare 方法省略 operationID 时为新动作生成 UUID，并保存在返回的操作中。
+/// 重试复用原操作；需要重新准备恢复操作时，显式传入原 ID 并保持原始输入。
 public struct AccountAPI: Sendable {
     /// 本实例使用的固定服务环境；已准备的操作只能由环境值完全一致的实例执行。
     public let environment: APIEnvironment
@@ -30,14 +33,14 @@ public struct AccountAPI: Sendable {
     /// operationID；网络重试保留返回的操作值，避免重新序列化。确认密码属于 UI 输入，不进入协议。
     ///
     /// - Parameters:
-    ///   - operationID: 本次注册动作的全局唯一业务 ID。
+    ///   - operationID: 本次注册动作的全局唯一业务 ID，默认生成新 UUID；恢复时显式传入原 ID。
     ///   - deviceID: 当前客户端安装的 UUID，服务端将其绑定到新会话。
     ///   - accountName: 待注册账号名；服务端去除首尾空白并转小写后校验唯一性。
     ///   - password: 原始密码，不 trim 或规范化，不得用于日志。
     ///   - nickname: 初始昵称，字符与空白规则由服务端校验。
     /// - Returns: 预期 HTTP 201 并映射为 AuthenticatedSession 的操作；尚未发送。
     /// - Throws: 正文编码失败时为 `.encodingFailed`，编码后超过 16 KiB 时为 `.requestTooLarge`。
-    public func prepareRegistration(operationID: UUID, deviceID: UUID, accountName: String,
+    public func prepareRegistration(operationID: UUID = UUID(), deviceID: UUID, accountName: String,
                                     password: String, nickname: String) throws -> AccountOperation<AuthenticatedSession> {
         var request = RegisterRequest()
         request.operationID = operationID.uuidString.lowercased(); request.deviceID = deviceID.uuidString.lowercased()
@@ -52,13 +55,13 @@ public struct AccountAPI: Sendable {
     /// 准备阶段不检查密码是否正确，也不撤销已有会话；账号和密码原样交给服务端校验。
     ///
     /// - Parameters:
-    ///   - operationID: 本次登录动作的全局唯一业务 ID，同一次动作重试时保留。
+    ///   - operationID: 本次登录动作的全局唯一业务 ID，默认生成新 UUID；同一次动作重试时保留。
     ///   - deviceID: 本次会话绑定的客户端安装 UUID。
     ///   - accountName: 登录账号名，使用服务端规定的规范化规则。
     ///   - password: 原始密码，不在客户端 trim 或规范化。
     /// - Returns: 预期 HTTP 200 并映射为 AuthenticatedSession 的操作；不安装登录状态。
     /// - Throws: `.encodingFailed` 或 `.requestTooLarge`，准备失败时不会发送请求。
-    public func prepareLogin(operationID: UUID, deviceID: UUID, accountName: String,
+    public func prepareLogin(operationID: UUID = UUID(), deviceID: UUID, accountName: String,
                              password: String) throws -> AccountOperation<AuthenticatedSession> {
         var request = LoginRequest()
         request.operationID = operationID.uuidString.lowercased(); request.deviceID = deviceID.uuidString.lowercased()
@@ -75,12 +78,12 @@ public struct AccountAPI: Sendable {
     /// 由应用层按认证设计持久化动作 ID 和对应旧凭据，此方法不会访问 Keychain。
     ///
     /// - Parameters:
-    ///   - operationID: 本次刷新动作的全局唯一 ID；响应丢失后复用原操作恢复结果。
+    ///   - operationID: 本次刷新动作的全局唯一 ID，默认生成新 UUID；恢复时显式传入保存的原 ID 和旧凭据。
     ///   - credentials: 与当前环境匹配的旧会话快照，正文中使用其 refreshToken。
     /// - Returns: 已编码的刷新操作；调用 execute 成功后获得下一代会话快照。
     /// - Throws: 环境不符时为 `.credentialsMismatch`，代次无法递增时为 `.invalidCredentials`，
     ///   或准备正文时的 `.encodingFailed`／`.requestTooLarge`。
-    public func prepareRefresh(operationID: UUID, using credentials: SessionCredentials) throws -> AccountOperation<AuthenticatedSession> {
+    public func prepareRefresh(operationID: UUID = UUID(), using credentials: SessionCredentials) throws -> AccountOperation<AuthenticatedSession> {
         try checkEnvironment(credentials)
         guard credentials.refreshGeneration < Int64.max else { throw APIClientError.invalidCredentials }
         var request = RefreshRequest()
@@ -100,11 +103,11 @@ public struct AccountAPI: Sendable {
     /// 服务端恢复窗口内重试；返回确认值不自动清理本地凭据、页面或加密账号数据。
     ///
     /// - Parameters:
-    ///   - operationID: 本次退出动作的全局唯一业务 ID。
+    ///   - operationID: 本次退出动作的全局唯一业务 ID，默认生成新 UUID；恢复时显式传入原 ID。
     ///   - credentials: 用于确定目标会话和最低刷新代次的凭据。
     /// - Returns: 执行成功后产生 Acknowledgement 的受保护操作。
     /// - Throws: `.credentialsMismatch`，或正文准备失败对应的 `.encodingFailed`／`.requestTooLarge`。
-    public func prepareLogout(operationID: UUID, using credentials: SessionCredentials) throws -> AccountOperation<Acknowledgement> {
+    public func prepareLogout(operationID: UUID = UUID(), using credentials: SessionCredentials) throws -> AccountOperation<Acknowledgement> {
         try checkEnvironment(credentials)
         var request = LogoutRequest(); request.operationID = operationID.uuidString.lowercased()
         return try operation(request, id: operationID, path: "v1/auth/logout", authorization: SessionIdentity(credentials)) { data in
@@ -119,12 +122,12 @@ public struct AccountAPI: Sendable {
     /// 响应须属于当前用户且资料版本高于提交依据；本方法不自动处理服务端版本冲突。
     ///
     /// - Parameters:
-    ///   - operationID: 本次编辑动作的全局唯一业务 ID，原请求重试不得重新分配。
+    ///   - operationID: 本次编辑动作的全局唯一业务 ID，默认生成新 UUID；原请求重试不得重新分配。
     ///   - changes: 编辑依据及待更新字段；nil 保留原值，空 bio 明确表示清空。
     ///   - credentials: 绑定编辑操作的会话及最低刷新代次，执行时仍需提供可接受的凭据。
     /// - Returns: 成功执行后返回最新 UserProfile 的受保护操作，正文在准备时只编码一次。
     /// - Throws: `.credentialsMismatch`、`.invalidRequest`，或正文准备阶段的 `.encodingFailed`／`.requestTooLarge`。
-    public func prepareProfileUpdate(operationID: UUID, changes: ProfileChanges,
+    public func prepareProfileUpdate(operationID: UUID = UUID(), changes: ProfileChanges,
                                      using credentials: SessionCredentials) throws -> AccountOperation<UserProfile> {
         try checkEnvironment(credentials)
         guard changes.expectedVersion > 0, changes.nickname != nil || changes.bio != nil else { throw APIClientError.invalidRequest }
@@ -236,7 +239,9 @@ public struct AccountAPI: Sendable {
     }
 
     /// 为当前设备退出构造原始请求和有限期访问凭据；本方法不写入存储，结果只能存入独立 Keychain 队列。
-    public func prepareLogoutRevocation(operationID: UUID, using credentials: SessionCredentials) throws -> LogoutRevocation {
+    ///
+    /// - Parameter operationID: 默认生成新 UUID；重建已有退出的补偿材料时，显式传入原 ID。
+    public func prepareLogoutRevocation(operationID: UUID = UUID(), using credentials: SessionCredentials) throws -> LogoutRevocation {
         let operation = try prepareLogout(operationID: operationID, using: credentials)
         return LogoutRevocation(operationID: operationID, environmentID: environment.identifier,
             baseURL: environment.baseURL, body: operation.body!, accessToken: credentials.accessToken.rawValue,

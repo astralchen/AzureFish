@@ -227,6 +227,55 @@ struct SessionCoordinatorTests {
         #expect(coordinator.profile?.nickname == "Fictional")
         #expect(await transport.requests.filter { $0.method == .patch }.count == 1)
     }
+    /// 验证默认生成的登录身份在相同表单重试时保留，修改表单后创建新操作。
+    @Test func loginRetryPreservesGeneratedOperationUntilInputChanges() async throws {
+        let transport = AccountTestTransport()
+        let (coordinator, store, root) = try fixture(transport, keys: MemorySecureValues())
+        defer { try? FileManager.default.removeItem(at: root) }
+        await coordinator.restore()
+        await transport.setOffline(true)
+        let input = AuthenticationInput(register: false, account: "fictional", password: "Fictional-Password-123", nickname: "")
+        await #expect(throws: (any Error).self) { try await coordinator.authenticate(input) }
+        await #expect(throws: (any Error).self) { try await coordinator.authenticate(input) }
+        let changed = AuthenticationInput(register: false, account: "fictional_other", password: input.password, nickname: "")
+        await #expect(throws: (any Error).self) { try await coordinator.authenticate(changed) }
+        await transport.setOffline(false)
+        try await coordinator.authenticate(changed)
+        let requests = await transport.requests.filter { $0.url.path.hasSuffix("login") }
+        #expect(requests.count == 4)
+        #expect(requests[0].body == requests[1].body)
+        #expect(requests[2].body == requests[3].body)
+        let first = try LoginRequest(serializedBytes: #require(requests[0].body))
+        let second = try LoginRequest(serializedBytes: #require(requests[2].body))
+        #expect(UUID(uuidString: first.operationID) != nil)
+        #expect(first.operationID != second.operationID)
+        #expect(coordinator.phase == .signedIn)
+        #expect(try store.load() != nil)
+    }
+    /// 验证相同资料草稿重试复用默认生成的操作，修改草稿时生成新身份。
+    @Test func profileRetryPreservesGeneratedOperationUntilDraftChanges() async throws {
+        let transport = AccountTestTransport()
+        let (coordinator, store, root) = try fixture(transport, keys: MemorySecureValues())
+        defer { try? FileManager.default.removeItem(at: root) }
+        try store.save(StoredSession(sampleCredentials()))
+        await coordinator.restore()
+        let base = try #require(coordinator.profile)
+        await transport.setOffline(true)
+        await #expect(throws: (any Error).self) { try await coordinator.saveProfile(base: base, nickname: "Draft", bio: "") }
+        await #expect(throws: (any Error).self) { try await coordinator.saveProfile(base: base, nickname: "Draft", bio: "") }
+        await #expect(throws: (any Error).self) { try await coordinator.saveProfile(base: base, nickname: "Changed", bio: "") }
+        await transport.setOffline(false)
+        try await coordinator.saveProfile(base: base, nickname: "Changed", bio: "")
+        let requests = await transport.requests.filter { $0.method == .patch }
+        #expect(requests.count == 4)
+        #expect(requests[0].body == requests[1].body)
+        #expect(requests[2].body == requests[3].body)
+        let first = try UpdateProfileRequest(serializedBytes: #require(requests[0].body))
+        let second = try UpdateProfileRequest(serializedBytes: #require(requests[2].body))
+        #expect(UUID(uuidString: first.operationID) != nil)
+        #expect(first.operationID != second.operationID)
+        #expect(coordinator.profile?.nickname == "Changed")
+    }
     @Test func cancellationDuringCredentialWriteRemovesLateStoredSession() async throws {
         let transport = AccountTestTransport(), keys = MemorySecureValues()
         let (coordinator, store, root) = try fixture(transport, keys: keys)

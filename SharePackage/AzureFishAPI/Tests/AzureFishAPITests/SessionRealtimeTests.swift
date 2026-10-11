@@ -90,6 +90,28 @@ private actor Gate {
 
 @Suite("共享会话与实时提示", .timeLimit(.minutes(1)))
 struct SessionRealtimeTests {
+    /// 验证自动生成的资料编辑身份在共享刷新后的认证重试中保持不变。
+    @Test func generatedWriteIdentitySurvivesAuthenticationRetry() async throws {
+        let fixture = SessionFixture(), store = MemorySessionStore()
+        let old = try fixture.credentials()
+        var profile = fixture.profile(); profile.profileVersion = 2
+        let response = HTTPResponse(statusCode: 200, headers: ["Content-Type": "application/protobuf"], body: try profile.serializedData())
+        let transport = MockHTTPTransport { request, _ in
+            if request.url.path == "/v1/auth/refresh" { return try fixture.auth() }
+            if request.headers["Authorization"] == "Bearer " + old.accessToken.rawValue { return try failure() }
+            return response
+        }
+        let manager = APISessionManager(api: AccountAPI(environment: fixture.environment, transport: transport), store: store)
+        try await manager.install(old)
+        let operation = try manager.api.prepareProfileUpdate(changes: .init(expectedVersion: 1, nickname: "新昵称"), using: old)
+        #expect(try await manager.execute(operation).version == 2)
+        let requests = await transport.requests.filter { $0.method == .patch }
+        #expect(requests.count == 2 && requests[0].body == requests[1].body)
+        let input = try UpdateProfileRequest(serializedBytes: #require(requests[0].body))
+        #expect(input.operationID == operation.operationID?.uuidString.lowercased())
+        #expect(requests[0].headers["Authorization"] != requests[1].headers["Authorization"])
+        #expect(await transport.requests.filter { $0.url.path == "/v1/auth/refresh" }.count == 1)
+    }
     /// 首次取凭据或认证重试等待刷新时关闭网络，均不得继续发出业务请求。
     @Test(arguments: [false, true], [false, true])
     func closingNetworkAccessDuringRefreshPreventsBusinessSend(retrying: Bool, refreshFails: Bool) async throws {
@@ -115,7 +137,7 @@ struct SessionRealtimeTests {
             try await store.save(.init(credentials: fixture.credentials(), pendingRefreshOperationID: UUID()), environmentID: "test")
             try await manager.restoreLocal()
         }
-        let operation = try manager.api.prepareProfileUpdate(operationID: UUID(),
+        let operation = try manager.api.prepareProfileUpdate(
             changes: .init(expectedVersion: 1, nickname: "受控写入"), using: fixture.credentials())
         let request = Task { try await manager.execute(operation) }
         try await until { await transport.requests.contains { $0.url.path == "/v1/auth/refresh" } }
@@ -139,7 +161,7 @@ struct SessionRealtimeTests {
         await manager.setNetworkAccessAllowed(false)
         await #expect(throws: APISessionError.verificationRequired) {
             try await manager.authorized { credentials in
-                try await manager.api.execute(manager.api.prepareProfileUpdate(operationID: UUID(),
+                try await manager.api.execute(manager.api.prepareProfileUpdate(
                     changes: .init(expectedVersion: 1, nickname: "不得提交"), using: credentials), using: credentials)
             }
         }
@@ -354,7 +376,7 @@ struct SessionRealtimeTests {
         }
         let manager = APISessionManager(api: AccountAPI(environment: fixture.environment, transport: transport), store: store)
         try await manager.install(fixture.credentials())
-        try await manager.logout(operationID: UUID())
+        try await manager.logout()
         #expect(await manager.state.sessionID == nil)
         #expect(await store.records["test"] == nil)
         let history = await transport.requests
@@ -372,7 +394,7 @@ struct SessionRealtimeTests {
         }
         let manager = APISessionManager(api: AccountAPI(environment: fixture.environment, transport: transport), store: store)
         try await manager.install(fixture.credentials())
-        let logout = Task { try await manager.logout(operationID: UUID()) }
+        let logout = Task { try await manager.logout() }
         try await until { await transport.requests.count == 1 }
         try await manager.install(replacement.credentials())
         await gate.release()

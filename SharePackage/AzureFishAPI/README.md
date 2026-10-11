@@ -1,6 +1,6 @@
 # AzureFishAPI
 
-Swift 6.3 的账号 API、会话与 IM 提示适配包，最低 iOS 15／macOS 12。覆盖健康检查、注册、密码登录、刷新、当前会话退出及个人资料读写；输出普通 Sendable 值类型，不向页面暴露 Protobuf。
+Swift 6.3 的账号、会话、IM 与媒体 API 适配包，最低 iOS 15／macOS 12。提供账号认证、资料与安全操作、好友／会话／消息读写、实时提示及媒体控制／分块传输；输出普通 Sendable 值类型，不向页面暴露 Protobuf。Apple 认证尚未提供。
 
 ## 使用方式
 
@@ -12,7 +12,6 @@ func registerForTesting(deviceID: UUID) async throws -> AuthenticatedSession {
     // 仅 Debug 的 macOS／模拟器；真实服务使用 HTTPS 的 APIEnvironment。
     let api = AccountAPI(environment: try .localTesting())
     let operation = try api.prepareRegistration(
-        operationID: UUID(),
         deviceID: deviceID,
         accountName: "fictional_account",
         password: "Fictional-Password-123",
@@ -22,14 +21,13 @@ func registerForTesting(deviceID: UUID) async throws -> AuthenticatedSession {
 }
 ```
 
-`prepare…` 是同步序列化，不发送请求。一个用户动作创建一个 UUID 和 AccountOperation，自动／显式重试都保留同一操作。用户修改内容再提交时创建新操作。注册／登录操作包含密码字节，只在短期流程内存持有；结束时释放，不放 UserDefaults、磁盘重试队列或日志。刷新操作不注入 Bearer，避免通用 401 逻辑递归刷新。
+`prepare…` 是同步序列化，不发送请求。省略 `operationID` 时，每次 prepare 调用自动生成新的 UUID，并存入返回的 AccountOperation；也可显式提供已有 ID。自动／手动重试都复用同一操作及原始请求字节，不重新调用 prepare。用户修改内容再提交时创建新操作。需要跨进程恢复的刷新、退出补偿等流程继续保存并显式传入原 ID 和对应输入，默认生成不能替代恢复记录。注册／登录操作包含密码字节，只在短期流程内存持有；结束时释放，不放 UserDefaults、磁盘重试队列或日志。刷新操作不注入 Bearer，避免通用 401 逻辑递归刷新。
 
 受保护操作在执行时显式提供当前凭据：
 
 ```swift
 func saveBio(api: AccountAPI, session: SessionCredentials, version: Int64) async throws -> UserProfile {
     let operation = try api.prepareProfileUpdate(
-        operationID: UUID(),
         changes: ProfileChanges(expectedVersion: version, bio: ""),
         using: session
     )
@@ -38,6 +36,8 @@ func saveBio(api: AccountAPI, session: SessionCredentials, version: Int64) async
 ```
 
 nil 字段表示不修改，空 bio 表示清空。操作绑定环境、账号、设备和 session，可在同一 session 刷新后传入更高代次的凭据重试；不允许换账号、换 session、换环境或使用低于准备时的代次。APIEnvironment 不提供隐式切换共享单例。
+
+`IMAPI` 和 `MediaAPI` 的写方法也默认生成新 `operationID`；一次方法调用内的网络／认证重试保留它。再次调用这些直接发送的方法会生成新 ID，需要手动重试或跨进程恢复时须显式传入原 ID 并保持原始请求内容。联系人修改可保存 `contactMutation` 返回的字节，再通过 `mutateContact(bytes:)` 重放；消息和上传队列继续使用已保存的发送身份及创建／完成／取消 ID。结果恢复仍受[服务端幂等规则](../../AzureFishServer/Documentation/protobuf-contract.md#会话刷新与重试)约束。
 
 ## App 集成边界
 

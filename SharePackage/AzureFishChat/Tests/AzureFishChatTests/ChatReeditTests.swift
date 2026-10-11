@@ -25,6 +25,23 @@ private final class ReeditClock: @unchecked Sendable {
 
 @Suite("撤回文本恢复")
 struct ChatReeditTests {
+    /// 验证首次撤回默认生成身份，后续准备及重新打开加密库仍复用已保存身份。
+    @Test func defaultRevokeIdentitySurvivesRetryAndReopen() async throws {
+        try await fixture { store, clock, user, url, key in
+            let original = try message(user: user), other = try message(user: user)
+            try await store.save(original)
+            try await store.save(other)
+            let first = try await store.prepareRevoke(original)
+            let second = try await store.prepareRevoke(other)
+            #expect(first.operationID != second.operationID)
+            #expect(try await store.prepareRevoke(original).operationID == first.operationID)
+            try await store.close()
+            let reopened = try ChatStore(url: url, key: key, environment: "test", userID: user, now: { clock.now })
+            #expect(try await reopened.prepareRevoke(original, operationID: first.operationID).operationID == first.operationID)
+            #expect(try await reopened.prepareRevoke(original).operationID == first.operationID)
+            try await reopened.close()
+        }
+    }
     /// 构造指定内容或序列的虚构消息，供本地存储断言使用。
     private func message(user: UUID, kind: String = "text") throws -> ChatMessage {
         let json: [String: Any] = [
