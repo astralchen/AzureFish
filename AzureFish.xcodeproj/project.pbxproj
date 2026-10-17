@@ -44,6 +44,7 @@
 		7735C8C930627166005AF164 /* Exceptions for "AzureFish" folder in "AzureFish" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				Features/Account/README.md,
 				Features/Messaging/README.md,
 				Features/Moments/README.md,
 				Info.plist,

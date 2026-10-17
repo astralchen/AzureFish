@@ -1,1 +1,1 @@
-../../../../AzureFish/Features/Account/SessionCoordinator.swift
+../../../../AzureFish/Features/Account/Support/SessionCoordinator.swift

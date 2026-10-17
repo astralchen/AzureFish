@@ -1,1 +1,1 @@
-../../../../AzureFish/Features/Account/CredentialStore.swift
+../../../../AzureFish/Features/Account/Support/CredentialStore.swift
