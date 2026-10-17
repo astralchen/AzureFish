@@ -79,16 +79,8 @@ final class ContactsSplitViewController: UIViewController, UISplitViewController
         selectedID == nil ? .primary : .secondary
     }
 }
-final class ContactSelectionViewController: ContactFormController {
-    override var localizedTitleKey: String? { "chat.live.contacts" }
-    override func viewDidLoad() { super.viewDidLoad(); reloadLocalizedContent() }
-    override func reloadLocalizedContent() {
-        super.reloadLocalizedContent(); fields = [text(Localization.text("contacts.select"), style: .title2)]; setNeedsQuickLayout()
-    }
-}
+
 #if DEBUG
 @available(iOS 17.0, *)
 #Preview("通讯录双栏") { ContactsSplitViewController(runtime: ChatRuntime(previewContacts: ConversationPreviewData.contacts)) }
-@available(iOS 17.0, *)
-#Preview("选择联系人") { ContactSelectionViewController() }
 #endif

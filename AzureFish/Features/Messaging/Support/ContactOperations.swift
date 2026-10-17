@@ -2,8 +2,6 @@ import AzureFishAPI
 import AzureFishChat
 import Foundation
 
-enum ContactOperationError: Error { case busy, unavailable, confirmedPrevious, resultExpired }
-
 /// 将不确定的联系人写请求保存在当前账号加密库；重试先恢复原字节，不创建替代操作。
 @MainActor
 final class ContactOperations {
@@ -65,28 +63,4 @@ final class ContactOperations {
             throw error
         }
     }
-}
-
-@MainActor
-func contactErrorKey(_ error: any Error) -> String {
-    if let error = error as? ContactOperationError {
-        switch error {
-        case .confirmedPrevious, .resultExpired: return "contacts.reconciled"
-        case .busy: return "contacts.busy"
-        case .unavailable: return "contacts.unavailable"
-        }
-    }
-    if case APIClientError.service(let failure) = error {
-        switch failure.code {
-        case .selfContact: return "chat.live.selfContact"
-        case .userNotFound: return "contacts.notFound"
-        case .rateLimited: return "contacts.rateLimited"
-        case .contactClientUpdateRequired: return "contacts.updateRequired"
-        case .contactVersionConflict, .contactActionUnavailable: return "chat.live.changed"
-        case .contactUnavailable: return "contacts.unavailable"
-        case .validationFailed: return "contacts.invalidInput"
-        default: return "chat.live.failed"
-        }
-    }
-    return "contacts.networkError"
 }
