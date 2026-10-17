@@ -64,5 +64,11 @@ struct ChatStartupTests {
         let tabs = try #require(root.children.compactMap { $0 as? UITabBarController }.first)
         #expect(tabs.selectedIndex == 0)
         #expect(tabs.selectedViewController is ChatSplitViewController)
+        #expect(tabs.viewControllers?.map { $0.tabBarItem.tag } == [0, 1, 4, 2, 3])
+        let videos = try #require(tabs.viewControllers?.first { $0 is ShortVideoTabViewController })
+        tabs.selectedViewController = videos
+        root.reloadLocalizedContent()
+        #expect(tabs.selectedViewController === videos)
+        #expect(videos.tabBarItem.accessibilityIdentifier == "app.tab.4")
     }
 }

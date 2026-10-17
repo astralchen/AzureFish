@@ -33,3 +33,7 @@ AccountAPI 的 prepare 方法默认生成新的 `operationID`，普通新操作�
 媒体契约见 [服务端媒体接口](../../AzureFishServer/Documentation/media-contract.md)。客户端同步权威 proto；MediaAPI 负责控制及分块传输，AzureFishChat 的上传队列保存创建／完成／取消 ID，恢复时显式传回原身份。加密媒体与聊天 UI 的职责见[数据库文档](../Database/README.md)。
 
 WebSocket 与共享会话的详细契约及示例见 [Network](../../SharePackage/AzureFishNetwork/README.md)、[API](../../SharePackage/AzureFishAPI/README.md)；本轮验证见 [WebSocket 验证记录](websocket-validation.md)。
+
+## 短视频接入
+
+Pixabay 原生短视频新增独立内容与互动接口，并复用账号加密媒体存储及退出停止屏障。配置、协议、迁移和生命周期见[短视频实现说明](../ShortVideo/README.md)。该模块不改变本文的真实账号上线及安全验收门槛。

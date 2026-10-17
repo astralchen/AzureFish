@@ -2190,6 +2190,195 @@ public nonisolated struct MomentMutationResult: Sendable {
   fileprivate var _album: MomentAlbum? = nil
 }
 
+/// Pixabay 素材身份及当前查看者的 AzureFish 互动快照；平台计数不混入互动。
+public nonisolated struct ShortVideo: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// pixabay:<正整数>。
+  public var videoID: String = String()
+
+  public var author: String = String()
+
+  public var tags: String = String()
+
+  public var sourceURL: String = String()
+
+  public var videoURL: String = String()
+
+  public var thumbnailURL: String = String()
+
+  public var byteCount: Int64 = 0
+
+  public var durationSeconds: Int32 = 0
+
+  public var width: Int32 = 0
+
+  public var height: Int32 = 0
+
+  public var liked: Bool = false
+
+  public var likeCount: Int64 = 0
+
+  /// 已按拉黑关系及账号删除状态过滤。
+  public var commentCount: Int64 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// 列表固定每页最多 20 条；过滤后可为空，仍需按 has_more 续页。
+public nonisolated struct ShortVideoListRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var cursor: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct ShortVideoListResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var videos: [ShortVideo] = []
+
+  public var nextCursor: String = String()
+
+  public var hasMore_p: Bool = false
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct ShortVideoIdentity: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var videoID: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// 设置目标点赞状态；所有写请求重试保留 operation_id。
+public nonisolated struct ShortVideoLikeRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var videoID: String = String()
+
+  public var liked: Bool = false
+
+  public var operationID: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct ShortVideoComment: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var commentID: String = String()
+
+  public var author: IMPublicUser {
+    get {_author ?? IMPublicUser()}
+    set {_author = newValue}
+  }
+  /// Returns true if `author` has been explicitly set.
+  public var hasAuthor: Bool {self._author != nil}
+  /// Clears the value of `author`. Subsequent reads from it will return its default value.
+  public mutating func clearAuthor() {self._author = nil}
+
+  public var text: String = String()
+
+  public var createdAtMs: Int64 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _author: IMPublicUser? = nil
+}
+
+public nonisolated struct ShortVideoCommentsRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var videoID: String = String()
+
+  public var cursor: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct ShortVideoCommentsResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var comments: [ShortVideoComment] = []
+
+  public var nextCursor: String = String()
+
+  public var hasMore_p: Bool = false
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// 一级评论，正文最多 500 个字符；comment_id 是跨重试稳定 UUID。
+public nonisolated struct ShortVideoCommentRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var videoID: String = String()
+
+  public var commentID: String = String()
+
+  public var text: String = String()
+
+  public var operationID: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct ShortVideoDeleteCommentRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var videoID: String = String()
+
+  public var commentID: String = String()
+
+  public var operationID: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 fileprivate nonisolated let _protobuf_package = "azurefish.v1"
@@ -6266,6 +6455,445 @@ nonisolated extension MomentMutationResult: SwiftProtobuf.Message, SwiftProtobuf
   public static func ==(lhs: MomentMutationResult, rhs: MomentMutationResult) -> Bool {
     if lhs._post != rhs._post {return false}
     if lhs._album != rhs._album {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension ShortVideo: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ShortVideo"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}video_id\0\u{1}author\0\u{1}tags\0\u{3}source_url\0\u{3}video_url\0\u{3}thumbnail_url\0\u{3}byte_count\0\u{3}duration_seconds\0\u{1}width\0\u{1}height\0\u{1}liked\0\u{3}like_count\0\u{3}comment_count\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.videoID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.author) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.tags) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self.sourceURL) }()
+      case 5: try { try decoder.decodeSingularStringField(value: &self.videoURL) }()
+      case 6: try { try decoder.decodeSingularStringField(value: &self.thumbnailURL) }()
+      case 7: try { try decoder.decodeSingularInt64Field(value: &self.byteCount) }()
+      case 8: try { try decoder.decodeSingularInt32Field(value: &self.durationSeconds) }()
+      case 9: try { try decoder.decodeSingularInt32Field(value: &self.width) }()
+      case 10: try { try decoder.decodeSingularInt32Field(value: &self.height) }()
+      case 11: try { try decoder.decodeSingularBoolField(value: &self.liked) }()
+      case 12: try { try decoder.decodeSingularInt64Field(value: &self.likeCount) }()
+      case 13: try { try decoder.decodeSingularInt64Field(value: &self.commentCount) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.videoID.isEmpty {
+      try visitor.visitSingularStringField(value: self.videoID, fieldNumber: 1)
+    }
+    if !self.author.isEmpty {
+      try visitor.visitSingularStringField(value: self.author, fieldNumber: 2)
+    }
+    if !self.tags.isEmpty {
+      try visitor.visitSingularStringField(value: self.tags, fieldNumber: 3)
+    }
+    if !self.sourceURL.isEmpty {
+      try visitor.visitSingularStringField(value: self.sourceURL, fieldNumber: 4)
+    }
+    if !self.videoURL.isEmpty {
+      try visitor.visitSingularStringField(value: self.videoURL, fieldNumber: 5)
+    }
+    if !self.thumbnailURL.isEmpty {
+      try visitor.visitSingularStringField(value: self.thumbnailURL, fieldNumber: 6)
+    }
+    if self.byteCount != 0 {
+      try visitor.visitSingularInt64Field(value: self.byteCount, fieldNumber: 7)
+    }
+    if self.durationSeconds != 0 {
+      try visitor.visitSingularInt32Field(value: self.durationSeconds, fieldNumber: 8)
+    }
+    if self.width != 0 {
+      try visitor.visitSingularInt32Field(value: self.width, fieldNumber: 9)
+    }
+    if self.height != 0 {
+      try visitor.visitSingularInt32Field(value: self.height, fieldNumber: 10)
+    }
+    if self.liked != false {
+      try visitor.visitSingularBoolField(value: self.liked, fieldNumber: 11)
+    }
+    if self.likeCount != 0 {
+      try visitor.visitSingularInt64Field(value: self.likeCount, fieldNumber: 12)
+    }
+    if self.commentCount != 0 {
+      try visitor.visitSingularInt64Field(value: self.commentCount, fieldNumber: 13)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: ShortVideo, rhs: ShortVideo) -> Bool {
+    if lhs.videoID != rhs.videoID {return false}
+    if lhs.author != rhs.author {return false}
+    if lhs.tags != rhs.tags {return false}
+    if lhs.sourceURL != rhs.sourceURL {return false}
+    if lhs.videoURL != rhs.videoURL {return false}
+    if lhs.thumbnailURL != rhs.thumbnailURL {return false}
+    if lhs.byteCount != rhs.byteCount {return false}
+    if lhs.durationSeconds != rhs.durationSeconds {return false}
+    if lhs.width != rhs.width {return false}
+    if lhs.height != rhs.height {return false}
+    if lhs.liked != rhs.liked {return false}
+    if lhs.likeCount != rhs.likeCount {return false}
+    if lhs.commentCount != rhs.commentCount {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension ShortVideoListRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ShortVideoListRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}cursor\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.cursor) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.cursor.isEmpty {
+      try visitor.visitSingularStringField(value: self.cursor, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: ShortVideoListRequest, rhs: ShortVideoListRequest) -> Bool {
+    if lhs.cursor != rhs.cursor {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension ShortVideoListResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ShortVideoListResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}videos\0\u{3}next_cursor\0\u{3}has_more\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeRepeatedMessageField(value: &self.videos) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.nextCursor) }()
+      case 3: try { try decoder.decodeSingularBoolField(value: &self.hasMore_p) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.videos.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.videos, fieldNumber: 1)
+    }
+    if !self.nextCursor.isEmpty {
+      try visitor.visitSingularStringField(value: self.nextCursor, fieldNumber: 2)
+    }
+    if self.hasMore_p != false {
+      try visitor.visitSingularBoolField(value: self.hasMore_p, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: ShortVideoListResponse, rhs: ShortVideoListResponse) -> Bool {
+    if lhs.videos != rhs.videos {return false}
+    if lhs.nextCursor != rhs.nextCursor {return false}
+    if lhs.hasMore_p != rhs.hasMore_p {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension ShortVideoIdentity: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ShortVideoIdentity"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}video_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.videoID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.videoID.isEmpty {
+      try visitor.visitSingularStringField(value: self.videoID, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: ShortVideoIdentity, rhs: ShortVideoIdentity) -> Bool {
+    if lhs.videoID != rhs.videoID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension ShortVideoLikeRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ShortVideoLikeRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}video_id\0\u{1}liked\0\u{3}operation_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.videoID) }()
+      case 2: try { try decoder.decodeSingularBoolField(value: &self.liked) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.operationID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.videoID.isEmpty {
+      try visitor.visitSingularStringField(value: self.videoID, fieldNumber: 1)
+    }
+    if self.liked != false {
+      try visitor.visitSingularBoolField(value: self.liked, fieldNumber: 2)
+    }
+    if !self.operationID.isEmpty {
+      try visitor.visitSingularStringField(value: self.operationID, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: ShortVideoLikeRequest, rhs: ShortVideoLikeRequest) -> Bool {
+    if lhs.videoID != rhs.videoID {return false}
+    if lhs.liked != rhs.liked {return false}
+    if lhs.operationID != rhs.operationID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension ShortVideoComment: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ShortVideoComment"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}comment_id\0\u{1}author\0\u{1}text\0\u{3}created_at_ms\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.commentID) }()
+      case 2: try { try decoder.decodeSingularMessageField(value: &self._author) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.text) }()
+      case 4: try { try decoder.decodeSingularInt64Field(value: &self.createdAtMs) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    if !self.commentID.isEmpty {
+      try visitor.visitSingularStringField(value: self.commentID, fieldNumber: 1)
+    }
+    try { if let v = self._author {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
+    } }()
+    if !self.text.isEmpty {
+      try visitor.visitSingularStringField(value: self.text, fieldNumber: 3)
+    }
+    if self.createdAtMs != 0 {
+      try visitor.visitSingularInt64Field(value: self.createdAtMs, fieldNumber: 4)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: ShortVideoComment, rhs: ShortVideoComment) -> Bool {
+    if lhs.commentID != rhs.commentID {return false}
+    if lhs._author != rhs._author {return false}
+    if lhs.text != rhs.text {return false}
+    if lhs.createdAtMs != rhs.createdAtMs {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension ShortVideoCommentsRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ShortVideoCommentsRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}video_id\0\u{1}cursor\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.videoID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.cursor) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.videoID.isEmpty {
+      try visitor.visitSingularStringField(value: self.videoID, fieldNumber: 1)
+    }
+    if !self.cursor.isEmpty {
+      try visitor.visitSingularStringField(value: self.cursor, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: ShortVideoCommentsRequest, rhs: ShortVideoCommentsRequest) -> Bool {
+    if lhs.videoID != rhs.videoID {return false}
+    if lhs.cursor != rhs.cursor {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension ShortVideoCommentsResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ShortVideoCommentsResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}comments\0\u{3}next_cursor\0\u{3}has_more\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeRepeatedMessageField(value: &self.comments) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.nextCursor) }()
+      case 3: try { try decoder.decodeSingularBoolField(value: &self.hasMore_p) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.comments.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.comments, fieldNumber: 1)
+    }
+    if !self.nextCursor.isEmpty {
+      try visitor.visitSingularStringField(value: self.nextCursor, fieldNumber: 2)
+    }
+    if self.hasMore_p != false {
+      try visitor.visitSingularBoolField(value: self.hasMore_p, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: ShortVideoCommentsResponse, rhs: ShortVideoCommentsResponse) -> Bool {
+    if lhs.comments != rhs.comments {return false}
+    if lhs.nextCursor != rhs.nextCursor {return false}
+    if lhs.hasMore_p != rhs.hasMore_p {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension ShortVideoCommentRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ShortVideoCommentRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}video_id\0\u{3}comment_id\0\u{1}text\0\u{3}operation_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.videoID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.commentID) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.text) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self.operationID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.videoID.isEmpty {
+      try visitor.visitSingularStringField(value: self.videoID, fieldNumber: 1)
+    }
+    if !self.commentID.isEmpty {
+      try visitor.visitSingularStringField(value: self.commentID, fieldNumber: 2)
+    }
+    if !self.text.isEmpty {
+      try visitor.visitSingularStringField(value: self.text, fieldNumber: 3)
+    }
+    if !self.operationID.isEmpty {
+      try visitor.visitSingularStringField(value: self.operationID, fieldNumber: 4)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: ShortVideoCommentRequest, rhs: ShortVideoCommentRequest) -> Bool {
+    if lhs.videoID != rhs.videoID {return false}
+    if lhs.commentID != rhs.commentID {return false}
+    if lhs.text != rhs.text {return false}
+    if lhs.operationID != rhs.operationID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension ShortVideoDeleteCommentRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ShortVideoDeleteCommentRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}video_id\0\u{3}comment_id\0\u{3}operation_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.videoID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.commentID) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.operationID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.videoID.isEmpty {
+      try visitor.visitSingularStringField(value: self.videoID, fieldNumber: 1)
+    }
+    if !self.commentID.isEmpty {
+      try visitor.visitSingularStringField(value: self.commentID, fieldNumber: 2)
+    }
+    if !self.operationID.isEmpty {
+      try visitor.visitSingularStringField(value: self.operationID, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: ShortVideoDeleteCommentRequest, rhs: ShortVideoDeleteCommentRequest) -> Bool {
+    if lhs.videoID != rhs.videoID {return false}
+    if lhs.commentID != rhs.commentID {return false}
+    if lhs.operationID != rhs.operationID {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

@@ -31,6 +31,14 @@ final class DiscoverViewController: LocalizedQuickLayoutHostingController {
                 }.onSelect { [weak self] _, _ in
                     guard let self else { return }; navigationController?.pushViewController(MomentsViewController(runtime: runtime), animated: true)
                 }
+                Row("short-video", model: Localization.text("shortVideo.title"), cell: UICollectionViewListCell.self) { cell, title, _ in
+                    var config = UIListContentConfiguration.cell(); config.text = title; config.image = UIImage(systemName: "play.rectangle")
+                    cell.contentConfiguration = config; cell.accessories = [.disclosureIndicator()]; cell.accessibilityIdentifier = "shortVideo.entry"
+                }.onSelect { [weak self] _, _ in
+                    guard let self else { return }
+                    let page = ShortVideoViewController(runtime: runtime.chat?.shortVideos ?? ShortVideoRuntime())
+                    navigationController?.pushViewController(page, animated: true)
+                }
             }.layout(.custom(id: "discover") { _, _, env in NSCollectionLayoutSection.list(using: .init(appearance: .insetGrouped), layoutEnvironment: env) })
         }
     }

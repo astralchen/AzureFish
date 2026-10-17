@@ -637,3 +637,37 @@ message MomentMutationResult {
     MomentPost post = 1;
     MomentAlbum album = 2;
 }
+
+// Pixabay 素材身份及当前查看者的 AzureFish 互动快照；平台计数不混入互动。
+message ShortVideo {
+    string video_id = 1; // pixabay:<正整数>。
+    string author = 2;
+    string tags = 3;
+    string source_url = 4;
+    string video_url = 5;
+    string thumbnail_url = 6;
+    int64 byte_count = 7;
+    int32 duration_seconds = 8;
+    int32 width = 9;
+    int32 height = 10;
+    bool liked = 11;
+    int64 like_count = 12;
+    int64 comment_count = 13; // 已按拉黑关系及账号删除状态过滤。
+}
+// 列表固定每页最多 20 条；过滤后可为空，仍需按 has_more 续页。
+message ShortVideoListRequest { string cursor = 1; }
+message ShortVideoListResponse { repeated ShortVideo videos = 1; string next_cursor = 2; bool has_more = 3; }
+message ShortVideoIdentity { string video_id = 1; }
+// 设置目标点赞状态；所有写请求重试保留 operation_id。
+message ShortVideoLikeRequest { string video_id = 1; bool liked = 2; string operation_id = 3; }
+message ShortVideoComment {
+    string comment_id = 1;
+    IMPublicUser author = 2;
+    string text = 3;
+    int64 created_at_ms = 4;
+}
+message ShortVideoCommentsRequest { string video_id = 1; string cursor = 2; }
+message ShortVideoCommentsResponse { repeated ShortVideoComment comments = 1; string next_cursor = 2; bool has_more = 3; }
+// 一级评论，正文最多 500 个字符；comment_id 是跨重试稳定 UUID。
+message ShortVideoCommentRequest { string video_id = 1; string comment_id = 2; string text = 3; string operation_id = 4; }
+message ShortVideoDeleteCommentRequest { string video_id = 1; string comment_id = 2; string operation_id = 3; }

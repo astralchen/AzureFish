@@ -47,6 +47,7 @@
 				Features/Account/README.md,
 				Features/Messaging/README.md,
 				Features/Moments/README.md,
+				Features/ShortVideo/README.md,
 				Info.plist,
 			);
 			target = 7735C8A030627164005AF164 /* AzureFish */;

@@ -10,6 +10,9 @@ import UIKit
 final class AppNavigationController: UINavigationController, UINavigationControllerDelegate {
     private weak var transitionTarget: UIViewController?
 
+    /// 媒体页面可指定浅色状态栏，离开后恢复当前页面的系统外观。
+    override var childForStatusBarStyle: UIViewController? { topViewController }
+
     override func viewDidLoad() {
         super.viewDidLoad()
         delegate = self

@@ -144,7 +144,8 @@ final class MomentsRuntime {
     /// 同步撤销观察、清空可见状态并取消任务，返回等待任务结束和存储关闭的屏障。
     ///
     /// 调用方必须等待返回任务完成后再关闭共享数据库和媒体存储。
-    func stop() -> Task<Void, Never> {
+    /// - Parameter dependency: 共享存储的其他使用者的停止屏障；完成前不关闭本运行时的 store。
+    func stop(after dependency: Task<Void, Never>? = nil) -> Task<Void, Never> {
         epoch = UUID(); refreshVersion = UUID(); thumbnails = []; photoCache.removeAll()
         if let foregroundObservation { NotificationCenter.default.removeObserver(foregroundObservation) }; foregroundObservation = nil
         if let chatObservation { chat?.remove(chatObservation) }; chatObservation = nil
@@ -152,7 +153,7 @@ final class MomentsRuntime {
         for id in leasedDrafts { Self.editingDrafts[draftScope]?.remove(id) }
         let old = store; store = nil; media = nil; posts = []; albums = [:]; drafts = []; pending = []; leasedDrafts = []
         cursors = [:]; more = [:]; pageFailures = [:]; loadingPageAuthor = nil; requestedAuthor = nil; loading = false; failure = nil; notify()
-        return Task { for task in pendingTasks { await task.wait.value }; await old?.close() }
+        return Task { for task in pendingTasks { await task.wait.value }; await dependency?.value; await old?.close() }
     }
     func broadcast() { NotificationCenter.default.post(name: .momentsChanged, object: self, userInfo: ["user": userID]) }
 }

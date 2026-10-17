@@ -17,12 +17,13 @@ public struct ServerConfiguration: Sendable {
     let bcryptCost: Int
     let mediaWorkerPath: String?
     let mediaLimits: MediaLimits
+    let pixabayProvider: PixabayProvider?
     let clock: @Sendable () -> Date
 
-    init(directory: String, key: Data, environmentID: String = "local-development", bcryptCost: Int = 12, mediaWorkerPath: String? = nil, mediaLimits: MediaLimits = MediaLimits(), clock: @escaping @Sendable () -> Date = { Date() }) {
+    init(directory: String, key: Data, environmentID: String = "local-development", bcryptCost: Int = 12, mediaWorkerPath: String? = nil, mediaLimits: MediaLimits = MediaLimits(), pixabayProvider: PixabayProvider? = nil, clock: @escaping @Sendable () -> Date = { Date() }) {
         self.directory = directory; self.key = key; self.environmentID = environmentID
         self.bcryptCost = bcryptCost; self.clock = clock
-        self.mediaWorkerPath = mediaWorkerPath; self.mediaLimits = mediaLimits
+        self.mediaWorkerPath = mediaWorkerPath; self.mediaLimits = mediaLimits; self.pixabayProvider = pixabayProvider
     }
 
     public static func local() throws -> ServerConfiguration {
@@ -71,6 +72,7 @@ public func configure(_ app: Application, configuration: ServerConfiguration) as
     app.migrations.add(CreateMediaSchema())
     app.migrations.add(UpgradeContactSides(crypto: crypto))
     app.migrations.add(CreateMomentsSchema())
+    app.migrations.add(CreateShortVideoSchema())
     if existing {
         // 在迁移或业务写入前验证原库的环境和密钥，错误时保留原文件。
         guard let marker = try await MetadataRecord.find("key-check-v1", on: app.db),
@@ -135,4 +137,7 @@ public func configure(_ app: Application, configuration: ServerConfiguration) as
     IMService(accounts: service, epoch: epoch, media: media, live: baseIM.live).register(on: v1)
     media.register(on: v1)
     MomentsService(im: baseIM, media: media).register(on: v1)
+    let shortVideos = ShortVideoService(im: baseIM, provider: configuration.pixabayProvider ?? PixabayProvider(key: Environment.get("AZUREFISH_PIXABAY_API_KEY"), clock: configuration.clock))
+    app.storage[ShortVideoServiceKey.self] = shortVideos
+    shortVideos.register(on: v1)
 }

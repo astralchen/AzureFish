@@ -9,6 +9,7 @@ import UIKit
 /// 系统标签中的发现容器；独立承载导航栈，避免 iPad 标签栏接管内层导航项目。
 final class DiscoverTabViewController: UIViewController {
     private let navigation: AppNavigationController
+    override var childForStatusBarStyle: UIViewController? { navigation }
     init(runtime: MomentsRuntime) {
         navigation = AppNavigationController(rootViewController: DiscoverViewController(runtime: runtime))
         super.init(nibName: nil, bundle: nil)

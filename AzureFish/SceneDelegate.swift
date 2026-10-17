@@ -11,7 +11,28 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         Localization.start()
         let root: UIViewController
         #if DEBUG
-        if ProcessInfo.processInfo.arguments.contains("-moments-video-demo") {
+        if ProcessInfo.processInfo.arguments.contains("-short-video-tab-demo") {
+            let tabs = UITabBarController()
+            let fixture = ShortVideoDemoController()
+            let video = ShortVideoTabViewController(root: fixture); video.fixtureOwner = fixture
+            let chat = UIViewController(), contacts = UIViewController(), discover = UIViewController(), me = UIViewController()
+            let entries: [(UIViewController, Int, String, String)] = [
+                (chat, 0, "account.design.chat", "bubble.left.and.bubble.right"),
+                (contacts, 1, "chat.live.contacts", "person.2"),
+                (video, 4, "shortVideo.title", "play.rectangle.fill"),
+                (discover, 2, "moments.discover", "safari"),
+                (me, 3, "account.design.me", "person.crop.circle")
+            ]
+            for (controller, tag, title, symbol) in entries {
+                controller.tabBarItem.title = Localization.text(title)
+                controller.tabBarItem.image = UIImage(systemName: symbol)
+                controller.tabBarItem.tag = tag
+                controller.tabBarItem.accessibilityIdentifier = "app.tab.\(tag)"
+            }
+            tabs.viewControllers = entries.map { $0.0 }; root = tabs
+        } else if ProcessInfo.processInfo.arguments.contains("-short-video-demo") {
+            root = AppNavigationController(rootViewController: ShortVideoDemoController())
+        } else if ProcessInfo.processInfo.arguments.contains("-moments-video-demo") {
             root = AppNavigationController(rootViewController: MomentsVideoDemoController())
         } else if ProcessInfo.processInfo.arguments.contains("-moments-layout-demo") {
             root = AppNavigationController(rootViewController: MomentsViewController(runtime: MomentsPreviewData.layoutComparisonRuntime()))

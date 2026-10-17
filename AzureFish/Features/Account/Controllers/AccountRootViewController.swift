@@ -12,6 +12,7 @@ final class AccountRootViewController: LocalizedViewController {
     private var renderedIdentity: String?
     private var renderedPhase: SessionCoordinator.Phase?
     private var current: UIViewController?
+    override var childForStatusBarStyle: UIViewController? { current }
     private weak var tabs: UITabBarController?
     private var chatRuntime: ChatRuntime?
     private var bannerCoordinator: ChatIncomingBannerCoordinator?
@@ -60,8 +61,10 @@ final class AccountRootViewController: LocalizedViewController {
             let contacts = ContactsSplitViewController(runtime: runtime)
             let me = ProfileSplitViewController(session: session, runtime: runtime)
             let discover = DiscoverTabViewController(runtime: runtime.moments)
+            let videos = ShortVideoTabViewController(runtime: runtime.shortVideos)
             chat.tabBarItem.tag = 0; contacts.tabBarItem.tag = 1; discover.tabBarItem.tag = 2; me.tabBarItem.tag = 3
-            tabs.viewControllers = [chat, contacts, discover, me]
+            videos.tabBarItem.tag = 4
+            tabs.viewControllers = [chat, contacts, videos, discover, me]
             runtime.openConversation = { [weak tabs, weak chat] conversation in
                 tabs?.selectedIndex = 0; chat?.open(conversation)
             }
@@ -89,8 +92,8 @@ final class AccountRootViewController: LocalizedViewController {
     override func reloadLocalizedContent() {
         super.reloadLocalizedContent()
         // 使用稳定 tag 更新原标签项目，语言变化时保留系统标签顺序与导航状态。
-        let titles = ["account.design.chat", "chat.live.contacts", "moments.discover", "account.design.me"]
-        let symbols = ["bubble.left.and.bubble.right", "person.2", "safari", "person.crop.circle"]
+        let titles = ["account.design.chat", "chat.live.contacts", "moments.discover", "account.design.me", "shortVideo.title"]
+        let symbols = ["bubble.left.and.bubble.right", "person.2", "safari", "person.crop.circle", "play.rectangle.fill"]
         for controller in tabs?.viewControllers ?? [] {
             let tag = controller.tabBarItem.tag
             guard titles.indices.contains(tag) else { continue }
@@ -101,7 +104,7 @@ final class AccountRootViewController: LocalizedViewController {
         bannerCoordinator?.reloadLocalizedContent()
     }
     private func updateUnreadBadges() {
-        guard let runtime = chatRuntime, let controllers = tabs?.viewControllers, controllers.count == 4 else { return }
+        guard let runtime = chatRuntime, let controllers = tabs?.viewControllers else { return }
         // 数量来自全部会话的权威未读水位，不受当前搜索或所选 Tab 影响。
         let unread = runtime.conversations.reduce(Int64(0)) { total, conversation in
             min(100, total + min(100, max(0, conversation.readState.unread)))

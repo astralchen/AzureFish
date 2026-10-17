@@ -81,6 +81,13 @@ public enum APIErrorCode: String, Sendable {
     case momentOwnerRequired = "MOMENT_OWNER_REQUIRED"
     /// 互动数量或序列化响应大小达到服务端上限。
     case momentInteractionLimit = "MOMENT_INTERACTION_LIMIT"
+    /// 短视频内容源未配置或暂不可用。
+    case shortVideoSourceUnconfigured = "SHORT_VIDEO_SOURCE_UNCONFIGURED"
+    case shortVideoSourceFailed = "SHORT_VIDEO_SOURCE_FAILED"
+    case shortVideoSourceLimited = "SHORT_VIDEO_SOURCE_LIMITED"
+    case shortVideoUnavailable = "SHORT_VIDEO_UNAVAILABLE"
+    case shortVideoOwnerRequired = "SHORT_VIDEO_OWNER_REQUIRED"
+    case shortVideoInteractionLimit = "SHORT_VIDEO_INTERACTION_LIMIT"
     case unknown
 }
 
