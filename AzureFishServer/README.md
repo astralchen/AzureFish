@@ -66,4 +66,8 @@ sh Scripts/generate-protocol.sh
 
 ## Pixabay 短视频
 
-可通过 `AZUREFISH_PIXABAY_API_KEY` 在服务端配置内容源；未配置时短视频接口返回明确的不可用状态，账号、聊天和朋友圈不受影响。短视频协议、缓存、互动权限及测试入口见[实现说明](../Documentation/ShortVideo/README.md)。密钥不应提交到仓库或写入日志。
+服务端通过 `AZUREFISH_PIXABAY_API_KEY` 配置内容源。项目所有者明确授权将本次 Pixabay 开发 Key 保存在受版本控制的 `.env.development`；此特例仅限该内容源 Key，不适用于账号凭据、数据库密钥或其他环境文件。具有仓库读取权限的人可使用该 Key 的共享配额。
+
+从本目录执行 `sh Scripts/run-local.sh` 时，Vapor 自动读取开发配置，无需修改 iOS 工程。优先级为进程环境变量 > `.env.development` > `.env`；覆盖已提交的 Key 时应设置进程环境变量，修改 `.env` 不会覆盖开发配置。Key 不进入客户端包、Protobuf 响应或运行日志。未配置时短视频接口返回明确的不可用状态，账号、聊天和朋友圈不受影响。
+
+模拟器使用 `-account-local-development` 和虚构账号，在正常“短视频”Tab 验证真实内容。`ShortVideoLiveUITests` 仅在 UI 测试 Runner 环境设置 `AZUREFISH_PIXABAY_UI_LIVE=1` 后执行，普通测试默认跳过；它会使用已有虚构会话或注册测试账号，并恢复测试点赞、删除测试评论。包内 demo 不代表真实 Pixabay 联调。短视频协议、缓存、互动权限及本次验证见[实现说明](../Documentation/ShortVideo/README.md)。

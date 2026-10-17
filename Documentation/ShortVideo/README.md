@@ -14,7 +14,9 @@ UI／UX 参考抖音的沉浸式短视频：纵向互动按钮位于尾缘，作
 
 ## 配置与上游访问
 
-服务端读取 `AZUREFISH_PIXABAY_API_KEY` 环境变量。密钥不进入 iOS 包、Protobuf、版本库或应用日志；不要在终端命令历史或聊天中粘贴密钥。未配置时列表返回 `SHORT_VIDEO_SOURCE_UNCONFIGURED`，客户端显示“视频来源尚未配置，请稍后再试”。
+服务端读取 `AZUREFISH_PIXABAY_API_KEY` 环境变量。项目所有者已明确授权将本次 Pixabay 开发 Key 纳入服务端 `.env.development` 的版本控制；该特例不适用于其他凭据或加密密钥。Key 不进入 iOS 包、Protobuf 或应用日志，不在验证记录中重复展示。
+
+现有启动脚本切换至服务端目录，Vapor 自动加载配置，优先级为进程环境变量 > `.env.development` > `.env`。启动后修改配置需要重启服务才能生效；不要为更换内容源 Key 重建数据库或存储密钥。缺失配置时列表返回 `SHORT_VIDEO_SOURCE_UNCONFIGURED`，客户端显示“视频来源尚未配置，请稍后再试”。
 
 固定请求热门、安全搜索开启、每页 20 条。筛选 1～60 秒、所选文件不超过 50 MiB 的视频，优先 small，其次 tiny、medium。查询上限 25 页，与上游单查询最多 500 条一致；过滤后可出现空页，客户端保留继续加载入口。首版不预下载下一条视频。
 
@@ -143,3 +145,31 @@ XCTest 在 iPad 窗口模式的应用截图出现偏移裁切，截图附件改�
 重启本任务模拟器后，单独重跑 `testPlaybackPagingAndCommentDraft` 通过（1 项、0 失败），覆盖播放、分页、点赞、评论发送／删除、草稿及系统分享；结果为 `/tmp/AzureFish-ShortVideo-Review-UI-Retry.xcresult`。本轮未修改布局，iPhone／iPad 多语言与窗口截图沿用上节记录。`git diff --cached --check` 通过，复审未发现剩余的阻塞提交问题。
 
 服务端／客户端 proto 字节一致，两份清单哈希与源文件一致；使用 protoc 35.1 与现有 SwiftProtobuf 生成器重新生成至临时目录，产物与服务端提交文件逐字节一致。35 个短视频文案键均含四语言，全部字面量本地化引用及文档链接检查通过；依赖锁文件无修改。真实 Pixabay、播放性能、旧系统、Duo、真机及实际 VoiceOver 验收仍未执行。
+
+## 开发 Key 配置与真实源联调（2026-10-17）
+
+本轮启用现有 Pixabay 内容源，不修改客户端业务实现、公共接口、协议、数据库定义或依赖。服务端新增受版本控制的 `.env.development`，仅放行服务端根目录的这个文件；其他 `.env.*`、`.local` 与存储密钥继续忽略。提交实际开发 Key 是项目所有者明确授权的特例。启动使用原有 `Scripts/run-local.sh`，复用原数据库和存储密钥；已有待执行迁移由正常启动流程处理，没有删除或重建数据。本轮未执行生产部署。
+
+### 验证结果
+
+| 验证项 | 本轮结果 |
+| --- | --- |
+| 配置、文档与静态检查 | 通过：开发配置可纳入 Git，其他环境与密钥文件仍忽略；实际 Key 仅出现在该配置中，未出现在业务源文件和本轮服务端／联调日志；相对链接与 `git diff --check` 通过 |
+| 服务端短视频回归 | 通过：`swift test -j 4 --filter ShortVideoTests`，7 项测试；新增参数化用例覆盖上游 HTTP 错误、无效 JSON、网络超时，均返回稳定错误且不泄露 Key；原有缓存合并／过期、缺失 Key、429 和互动权限测试通过 |
+| 客户端测试构建 | 通过：`build-for-testing`，iOS 26.5 Simulator SDK；未提高最低部署版本 |
+| 真实列表、缓存与分页 | 通过：虚构账号的 Protobuf 请求返回两页，每页 20 条视频；首个冷缓存列表请求 1.395 秒，重复请求 0.132 秒；相同页重复读取时加密缓存载荷不变 |
+| 真实互动 HTTP 链路 | 通过：点赞、取消点赞、创建评论、读取评论、删除测试评论、退出会话均返回预期结果；互动仅写入本机虚构账号服务 |
+| 原生封面请求 | 通过：macOS 原生 ephemeral URLSession 下载并解码同一真实素材封面，HTTP 200，88,246 字节、960×540，约 3.95 秒；此项是下载与解码检查，不代替 iOS 加载中封面的视觉验收 |
+| iPhone 真实源 UI | 通过：独立 iPhone 17 Pro／iOS 26.5 模拟器，`ShortVideoLiveUITests/testLivePlaybackPagingAndInteractions` 1 项、0 失败、0 跳过；正常账号入口及短视频 Tab，真实下载和播放进度推进、暂停进度保持、静音切换、点赞恢复、评论发送／删除、翻页后播放全部通过 |
+| 人工截图检查 | 已检查真实视频画面、Pixabay 来源及正常五标签入口；截图见下方。不代表本轮重新完成全部布局和无障碍验收 |
+| Python 下载探针 | 失败：同一 CDN 封面与视频返回 HTTP 403／Cloudflare 1010；原生封面请求与 iOS 实际播放成功，因此未据此修改 Key、放宽 TLS 或改写请求身份 |
+| 性能验收 | 未执行完整基准：三轮 UI 自动化观测到进入视频页至进度条可用约 8.53、12.55、25.17 秒，含 XCTest 等待与观测开销，不是精确首帧计时。加载延迟波动仍需专项评估 |
+| 其他平台与回归 | 本轮未执行 iPad、iOS 15～25、Duo、真机、四语言／主题全量 UI、VoiceOver、内存峰值或全仓库测试；此前记录不作为本轮结果 |
+
+真实 UI 用例仅在测试 Runner 环境设置 `AZUREFISH_PIXABAY_UI_LIVE=1` 时运行，普通运行默认跳过。测试使用已有虚构会话或注册虚构账号，成功路径恢复点赞状态并删除其测试评论；运行中断可能留下虚构测试数据。已有模拟器因旧账号数据格式不兼容未用于最终验收，原数据保留，最终使用独立模拟器。测试脚本已处理 Password AutoFill 输入、单击等待双击手势失败及评论面板键盘焦点等待；未为测试更改产品行为。
+
+早期失败结果不计入最终通过：一次旧账号恢复错误、一次自动化两次密码输入不一致、一次暂停断言过早、一次评论键盘尚无焦点。新模拟器首次测试的工具调用还曾超时，已核对后台最终结果，没有将工具超时直接计为构建失败或测试通过。
+
+证据：服务端日志 `/tmp/azurefish-pixabay-server-tests.log`；真实 API 记录 `/tmp/azurefish-pixabay-live-api.log` 与 `/tmp/azurefish-pixabay-live-api-retry.log`；原生封面记录 `/tmp/azurefish-pixabay-native.log`。最终客户端构建日志为 `build_sim_2026-10-17T14-51-11-944Z_pid59423_9adae838.log`，最终 UI 结果为 `test_sim_2026-10-17T14-52-36-115Z_pid59423_2d3e0ad6.xcresult`，位于本机 `~/Library/Developer/XcodeBuildMCP/workspaces/AzureFish-f786ca84ece4/` 下对应 `logs/` 与 `result-bundles/` 目录。
+
+- [真实 Pixabay 视频与正常短视频 Tab](Validation/pixabay-live-playback.png)

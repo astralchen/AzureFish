@@ -3,6 +3,7 @@
 .DS_Store
 .env
 .env.*
+!/.env.development
 .local/
 *.sqlite*
 *.key

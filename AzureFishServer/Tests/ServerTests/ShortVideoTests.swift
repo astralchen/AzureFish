@@ -90,6 +90,20 @@ struct ShortVideoTests {
             #expect(await calls.count == 1)
         }
     }
+    @Test(arguments: ["http", "json", "transport"])
+    func upstreamFailuresDoNotExposeKey(_ failure: String) async throws {
+        let key = "fixture-private-key"
+        let provider = PixabayProvider(key: key, fetch: { _ in
+            if failure == "transport" { throw URLError(.timedOut) }
+            return (Data("upstream diagnostic fixture-private-key".utf8), failure == "http" ? 503 : 200)
+        })
+        try await withShortVideos(provider: provider) { app in
+            let user = try await auth(app)
+            let response = try await send(app, .POST, "/v1/short-videos/list", ShortVideoListRequest(), token: user.accessToken)
+            #expect(try errorCode(response) == "SHORT_VIDEO_SOURCE_FAILED")
+            #expect(!String(decoding: response.body.readableBytesView, as: UTF8.self).contains(key))
+        }
+    }
     @Test func authenticatedPagingLikesCommentsAndDeletion() async throws {
         let provider = PixabayProvider(key: "fake", fetch: { url in
             let page = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first { $0.name == "page" }?.value
