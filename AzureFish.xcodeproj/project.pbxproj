@@ -337,8 +337,8 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = AzureFish/Info.plist;
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Record audio messages, transcribe speech, and record video sound.";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Record videos for Moments.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Record audio messages, transcribe speech, and record video sound.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Save received photos and videos to your photo library.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Read selected Live Photo originals to preserve motion and sound.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Convert speech into message drafts and transcribe audio messages.";
@@ -375,8 +375,8 @@
 				EXCLUDED_SOURCE_FILE_NAMES = AttachmentPreviewResources.bundle;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = AzureFish/Info.plist;
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Record audio messages, transcribe speech, and record video sound.";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Record videos for Moments.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Record audio messages, transcribe speech, and record video sound.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Save received photos and videos to your photo library.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Read selected Live Photo originals to preserve motion and sound.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Convert speech into message drafts and transcribe audio messages.";
@@ -617,8 +617,8 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = AzureFish/Info.plist;
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Record audio messages, transcribe speech, and record video sound.";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Record videos for Moments.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Record audio messages, transcribe speech, and record video sound.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Save received photos and videos to your photo library.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Read selected Live Photo originals to preserve motion and sound.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Convert speech into message drafts and transcribe audio messages.";
