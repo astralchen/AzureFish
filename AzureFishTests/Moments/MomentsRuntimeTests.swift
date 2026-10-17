@@ -18,10 +18,11 @@ private actor MomentsTestTransport: HTTPTransport {
     var delay = false
     var paginating = false
     var failNextPage = true
+    var emptyFirstPage = false
     var pageCursors: [String] = []
     var albumRequests = 0
     var likeRequests = 0
-    func enablePagination() { paginating = true }
+    func enablePagination(empty: Bool = false) { paginating = true; emptyFirstPage = empty }
     func allowNextPage() { failNextPage = false }
     func delayResponses() { delay = true }
     func send(_ request: HTTPRequest) async throws -> HTTPResponse {
@@ -57,6 +58,7 @@ private actor MomentsTestTransport: HTTPTransport {
             post.author.nickname = "Fixture"; post.text = post.postID; post.revision = 1
             post.sequence = input.cursor.isEmpty ? 2 : 1
             var value = MomentsListResponse(); value.posts = [post]
+            if input.cursor.isEmpty && emptyFirstPage { value.posts = [] }
             value.hasMore_p = input.cursor.isEmpty; value.nextCursor = input.cursor.isEmpty ? "cursor-1" : ""
             return try response(value)
         }
@@ -74,7 +76,7 @@ private actor MomentsTestTransport: HTTPTransport {
 @Suite("朋友圈发布恢复", .serialized)
 /// 使用可控网络响应验证续页恢复和发布响应丢失后的对账。
 struct MomentsRuntimeTests {
-    @Test func nextPageFailureKeepsCursorAndRetryDoesNotReloadAlbum() async throws {
+    @Test(arguments: [false, true]) func nextPageFailureKeepsCursorAndRetryDoesNotReloadAlbum(emptyFirstPage: Bool) async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: root) }
@@ -88,7 +90,7 @@ struct MomentsRuntimeTests {
         let database = try ChatStore.openDatabase(url: root.appendingPathComponent("main.sqlite"), key: Data(repeating: 41, count: 32), environment: credentials.environmentID, userID: credentials.userID, migrations: [MomentsStore.migration])
         let media = try EncryptedMediaStore(root: root.appendingPathComponent("media"), key: Data(repeating: 42, count: 32), environment: credentials.environmentID, userID: credentials.userID)
         let chat = ChatRuntime(session: session), runtime = chat.moments
-        await transport.enablePagination()
+        await transport.enablePagination(empty: emptyFirstPage)
         try runtime.attach(database: database, media: media)
         defer { try? database.close() }
         for _ in 0..<200 {
@@ -131,7 +133,7 @@ struct MomentsRuntimeTests {
         #expect(runtime.failure == nil)
         #expect(!runtime.canLoadNextPage(author: ""))
         #expect(runtime.canLoadNextPage(author: "", retry: true))
-        #expect(runtime.posts.map(\.id) == ["first"])
+        #expect(runtime.posts.map(\.id) == (emptyFirstPage ? [] : ["first"]))
         #expect(await transport.pageCursors.filter { !$0.isEmpty } == ["cursor-1"])
         await transport.allowNextPage()
         list.delegate?.collectionView?(list, didSelectItemAt: IndexPath(item: 0, section: 1))
@@ -146,16 +148,16 @@ struct MomentsRuntimeTests {
         }
         #expect(list.visibleCells.map(\.accessibilityIdentifier).contains("moments.pagination.ended"))
         #expect(runtime.pageFailure(author: "") == nil)
-        #expect(runtime.posts.map(\.id) == ["first", "second"])
+        #expect(runtime.posts.map(\.id) == (emptyFirstPage ? ["second"] : ["first", "second"]))
         #expect(!runtime.hasMore(author: ""))
         #expect(!runtime.canLoadNextPage(author: "", retry: true))
         try await runtime.refresh(next: true)
         #expect(await transport.pageCursors.filter { !$0.isEmpty } == ["cursor-1", "cursor-1"])
         #expect(await transport.albumRequests == albums)
-        let action = MomentsPendingAction(kind: .like, post: "first", liked: true)
+        let action = MomentsPendingAction(kind: .like, post: "second", liked: true)
         controller.viewModel.submit(action)
         controller.viewModel.submit(action)
-        #expect(controller.viewModel.state.busy == ["first"])
+        #expect(controller.viewModel.state.busy == ["second"])
         for _ in 0..<200 {
             if controller.viewModel.state.busy.isEmpty { break }
             try await Task.sleep(nanoseconds: 10_000_000)

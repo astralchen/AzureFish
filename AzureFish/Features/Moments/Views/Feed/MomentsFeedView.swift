@@ -67,7 +67,9 @@ final class MomentsFeedView: QuickLayoutView, UIScrollViewDelegate {
     func scrollViewDidScroll(_ scrollView: UIScrollView) { loadNextPageIfNeeded() }
     /// 减速、布局填充及续页完成均检查距离，业务层负责去重和失败后的重试策略。
     func loadNextPageIfNeeded() {
-        guard isVisible, state?.posts.isEmpty == false, list.bounds.height > 0, list.contentSize.height > 0 else { return }
+        guard isVisible, state?.footer == .idle, list.bounds.height > 0, list.contentSize.height > 0 else { return }
+        // 删除记录可能占满一页；即使占位页较高，也须继续推进已取得的游标。
+        if state?.posts.isEmpty == true { loadNext?(false); return }
         let bottom = list.contentOffset.y + list.bounds.height - list.adjustedContentInset.bottom
         if bottom >= list.contentSize.height - 240 { loadNext?(false) }
     }

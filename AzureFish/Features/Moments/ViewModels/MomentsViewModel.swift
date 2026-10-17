@@ -66,7 +66,7 @@ final class MomentsViewModel {
         #if DEBUG
         if let preview = runtime.previewPagination { return preview }
         #endif
-        guard !runtime.visible(author: author).isEmpty, !runtime.offline else { return nil }
+        guard !runtime.offline, runtime.cursors[author] != nil else { return nil }
         if runtime.loadingPageAuthor == author { return .loading }
         if runtime.pageFailure(author: author) != nil { return .failed }
         return runtime.hasMore(author: author) ? .idle : .ended

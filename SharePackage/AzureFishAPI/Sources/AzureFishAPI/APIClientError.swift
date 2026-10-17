@@ -56,6 +56,10 @@ public enum APIErrorCode: String, Sendable {
     case snapshotNotFound = "SNAPSHOT_NOT_FOUND"
     case mediaNotAvailable = "MEDIA_NOT_AVAILABLE"
     case mediaNotFound = "MEDIA_NOT_FOUND"
+    /// 媒体尚未就绪或已失效，不能绑定到消息或动态。
+    case mediaNotReady = "MEDIA_NOT_READY"
+    /// 短期媒体下载授权已过期，需重新校验当前访问权限。
+    case mediaGrantExpired = "MEDIA_GRANT_EXPIRED"
     case mediaQuotaExceeded = "MEDIA_QUOTA_EXCEEDED"
     case mediaStorageUnavailable = "MEDIA_STORAGE_UNAVAILABLE"
     case mediaInUse = "MEDIA_IN_USE"

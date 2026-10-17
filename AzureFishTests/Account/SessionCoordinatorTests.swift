@@ -15,6 +15,15 @@ actor AccountTestTransport: HTTPTransport {
     var unauthorized = false
     var logoutOffline = false
     var logoutNeedsRefresh = false
+    var holdProfileWrite = false
+    var profileWriteWaiting = false
+    var profileWriteContinuation: CheckedContinuation<Void, Never>?
+    var rejectRefresh = false
+    func holdNextProfileWrite() { holdProfileWrite = true; rejectRefresh = true }
+    func resumeProfileWrite() {
+        holdProfileWrite = false
+        profileWriteContinuation?.resume(); profileWriteContinuation = nil
+    }
     func setLogoutOffline(_ value: Bool) { logoutOffline = value }
     func setLogoutNeedsRefresh(_ value: Bool) { logoutNeedsRefresh = value }
     func setUnauthorized(_ value: Bool) { unauthorized = value }
@@ -23,6 +32,10 @@ actor AccountTestTransport: HTTPTransport {
     func setSlow(_ value: Bool) { slow = value }
     func send(_ request: HTTPRequest) async throws -> HTTPResponse {
         requests.append(request)
+        if request.method == .patch && holdProfileWrite {
+            profileWriteWaiting = true
+            await withCheckedContinuation { profileWriteContinuation = $0 }
+        }
         if slow { try await Task.sleep(nanoseconds: 100_000_000) }
         if offline { throw URLError(.notConnectedToInternet) }
         if request.url.path.hasSuffix("logout") {
@@ -32,7 +45,7 @@ actor AccountTestTransport: HTTPTransport {
             }
             if logoutOffline { throw URLError(.notConnectedToInternet) }
         }
-        if unauthorized {
+        if unauthorized || (rejectRefresh && request.url.path.hasSuffix("refresh")) {
             var failure = ApiError(); failure.code = "UNAUTHENTICATED"
             return HTTPResponse(statusCode: 401, headers: ["Content-Type": "application/protobuf"], body: try failure.serializedData())
         }
@@ -71,6 +84,40 @@ actor AccountTestTransport: HTTPTransport {
 @Suite("会话协调器", .serialized)
 @MainActor
 struct SessionCoordinatorTests {
+    @Test(arguments: [false, true])
+    func externalRefreshFailureWhileBusyRechecksCurrentSession(replaced: Bool) async throws {
+        let transport = AccountTestTransport()
+        let (coordinator, store, root) = try fixture(transport, keys: MemorySecureValues())
+        defer { try? FileManager.default.removeItem(at: root) }
+        try store.save(StoredSession(sampleCredentials()))
+        await coordinator.restore()
+        let base = try #require(coordinator.profile)
+        let manager = try #require(coordinator.sessionManager)
+        await transport.holdNextProfileWrite()
+        let write = Task { try await coordinator.saveProfile(base: base, nickname: "Draft", bio: "") }
+        for _ in 0..<200 {
+            if await transport.profileWriteWaiting { break }
+            try await Task.sleep(nanoseconds: 10_000_000)
+        }
+        #expect(await transport.profileWriteWaiting)
+        #expect(coordinator.busy)
+        await #expect(throws: (any Error).self) { _ = try await manager.refresh() }
+        #expect(await manager.state.requiresReauthentication)
+        // 让通知在写入仍挂起时送达，覆盖旧实现直接丢弃通知的路径。
+        try await Task.sleep(nanoseconds: 50_000_000)
+        if replaced { try await manager.install(sampleCredentials()) }
+        await transport.resumeProfileWrite()
+        _ = await write.result
+        for _ in 0..<200 {
+            if replaced || coordinator.phase == .welcome { break }
+            try await Task.sleep(nanoseconds: 10_000_000)
+        }
+        try await Task.sleep(nanoseconds: 50_000_000)
+        #expect(!coordinator.busy)
+        #expect(coordinator.phase == (replaced ? .signedIn : .welcome))
+        #expect((coordinator.profile != nil) == replaced)
+        #expect((try store.load() != nil) == replaced)
+    }
     private func fixture(_ transport: AccountTestTransport, keys: MemorySecureValues, cached: Bool = true) throws -> (SessionCoordinator, CredentialStore, URL) {
         let store = CredentialStore(values: keys, environmentID: "local-development")
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)

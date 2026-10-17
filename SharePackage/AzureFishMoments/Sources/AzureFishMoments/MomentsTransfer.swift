@@ -67,19 +67,27 @@ public struct MomentsTransfer: Sendable {
         return bytes
     }
     /// 完整校验后返回加密资源身份，调用方按播放生命周期申请和释放租约。
+    /// 每个分块遇到明确的授权过期时重新授权并重试一次；其他失败直接传播。
     public func download(_ resource: ChatResource, target: String, cover: Bool = false, offline: Bool,
                          progress: @Sendable (Double) async -> Void = { _ in }) async throws -> UUID {
         guard let id = UUID(uuidString: resource.id), resource.bytes > 0, resource.bytes <= 512 * 1024 * 1024 else { throw MediaStorageError.invalidResource }
         guard try await store.containsResource(id, target: target, cover: cover) else { throw MediaStorageError.unavailable }
         // 即使所有分块已缓存，在线读取也必须重新授权，不能以缓存命中绕过权限。
         if !offline {
-            let grant = try await api.authorizeMoments(resource.id, target: target, cover: cover)
+            var grant = try await api.authorizeMoments(resource.id, target: target, cover: cover)
             try await media.prepare(id: id, input: .init(role: "moments:" + resource.role, filename: resource.filename,
                 mime: resource.mime, bytes: resource.bytes, sha256: resource.sha256))
             let completed = try await media.completed(id)
             for index in 0..<Int((resource.bytes + Int64(EncryptedMediaStore.chunkBytes) - 1) / Int64(EncryptedMediaStore.chunkBytes)) where !completed.contains(index) {
                 let offset = Int64(index * EncryptedMediaStore.chunkBytes)
-                let bytes = try await api.download(grant, offset: offset, count: Int(min(Int64(EncryptedMediaStore.chunkBytes), resource.bytes - offset)))
+                let count = Int(min(Int64(EncryptedMediaStore.chunkBytes), resource.bytes - offset))
+                let bytes: Data
+                do { bytes = try await api.download(grant, offset: offset, count: count) }
+                catch APIClientError.service(let failure) where failure.statusCode == 403 && failure.code == .mediaGrantExpired {
+                    try Task.checkCancellation()
+                    grant = try await api.authorizeMoments(resource.id, target: target, cover: cover)
+                    bytes = try await api.download(grant, offset: offset, count: count)
+                }
                 try await media.write(bytes, id: id, index: index)
                 await progress(min(1, Double(offset + Int64(bytes.count)) / Double(resource.bytes)))
             }

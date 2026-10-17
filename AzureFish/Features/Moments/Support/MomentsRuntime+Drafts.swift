@@ -37,7 +37,9 @@ extension MomentsRuntime {
     }
     /// 上传媒体并发布草稿；已冻结草稿先按动态 ID 对账，再原样重试请求。
     ///
-    /// 仅明确的字段校验失败会解冻正文；网络失败等未知结果保留冻结请求供重试。
+    /// 明确的字段校验失败会解冻正文；媒体失效须再次确认未发布后才重置上传身份。
+    /// 未冻结草稿在上传前复核已有资产，先持久化失效媒体的新上传身份再继续。
+    /// 网络失败等未知结果保留冻结请求供重试。
     func publish(_ draft: MomentsDraft, progress: @escaping @Sendable (Double) async -> Void = { _ in }) async throws {
         guard let store, let media, let api, let manager = session?.sessionManager else { throw AccountStorageError.unavailable }
         refreshVersion = UUID(); var value = draft
@@ -52,6 +54,11 @@ extension MomentsRuntime {
                   !value.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !value.images.isEmpty || value.video?.output != nil,
                   value.images.count <= 9, value.video == nil || (value.images.isEmpty && value.video?.output != nil) else { throw APIClientError.invalidRequest }
             let transfer = MomentsTransfer(store: store, media: media, api: MediaAPI(session: manager))
+            // 解冻后保留的资产、或中断上传登记的资产，可能在下一次发布前再次过期。
+            if let recovered = try await resetExpiredPublicationMedia(value, api: transfer.api) {
+                value = recovered
+                try await save(value)
+            }
             var assets: [String] = []
             for index in value.images.indices {
                 let image = value.images[index], snapshot = value
@@ -80,12 +87,53 @@ extension MomentsRuntime {
             let result = try await api.publish(bytes: value.publication!)
             try Task.checkCancellation(); try await finish(result, draft: value)
         } catch {
+            if case APIClientError.service(let failure) = error,
+               (failure.statusCode == 409 && failure.code == .mediaNotReady)
+                || (failure.statusCode == 404 && failure.code == .mediaNotFound) {
+                // 查询放在失败写入之后，避免以早于该写入的查询结果决定解冻。
+                do {
+                    let accepted = try await api.result(value.id.uuidString.lowercased())
+                    try Task.checkCancellation(); try await finish(accepted, draft: value); return
+                } catch APIClientError.service(let resultFailure)
+                    where resultFailure.statusCode == 404 && resultFailure.code == .momentUnavailable {
+                    if let recovered = try await resetExpiredPublicationMedia(value, api: MediaAPI(session: manager)) {
+                        try await save(recovered)
+                    }
+                }
+            }
             // 明确的字段校验拒绝未提交事务，允许用户修改原草稿；未知结果仍保持冻结。
             if case APIClientError.service(let failure) = error, failure.code == .validationFailed {
                 value.publication = nil; value.operation = UUID(); try await save(value)
             }
             throw error
         }
+    }
+    /// 仅替换已确认失效的服务端资产身份，保留本地加密资源及动态 ID；未知状态不解冻。
+    private func resetExpiredPublicationMedia(_ draft: MomentsDraft, api: MediaAPI) async throws -> MomentsDraft? {
+        func reset(_ image: MomentsImageDraft) async throws -> MomentsImageDraft? {
+            guard let asset = image.assetID else { return nil }
+            do {
+                let status = try await api.status(asset)
+                guard ["expired", "deleted", "cancelled", "failed"].contains(status.state) else { return nil }
+            } catch APIClientError.service(let failure) where failure.statusCode == 404 && failure.code == .mediaNotFound {
+                // 资产记录已被清理，与明确终态采用相同的本地恢复路径。
+            }
+            try Task.checkCancellation()
+            return MomentsImageDraft(id: image.id, descriptor: image.descriptor)
+        }
+        var value = draft
+        var changed = false
+        for index in value.images.indices {
+            if let replacement = try await reset(value.images[index]) {
+                value.images[index] = replacement; changed = true
+            }
+        }
+        if let video = value.video?.output, let replacement = try await reset(video) {
+            value.video?.output = replacement; changed = true
+        }
+        guard changed else { return nil }
+        value.publication = nil; value.operation = UUID(); value.updatedAt = Date()
+        return value
     }
     /// 保存服务端快照后删除草稿、释放本地媒体，并通知其他窗口重新读取。
     private func finish(_ post: MomentsPost, draft: MomentsDraft) async throws {

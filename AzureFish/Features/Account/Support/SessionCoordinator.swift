@@ -27,6 +27,8 @@ final class SessionCoordinator {
     private(set) var canCreateBusinessCache = false
     func didOpenBusinessCache() { canCreateBusinessCache = false }
     private var managerObservation: Task<Void, Never>?
+    private var authenticationCheck: Task<Void, Never>?
+    private var authenticationCheckPending = false
     private var validationTask: Task<Void, Never>?
     func observe(_ body: @escaping () -> Void) -> UUID {
         let id = UUID(); observers[id] = body; return id
@@ -107,9 +109,8 @@ final class SessionCoordinator {
             managerObservation = Task { [weak self] in
                 for await state in await sessionManager.changes() {
                     guard !Task.isCancelled else { break }
-                    guard state.requiresReauthentication, let self, !busy, phase == .signedIn else { continue }
-                    await endInvalidSession()
-                    publish()
+                    guard state.requiresReauthentication, let self else { continue }
+                    checkAuthenticationState()
                 }
             }
         }
@@ -129,7 +130,30 @@ final class SessionCoordinator {
     }
     private func publish() {
         didChange?(); Array(observers.values).forEach { $0() }
-        if !busy { scheduleRenewal() }
+        if !busy { checkAuthenticationState(); scheduleRenewal() }
+    }
+    /// 空闲时重新读取管理器状态，补处理忙碌期间的失效通知；旧协调器代次不能结束新会话。
+    private func checkAuthenticationState() {
+        guard !busy, phase == .signedIn, let sessionManager else { return }
+        authenticationCheckPending = true
+        guard authenticationCheck == nil else { return }
+        authenticationCheck = Task { [weak self] in
+            guard let self else { return }
+            defer { authenticationCheck = nil }
+            while authenticationCheckPending {
+                authenticationCheckPending = false
+                let generation = epoch
+                let state = await sessionManager.state
+                // 等待读取期间若又结束了忙碌操作或收到通知，不能用较早快照吞掉这次检查。
+                if authenticationCheckPending { continue }
+                guard !Task.isCancelled else { return }
+                guard epoch == generation, !busy, phase == .signedIn,
+                      state.requiresReauthentication, state.userID == stored?.userID,
+                      state.sessionID == stored?.sessionID else { continue }
+                await endInvalidSession()
+                publish()
+            }
+        }
     }
     /// 本账号存储无法安全打开时退出内容界面，保留原文件及凭据供明确恢复。
     func storageUnavailable(notice: String? = nil) {
@@ -559,7 +583,7 @@ final class SessionCoordinator {
     }
     #endif
 
-    deinit { managerObservation?.cancel(); renewalTask?.cancel(); pathMonitor?.cancel() }
+    deinit { managerObservation?.cancel(); authenticationCheck?.cancel(); renewalTask?.cancel(); pathMonitor?.cancel() }
 
     private func isTerminal(_ error: Error) -> Bool {
         if let error = error as? AccountFailure, error == .expired { return true }
